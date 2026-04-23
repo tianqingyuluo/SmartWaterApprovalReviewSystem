@@ -2,6 +2,12 @@
 .trellis/.developer
 .trellis/.current-task
 
+# Local backup files
+.agents/skills/trellis-update-spec/SKILL.md.backup
+
+# Python virtual environments
+.venv/
+
 # Common OS/editor noise
 .DS_Store
 Thumbs.db
