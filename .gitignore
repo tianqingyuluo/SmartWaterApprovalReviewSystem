@@ -1,0 +1,7 @@
+# Trellis local-only state
+.trellis/.developer
+.trellis/.current-task
+
+# Common OS/editor noise
+.DS_Store
+Thumbs.db
