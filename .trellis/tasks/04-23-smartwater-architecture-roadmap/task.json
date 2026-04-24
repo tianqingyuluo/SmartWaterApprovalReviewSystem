@@ -19,7 +19,6 @@
   "pr_url": null,
   "subtasks": [],
   "children": [
-    "04-24-smartwater-mvp-domain-contract",
     "04-24-smartwater-backend-submission-storage-mvp",
     "04-24-smartwater-python-ocr-review-worker-mvp",
     "04-24-smartwater-frontend-dual-page-mvp",

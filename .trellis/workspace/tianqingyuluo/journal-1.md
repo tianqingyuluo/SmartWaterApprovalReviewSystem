@@ -36,3 +36,36 @@ Kept planning state for smartwater-architecture-roadmap. Confirmed MVP as a dual
 ### Next Steps
 
 - None - task complete
+
+
+## Session 2: 完成 SmartWater MVP 领域契约
+
+**Date**: 2026-04-25
+**Task**: 完成 SmartWater MVP 领域契约
+**Branch**: `mvp/smartwater`
+
+### Summary
+
+合并 PR #1，完成 MVP 领域模型、材料槽位、状态机、API/Worker 契约与下游边界设计。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `0f536b7` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
