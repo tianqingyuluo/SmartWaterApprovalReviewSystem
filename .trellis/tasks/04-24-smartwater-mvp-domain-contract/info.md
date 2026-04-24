@@ -187,8 +187,7 @@ Rules:
   "PROCESSING",
   "PARTIAL_SUCCESS",
   "COMPLETED",
-  "FAILED",
-  "CANCELLED"
+  "FAILED"
 ]
 ```
 
@@ -202,7 +201,6 @@ State meanings:
 | `PARTIAL_SUCCESS` | Some materials or review steps succeeded and some failed | Yes for MVP result display |
 | `COMPLETED` | OCR/extraction/review completed for all available materials | Yes |
 | `FAILED` | No useful result can be produced due to system or input failure | Yes |
-| `CANCELLED` | Reserved for future/manual cancellation; not expected in MVP UI | Yes |
 
 Allowed transitions:
 
@@ -218,6 +216,8 @@ SUBMITTED -> FAILED
 ```
 
 MVP does not support transitions from terminal states back to processing. A new upload attempt creates a new task.
+
+`CANCELLED` is intentionally out of the MVP contract. If a later workflow introduces manual cancellation, it must be added as a new explicit status with allowed transitions and frontend copy.
 
 ### FindingType
 
@@ -486,6 +486,7 @@ Review result model
   ],
   "basicHints": [
     {
+      "sourceFindingId": "finding_001",
       "type": "MISSING_MATERIAL",
       "severity": "WARNING",
       "message": "缺少营业执照，审批人员无法进行主体信息一致性核对。"
@@ -499,6 +500,8 @@ Applicant projection rules:
 
 - Include material upload/missing state.
 - Include only basic missing material, obvious low-confidence upload, and simple field missing hints.
+- Derive `basicHints` from `ReviewFinding` items where `visibleTo` includes `APPLICANT`, but keep only `sourceFindingId`, `type`, `severity`, and applicant-safe `message`.
+- Rewrite or omit reviewer-specific details before exposing an applicant hint; never pass through evidence graphs, internal field paths, raw model reasoning, object keys, or legal judgment wording.
 - Exclude draft review opinion, full risk analysis, internal evidence graph, model uncertainty chain, and reviewer-only manual prompts.
 
 ### ReviewFinding
@@ -593,8 +596,10 @@ Response `202 Accepted`:
   "sessionId": "sess_xxx",
   "status": "SUBMITTED",
   "pollUrl": "/api/mvp/review-tasks/task_20260424_xxx/status?sessionId=sess_xxx",
-  "applicantResultUrl": "/applicant/result/task_20260424_xxx?sessionId=sess_xxx",
-  "reviewerResultUrl": "/reviewer/result/task_20260424_xxx?sessionId=sess_xxx",
+  "applicantResultApiUrl": "/api/mvp/review-tasks/task_20260424_xxx/applicant-result?sessionId=sess_xxx",
+  "reviewerResultApiUrl": "/api/mvp/review-tasks/task_20260424_xxx/reviewer-result?sessionId=sess_xxx",
+  "applicantResultPageUrl": "/applicant/result/task_20260424_xxx?sessionId=sess_xxx",
+  "reviewerResultPageUrl": "/reviewer/result/task_20260424_xxx?sessionId=sess_xxx",
   "submittedMaterials": [
     { "materialType": "APPLICATION_FORM", "uploaded": true },
     { "materialType": "BUSINESS_LICENSE", "uploaded": false },
@@ -701,6 +706,8 @@ The Java backend may implement push, pull, or queue-based dispatch later. The pa
       "materialType": "APPLICATION_FORM",
       "contentType": "application/pdf",
       "fileExtension": "pdf",
+      "readMode": "BACKEND_SIGNED_URL",
+      "downloadUrl": "/internal/worker/review-tasks/task_20260424_xxx/materials/mat_001/download?signature=sig_xxx",
       "storageObjectKey": "review-tasks/task_20260424_xxx/application-form.pdf"
     }
   ],
@@ -711,6 +718,12 @@ The Java backend may implement push, pull, or queue-based dispatch later. The pa
   }
 }
 ```
+
+Material access rules:
+
+- MVP default is `readMode = BACKEND_SIGNED_URL`: Worker downloads material content through backend-issued, short-lived internal URLs.
+- `storageObjectKey` remains an internal trace field and must not be exposed to applicant or reviewer responses.
+- Worker must authenticate callback and download requests using the backend/Worker integration mechanism chosen by the backend task; raw object storage credentials are out of scope for the shared DTO.
 
 ### Worker status callback
 

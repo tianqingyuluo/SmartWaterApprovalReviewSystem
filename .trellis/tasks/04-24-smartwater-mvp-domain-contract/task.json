@@ -16,7 +16,7 @@
   "base_branch": "mvp/smartwater",
   "worktree_path": null,
   "commit": null,
-  "pr_url": null,
+  "pr_url": "https://github.com/tianqingyuluo/SmartWaterApprovalReviewSystem/pull/1",
   "subtasks": [],
   "children": [],
   "parent": "04-23-smartwater-architecture-roadmap",
