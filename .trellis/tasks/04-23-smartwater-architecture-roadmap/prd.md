@@ -296,6 +296,16 @@ V2 面向正式业务闭环和长期运营。
 * `check`：质量检查。
 * `completed/archive`：完成并归档。
 
+## Team Collaboration Discipline
+
+团队协作纪律已写入 `.trellis/spec/team-collaboration.md`。MVP 开发期采用以下规则：
+
+* 不维护长期个人 `dev` 分支。
+* 以一个 MVP 集成分支作为统一合并目标，例如 `mvp/smartwater` 或 `develop/smartwater-mvp`。
+* 每个 Trellis 子任务使用一个短生命周期任务分支，通常对应一个 PR。
+* PR 合并前按子任务 `prd.md` 的 `Acceptance Criteria` 验收，并检查跨模块契约是否同步。
+* MVP 全部子任务完成后，再从 MVP 集成分支合并到 `main`。
+
 ## Out of Scope
 
 * 本父任务不直接实现 Java/Python/前端业务代码。
