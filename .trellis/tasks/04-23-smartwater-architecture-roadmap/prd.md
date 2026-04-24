@@ -304,6 +304,7 @@ V2 面向正式业务闭环和长期运营。
 * 以一个 MVP 集成分支作为统一合并目标，例如 `mvp/smartwater` 或 `develop/smartwater-mvp`。
 * 每个 Trellis 子任务使用一个短生命周期任务分支，通常对应一个 PR。
 * PR 合并前按子任务 `prd.md` 的 `Acceptance Criteria` 验收，并检查跨模块契约是否同步。
+* 子任务逐个验收并归档；父任务保留到所有 MVP 子任务完成、端到端验收通过、必要 PRD/spec 更新完成之后再归档。
 * MVP 全部子任务完成后，再从 MVP 集成分支合并到 `main`。
 
 ## Out of Scope
