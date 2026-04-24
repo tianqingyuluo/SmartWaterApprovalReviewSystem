@@ -27,7 +27,9 @@ workspace/
 
 | Developer | Last Active | Sessions | Active File |
 |-----------|-------------|----------|-------------|
-| (none yet) | - | - | - |
+| `tianqingyuluo` | 2026-04-24 | 0+ | `journal-1.md` |
+| `6newuser6` | - | 0 | `journal-1.md` |
+| `ymx545` | - | 0 | `journal-1.md` |
 
 ---
 
