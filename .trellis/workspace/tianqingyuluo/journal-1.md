@@ -69,3 +69,36 @@ Kept planning state for smartwater-architecture-roadmap. Confirmed MVP as a dual
 ### Next Steps
 
 - None - task complete
+
+
+## Session 3: 归档 Git 提交消息规范任务
+
+**Date**: 2026-04-25
+**Task**: 归档 Git 提交消息规范任务
+**Branch**: `mvp/smartwater`
+
+### Summary
+
+确认提交消息规范已落地到团队协作 spec，并归档 git-commit-message-convention 任务。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `30814db` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
