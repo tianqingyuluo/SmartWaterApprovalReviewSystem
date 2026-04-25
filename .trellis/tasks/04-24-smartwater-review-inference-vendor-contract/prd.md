@@ -35,7 +35,7 @@
 
 ## Research References
 
-* [`research/inference-vendor-comparison.md`](research/inference-vendor-comparison.md) — 用户确认阿里云百炼 DashScope/Qwen 作为主推理供应商，百度千帆 `ERNIE-4.5-Turbo-128K` 作为备选。
+* [`research/inference-vendor-comparison.md`](research/inference-vendor-comparison.md) — 用户确认阿里云百炼 DashScope/Qwen 作为主推理供应商，DeepSeek 作为备选。
 
 ## Final User Decision
 
@@ -53,12 +53,13 @@
 
 ### Fallback Vendor
 
-**备选：百度千帆 / ERNIE-4.5-Turbo-128K。**
+**备选：DeepSeek。**
 
 使用场景：
 
 * Qwen 账号、配额、稳定性或结构化输出实测不满足时切换。
-* ERNIE 在中文审批意见措辞或结构化输出稳定性上实测明显更优时切换。
+* 需要低成本 OpenAI-compatible 备选用于 benchmark、演示或成本优化。
+* DeepSeek 的 JSON Mode + tool calling strict 路径通过 SmartWater 审核结果 schema 集成测试。
 * 通过相同 `ReviewReasoningAdapter` 契约替换，不影响 Java 后端、前端和知识包边界。
 
 ### Deferred Options
@@ -66,7 +67,7 @@
 * Kimi：长上下文能力强，但调研中未看到同等明确的 `json_schema` strict 输出依据，且充值/限流与 thinking/tool 约束会增加 Worker 复杂度。
 * 腾讯混元：OpenAI 兼容与工具调用可用，但 strict schema 证据较弱，默认共享并发对 MVP 吞吐存在约束。
 * 智谱 GLM：能力可用，但 OCR 已定 GLM OCR，审核推理继续选 GLM 会增加供应商耦合。
-* DeepSeek：接口兼容、成本低，支持 JSON Mode 和 tool calling strict，适合作后续 benchmark 或成本优化；但公开错误与拥塞场景对第一版政务审核辅助不够稳妥。
+* 百度千帆：能力和结构化输出可用，但用户明确不作为备选；后续只有在 Qwen 与 DeepSeek 都不满足时再重新评估。
 
 ## Inputs
 
@@ -96,11 +97,10 @@
 
 Python Worker 使用供应商无关配置面：
 
-* `REVIEW_LLM_PROVIDER`: 默认 `dashscope`，可切换为 `qianfan` 等供应商标识。
-* `REVIEW_LLM_MODEL`: 默认使用团队确认的 Qwen 模型；备选为 `ernie-4.5-turbo-128k`。
+* `REVIEW_LLM_PROVIDER`: 默认 `dashscope`，可切换为 `deepseek` 等供应商标识。
+* `REVIEW_LLM_MODEL`: 默认使用团队确认的 Qwen 模型；备选使用团队确认的 DeepSeek 模型。
 * `REVIEW_LLM_BASE_URL`: OpenAI-compatible endpoint。
 * `REVIEW_LLM_API_KEY`: 供应商 API key。
-* `REVIEW_LLM_APP_ID`: 可选，仅千帆需要时使用。
 
 ### Request Schema
 
@@ -146,7 +146,7 @@ Python Worker 使用供应商无关配置面：
 ## Acceptance Criteria
 
 * [x] `research/inference-vendor-comparison.md` 已创建并包含供应商比较。
-* [x] 用户已确认主选 Qwen，并明确至少一个备选模型。
+* [x] 用户已确认主选 Qwen，备选 DeepSeek。
 * [x] 明确选择依据与放弃其他方案的原因。
 * [x] 明确推理 adapter 输入输出 schema。
 * [x] 明确提示词组织原则、结构化输出要求和失败处理。
@@ -159,6 +159,6 @@ Python Worker 使用供应商无关配置面：
 
 ## Definition of Done
 
-* 团队可以基于该任务结论接入 Qwen，并保留切换千帆的备选路径。
+* 团队可以基于该任务结论接入 Qwen，并保留切换 DeepSeek 的备选路径。
 * Python Worker 不需要重新讨论模型选型即可实现 adapter。
 * 风险、成本和替换路径被记录在研究文件和 PRD 中。

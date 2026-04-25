@@ -30,14 +30,15 @@
 
 After follow-up verification, Qwen / Alibaba Cloud Model Studio should not be treated as only supporting `json_object`. Alibaba Cloud official structured-output documentation now documents `response_format` with `type: "json_schema"` and `strict: true` for supported Qwen models. This removes the main previous weakness against Qianfan for SmartWater's schema-constrained review output.
 
-The final user-confirmed direction is therefore: **Alibaba Cloud DashScope / Qwen as primary**, with **Baidu Qianfan / ERNIE-4.5-Turbo-128K as fallback**.
+The final user-confirmed direction is therefore: **Alibaba Cloud DashScope / Qwen as primary**, with **DeepSeek as fallback**.
 
 ### Candidate comparison
 
 | Provider | Evidence-backed strengths | Main risks | Fit |
 |---|---|---|---|
-| **Baidu Qianfan / ERNIE-4.5-Turbo-128K** | OpenAI-compatible `base_url=https://qianfan.baidubce.com/v2`; official `Function calling`; official `response_format` supports both `json_object` and `json_schema` with `strict`; `ernie-4.5-turbo-128k` exposes 128K context with high default flow control (`RPM=5000`, `TPM=400000`); pricing is low (`0.0008` yuan/1k input, `0.0032` yuan/1k output); docs position ERNIE-4.5-Turbo for Chinese knowledge QA and document understanding. | Slightly more platform ceremony than pure OpenAI-compatible vendors: API key + optional `appid` header; 128K is strong but not class-leading if full-text regulations are inlined naively. | **Fallback** |
+| **Baidu Qianfan / ERNIE-4.5-Turbo-128K** | OpenAI-compatible `base_url=https://qianfan.baidubce.com/v2`; official `Function calling`; official `response_format` supports both `json_object` and `json_schema` with `strict`; `ernie-4.5-turbo-128k` exposes 128K context with high default flow control (`RPM=5000`, `TPM=400000`); pricing is low (`0.0008` yuan/1k input, `0.0032` yuan/1k output); docs position ERNIE-4.5-Turbo for Chinese knowledge QA and document understanding. | Slightly more platform ceremony than pure OpenAI-compatible vendors: API key + optional `appid` header; 128K is strong but not class-leading if full-text regulations are inlined naively. | **Not selected by user** |
 | **Alibaba Cloud DashScope / Qwen family** | OpenAI-compatible endpoints including China mainland; official structured output supports `json_object` and follow-up verified `json_schema` with `strict: true` for supported Qwen models; official function calling; clear China-mainland deployment/data locality option; model lineup spans quality-oriented and long-context Qwen options; explicit rate-limit docs and pricing docs; account-level operational controls are clear. | Model choice is wider, so the team should pin one production default first instead of over-optimizing model selection too early. | **User-confirmed primary** |
+| **DeepSeek direct API** | OpenAI-compatible API; inexpensive pricing; JSON Mode; tools/tool-choice support; follow-up review indicates tool-calling strict schema can be used for schema-constrained output. | Strict schema is tool-call oriented rather than direct final-message `json_schema`; official docs warn about 429/503 overload scenarios, so Worker needs stronger retry, queueing, and local schema validation. | **User-confirmed fallback** |
 | **Moonshot / Kimi K2.5-K2.6** | OpenAI-compatible API; official JSON Mode; official ToolCalls; 256K context; strong long-context/doc handling reputation in Chinese workflows; context caching supported. | Rate limits are tied to cumulative recharge; minimum paid top-up is required; official docs show thinking-mode tool restrictions (`tool_choice` limited to `auto`/`none` in some cases); reviewed docs expose JSON Mode but not schema-strict JSON comparable to Qianfan. | **Usable, but not first choice for schema-strict approval output** |
 | **Tencent Hunyuan** | OpenAI-compatible endpoint; official function-calling examples; domestic cloud procurement fit; current text models include 128K/224K-class variants and low-cost Turbo/T1 options. | OpenAI-compatible docs explicitly mention default shared concurrency of 5; in reviewed official docs I did not find a dedicated `json_schema`/strict structured-output page comparable to Qianfan; common OpenAI-compatible examples focus more on chat/tool use than schema-constrained extraction. | **Enterprise alternative, not MVP default** |
 
@@ -51,19 +52,19 @@ The final user-confirmed direction is therefore: **Alibaba Cloud DashScope / Qwe
 
 ### Recommended fallback
 
-- **Fallback vendor: Baidu Qianfan / ERNIE-4.5-Turbo-128K**
-- Use Qianfan if one of these happens during evaluation:
+- **Fallback vendor: DeepSeek**
+- Use DeepSeek if one of these happens during evaluation:
   - Qwen account access, quota, latency, or structured-output behavior fails integration tests.
-  - ERNIE produces materially better Chinese approval-review wording in side-by-side evaluation.
-  - The team needs Qianfan-specific governance, billing, or platform features.
-- Keep fallback as a provider-wrapper/configuration switch under the same `ReviewReasoningAdapter` contract.
+  - The team needs a lower-cost OpenAI-compatible fallback for benchmark or demo workloads.
+  - Tool-calling strict schema passes SmartWater review-result validation in integration tests.
+- Keep fallback as a provider-wrapper/configuration switch under the same `ReviewReasoningAdapter` contract, but require stronger retry/queue safeguards for 429/503 and overload scenarios.
 
 ### Reasons to reject or defer non-chosen options
 
 - **Kimi not chosen as primary**: strong long-context and Chinese interaction quality, but the official docs reviewed expose JSON Mode rather than schema-strict JSON; rate limits are recharge-tier-based; thinking-mode tool restrictions add worker complexity.
 - **Tencent Hunyuan not chosen as primary**: OpenAI compatibility and tool calling are there, but the reviewed docs were weaker on strict structured output, and the documented default shared concurrency of 5 is a practical MVP throughput constraint.
 - **Zhipu GLM deferred even though it is capable**: official docs show OpenAI compatibility, function calling, and structured output, but using GLM for reasoning would increase the exact vendor coupling the task is trying to avoid because OCR is already GLM OCR.
-- **Direct DeepSeek API deferred for first integration**: the API is OpenAI-compatible and inexpensive; follow-up review indicates it supports JSON Mode and tool-calling strict schema, but the strict path is tool-call oriented rather than direct final-message `json_schema`. Official docs also note 429/503 overload scenarios and long waits under traffic pressure, so it remains a good later benchmark/cost-optimization target rather than the first production recommendation.
+- **DeepSeek selected as fallback, not primary**: the API is OpenAI-compatible and inexpensive; follow-up review indicates it supports JSON Mode and tool-calling strict schema, but the strict path is tool-call oriented rather than direct final-message `json_schema`. Official docs also note 429/503 overload scenarios and long waits under traffic pressure, so it is better as fallback/cost-optimization path than the first primary provider.
 
 ### Adapter and operations implications
 
@@ -72,8 +73,8 @@ The final user-confirmed direction is therefore: **Alibaba Cloud DashScope / Qwe
   - `REVIEW_LLM_MODEL`
   - `REVIEW_LLM_BASE_URL`
   - `REVIEW_LLM_API_KEY`
-  - `REVIEW_LLM_APP_ID` (optional; Qianfan only)
-- Keep the worker on OpenAI-compatible chat completions first; only the provider wrapper should know about Qianfan `appid`, DashScope region URL, or Kimi `extra_body.thinking`.
+  - `REVIEW_LLM_APP_ID` (optional; Qianfan only if reintroduced later)
+- Keep the worker on OpenAI-compatible chat completions first; only the provider wrapper should know about DashScope region URL, DeepSeek tool-call strict handling, Qianfan `appid` if reintroduced, or Kimi `extra_body.thinking`.
 - Prefer provider-native structured output when available, but **always** validate locally against the SmartWater review JSON schema before writeback.
 - Retry policy should be provider-neutral:
   - Retry: timeout, 429, 500, 503.
