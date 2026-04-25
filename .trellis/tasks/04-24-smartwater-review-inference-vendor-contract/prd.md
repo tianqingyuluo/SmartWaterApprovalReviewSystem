@@ -35,30 +35,30 @@
 
 ## Research References
 
-* [`research/inference-vendor-comparison.md`](research/inference-vendor-comparison.md) — 推荐百度千帆 `ERNIE-4.5-Turbo-128K` 作为主推理供应商，阿里云百炼 DashScope/Qwen 作为备选与长上下文兜底。
+* [`research/inference-vendor-comparison.md`](research/inference-vendor-comparison.md) — 用户确认阿里云百炼 DashScope/Qwen 作为主推理供应商，百度千帆 `ERNIE-4.5-Turbo-128K` 作为备选。
 
-## Recommendation Pending User Decision
+## Final User Decision
 
-### Recommended Primary Vendor
+### Primary Vendor
 
-**研究建议：百度千帆 / ERNIE-4.5-Turbo-128K，最终选型待用户确认。**
+**用户确认选择：阿里云百炼 DashScope / Qwen。**
 
-推荐理由：
+选择理由：
 
 * 国内可稳定接入，提供 OpenAI-compatible API，Python Worker 初始集成成本低。
-* 官方支持 `response_format` 的 `json_schema` 严格结构化输出，更适合审批审核结果的 schema 约束。
-* 128K 上下文足够 MVP 处理 `申请书 + 营业执照 + 身份证` 的 OCR 摘要、字段抽取结果和法规知识片段。
-* 成本与默认流控对 MVP 演示和早期联调友好。
+* 经补充核对，阿里云百炼/Qwen 官方结构化输出支持 `json_schema` 与 `strict: true`，满足审核结果 schema 约束。
+* Qwen 模型矩阵更丰富，便于后续在质量、成本、延迟和上下文长度之间切换。
+* 阿里云平台账号、限流、计费和运维治理能力较成熟，适合作为团队主接入平台。
 * 与已定的 GLM OCR 保持供应商解耦，避免 OCR 与审核推理同时绑定智谱。
 
-### Recommended Fallback Vendor
+### Fallback Vendor
 
-**建议备选：阿里云百炼 DashScope / Qwen，最终备选顺序待用户确认。**
+**备选：百度千帆 / ERNIE-4.5-Turbo-128K。**
 
 使用场景：
 
-* 千帆账号、配额、稳定性或结构化输出实测不满足时切换。
-* 后续需要更长上下文或更丰富 Qwen 模型矩阵时切换。
+* Qwen 账号、配额、稳定性或结构化输出实测不满足时切换。
+* ERNIE 在中文审批意见措辞或结构化输出稳定性上实测明显更优时切换。
 * 通过相同 `ReviewReasoningAdapter` 契约替换，不影响 Java 后端、前端和知识包边界。
 
 ### Deferred Options
@@ -66,7 +66,7 @@
 * Kimi：长上下文能力强，但调研中未看到同等明确的 `json_schema` strict 输出依据，且充值/限流与 thinking/tool 约束会增加 Worker 复杂度。
 * 腾讯混元：OpenAI 兼容与工具调用可用，但 strict schema 证据较弱，默认共享并发对 MVP 吞吐存在约束。
 * 智谱 GLM：能力可用，但 OCR 已定 GLM OCR，审核推理继续选 GLM 会增加供应商耦合。
-* DeepSeek：接口兼容、成本低，适合作后续 benchmark；但公开错误与拥塞场景对第一版政务审核辅助不够稳妥。
+* DeepSeek：接口兼容、成本低，支持 JSON Mode 和 tool calling strict，适合作后续 benchmark 或成本优化；但公开错误与拥塞场景对第一版政务审核辅助不够稳妥。
 
 ## Inputs
 
@@ -76,7 +76,7 @@
 
 ## Outputs
 
-* 推理模型供应商推荐、备选和待用户确认状态。
+* 用户确认后的主推理供应商、备选供应商和替换边界。
 * `Review reasoning adapter` 契约。
 * 审核推理请求/响应 JSON schema。
 * 提示词约束和安全边界。
@@ -96,8 +96,8 @@
 
 Python Worker 使用供应商无关配置面：
 
-* `REVIEW_LLM_PROVIDER`: `qianfan`、`dashscope` 等供应商标识；最终默认值待用户确认后锁定。
-* `REVIEW_LLM_MODEL`: 推荐 `ernie-4.5-turbo-128k`；最终默认值待用户确认后锁定。
+* `REVIEW_LLM_PROVIDER`: 默认 `dashscope`，可切换为 `qianfan` 等供应商标识。
+* `REVIEW_LLM_MODEL`: 默认使用团队确认的 Qwen 模型；备选为 `ernie-4.5-turbo-128k`。
 * `REVIEW_LLM_BASE_URL`: OpenAI-compatible endpoint。
 * `REVIEW_LLM_API_KEY`: 供应商 API key。
 * `REVIEW_LLM_APP_ID`: 可选，仅千帆需要时使用。
@@ -146,7 +146,7 @@ Python Worker 使用供应商无关配置面：
 ## Acceptance Criteria
 
 * [x] `research/inference-vendor-comparison.md` 已创建并包含供应商比较。
-* [x] 明确推荐模型和至少一个备选模型，最终选型待用户确认。
+* [x] 用户已确认主选 Qwen，并明确至少一个备选模型。
 * [x] 明确选择依据与放弃其他方案的原因。
 * [x] 明确推理 adapter 输入输出 schema。
 * [x] 明确提示词组织原则、结构化输出要求和失败处理。
@@ -159,6 +159,6 @@ Python Worker 使用供应商无关配置面：
 
 ## Definition of Done
 
-* 用户确认最终选型后，团队可以基于该任务结论接入一个真实推理供应商。
+* 团队可以基于该任务结论接入 Qwen，并保留切换千帆的备选路径。
 * Python Worker 不需要重新讨论模型选型即可实现 adapter。
 * 风险、成本和替换路径被记录在研究文件和 PRD 中。

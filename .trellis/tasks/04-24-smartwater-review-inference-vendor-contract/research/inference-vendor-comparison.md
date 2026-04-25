@@ -1,6 +1,6 @@
 # Research: inference-vendor-comparison
 
-- Query: Compare 2-4 domestic China-accessible reasoning/chat model providers for SmartWater approval-review inference, map them to repo constraints, and recommend a primary vendor plus fallback.
+- Query: Compare 2-4 domestic China-accessible reasoning/chat model providers for SmartWater approval-review inference, map them to repo constraints, and recommend a primary vendor plus fallback. User later confirmed Qwen as the primary choice after follow-up checks on structured output support.
 - Scope: mixed
 - Date: 2026-04-25
 
@@ -26,40 +26,44 @@
 - `.trellis/spec/backend/logging-guidelines.md`: structured logging and no sensitive-data logging.
 - `python-services/smart-water-approval-review-system-py/pyproject.toml`: confirms there is no existing SDK lock-in yet.
 
+### Follow-up correction on Qwen structured output
+
+After follow-up verification, Qwen / Alibaba Cloud Model Studio should not be treated as only supporting `json_object`. Alibaba Cloud official structured-output documentation now documents `response_format` with `type: "json_schema"` and `strict: true` for supported Qwen models. This removes the main previous weakness against Qianfan for SmartWater's schema-constrained review output.
+
+The final user-confirmed direction is therefore: **Alibaba Cloud DashScope / Qwen as primary**, with **Baidu Qianfan / ERNIE-4.5-Turbo-128K as fallback**.
+
 ### Candidate comparison
 
 | Provider | Evidence-backed strengths | Main risks | Fit |
 |---|---|---|---|
-| **Baidu Qianfan / ERNIE-4.5-Turbo-128K** | OpenAI-compatible `base_url=https://qianfan.baidubce.com/v2`; official `Function calling`; official `response_format` supports both `json_object` and `json_schema` with `strict`; `ernie-4.5-turbo-128k` exposes 128K context with high default flow control (`RPM=5000`, `TPM=400000`); pricing is low (`0.0008` yuan/1k input, `0.0032` yuan/1k output); docs position ERNIE-4.5-Turbo for Chinese knowledge QA and document understanding. | Slightly more platform ceremony than pure OpenAI-compatible vendors: API key + optional `appid` header; 128K is strong but not class-leading if full-text regulations are inlined naively. | **Recommended primary** |
-| **Alibaba Cloud DashScope / Qwen family** | OpenAI-compatible endpoints including China mainland; official structured output (`response_format: {"type":"json_object"}`); official function calling; clear China-mainland deployment/data locality option; model lineup spans `qwen3-max` and 1M-context `qwen3.5-plus`/`qwen3.5-flash`; explicit rate-limit docs and pricing docs; account-level operational controls are clear. | In reviewed sources, structured output was explicit for `json_object`, but I did not find an equally explicit `json_schema`-strict page like Qianfan's; model choice is wider, so teams can over-optimize too early unless one production model is pinned. | **Best fallback / long-context fallback** |
+| **Baidu Qianfan / ERNIE-4.5-Turbo-128K** | OpenAI-compatible `base_url=https://qianfan.baidubce.com/v2`; official `Function calling`; official `response_format` supports both `json_object` and `json_schema` with `strict`; `ernie-4.5-turbo-128k` exposes 128K context with high default flow control (`RPM=5000`, `TPM=400000`); pricing is low (`0.0008` yuan/1k input, `0.0032` yuan/1k output); docs position ERNIE-4.5-Turbo for Chinese knowledge QA and document understanding. | Slightly more platform ceremony than pure OpenAI-compatible vendors: API key + optional `appid` header; 128K is strong but not class-leading if full-text regulations are inlined naively. | **Fallback** |
+| **Alibaba Cloud DashScope / Qwen family** | OpenAI-compatible endpoints including China mainland; official structured output supports `json_object` and follow-up verified `json_schema` with `strict: true` for supported Qwen models; official function calling; clear China-mainland deployment/data locality option; model lineup spans quality-oriented and long-context Qwen options; explicit rate-limit docs and pricing docs; account-level operational controls are clear. | Model choice is wider, so the team should pin one production default first instead of over-optimizing model selection too early. | **User-confirmed primary** |
 | **Moonshot / Kimi K2.5-K2.6** | OpenAI-compatible API; official JSON Mode; official ToolCalls; 256K context; strong long-context/doc handling reputation in Chinese workflows; context caching supported. | Rate limits are tied to cumulative recharge; minimum paid top-up is required; official docs show thinking-mode tool restrictions (`tool_choice` limited to `auto`/`none` in some cases); reviewed docs expose JSON Mode but not schema-strict JSON comparable to Qianfan. | **Usable, but not first choice for schema-strict approval output** |
 | **Tencent Hunyuan** | OpenAI-compatible endpoint; official function-calling examples; domestic cloud procurement fit; current text models include 128K/224K-class variants and low-cost Turbo/T1 options. | OpenAI-compatible docs explicitly mention default shared concurrency of 5; in reviewed official docs I did not find a dedicated `json_schema`/strict structured-output page comparable to Qianfan; common OpenAI-compatible examples focus more on chat/tool use than schema-constrained extraction. | **Enterprise alternative, not MVP default** |
 
-### Why the recommendation is Qianfan first
+### Why the final choice is Qwen first
 
-- **Best match for the output contract**: SmartWater needs parse-safe review JSON with issue lists, citations, summaries, and human-review hints. Qianfan is the strongest reviewed option because it officially supports both `json_object` and `json_schema` with strict mode, reducing downstream parser fragility.
-- **Best documented fit for Chinese document understanding**: Qianfan's model list explicitly positions `ERNIE-4.5-Turbo-128K` for Chinese knowledge QA and document understanding. No reviewed vendor published a water-approval-specific benchmark, so this part is still an inference, but Qianfan has the clearest official positioning closest to the task.
-- **128K is enough for MVP if the prompt is assembled correctly**: the MVP only handles three material slots plus static knowledge snippets, not arbitrary case archives. With OCR text chunking and quote extraction, 128K is operationally sufficient.
-- **Operationally easy for a new worker**: OpenAI-compatible SDK path, high default RPM/TPM, low token price, optional `appid` accounting, and permanent API-key flow are all practical for an async worker.
-- **Vendor replacement risk stays acceptable**: the adapter can still stay provider-neutral because the worker only needs OpenAI-compatible chat completion, structured-output mode, and standardized retries.
+- **Best overall platform default after correction**: follow-up verification shows Qwen supports strict `json_schema` structured output, so it satisfies SmartWater's parse-safe review JSON requirement while keeping OpenAI-compatible integration.
+- **Broader model and context runway**: Alibaba Cloud Model Studio / DashScope gives the team a richer Qwen model matrix for later quality, cost, latency, and context-length tuning without changing the cross-service adapter contract.
+- **Operationally mature domestic platform**: Alibaba Cloud account governance, rate-limit documentation, pricing documentation, and China-mainland endpoint options are practical for a team MVP that may later become a production service.
+- **Good architecture fit**: Qwen remains independent from GLM OCR, avoiding OCR/reasoning vendor coupling while still letting the worker hide provider details behind `ReviewReasoningAdapter`.
+- **User decision**: after reviewing the corrected Qwen structured-output capability, the user confirmed Qwen should be the primary provider.
 
 ### Recommended fallback
 
-- **Fallback vendor: Alibaba Cloud DashScope / Qwen family**
-- Use DashScope if one of these happens during evaluation:
-  - ERNIE quality on Chinese regulation reasoning is acceptable but not best.
-  - Long-context pressure becomes real after adding more regulation excerpts or multi-document history.
-  - The team wants clearer China-mainland cloud operations and rate-limit controls on Alibaba Cloud.
-- Suggested model policy:
-  - Start evaluation with a quality-oriented Qwen model for review generation.
-  - Drop to a cheaper long-context Qwen model only if latency/cost dominates and result quality is still acceptable.
+- **Fallback vendor: Baidu Qianfan / ERNIE-4.5-Turbo-128K**
+- Use Qianfan if one of these happens during evaluation:
+  - Qwen account access, quota, latency, or structured-output behavior fails integration tests.
+  - ERNIE produces materially better Chinese approval-review wording in side-by-side evaluation.
+  - The team needs Qianfan-specific governance, billing, or platform features.
+- Keep fallback as a provider-wrapper/configuration switch under the same `ReviewReasoningAdapter` contract.
 
 ### Reasons to reject or defer non-chosen options
 
 - **Kimi not chosen as primary**: strong long-context and Chinese interaction quality, but the official docs reviewed expose JSON Mode rather than schema-strict JSON; rate limits are recharge-tier-based; thinking-mode tool restrictions add worker complexity.
 - **Tencent Hunyuan not chosen as primary**: OpenAI compatibility and tool calling are there, but the reviewed docs were weaker on strict structured output, and the documented default shared concurrency of 5 is a practical MVP throughput constraint.
 - **Zhipu GLM deferred even though it is capable**: official docs show OpenAI compatibility, function calling, and structured output, but using GLM for reasoning would increase the exact vendor coupling the task is trying to avoid because OCR is already GLM OCR.
-- **Direct DeepSeek API deferred for first integration**: the API is OpenAI-compatible and inexpensive, but official docs explicitly note 429/503 overload scenarios and long waits under traffic pressure. It remains a good later benchmark target, but not the first production recommendation for a government-style review workflow.
+- **Direct DeepSeek API deferred for first integration**: the API is OpenAI-compatible and inexpensive; follow-up review indicates it supports JSON Mode and tool-calling strict schema, but the strict path is tool-call oriented rather than direct final-message `json_schema`. Official docs also note 429/503 overload scenarios and long waits under traffic pressure, so it remains a good later benchmark/cost-optimization target rather than the first production recommendation.
 
 ### Adapter and operations implications
 
@@ -122,5 +126,5 @@
 
 - No reviewed vendor publishes an official benchmark specifically for Chinese water-approval regulations or government approval-review wording. Any claim about "better regulation understanding" is therefore an inference from Chinese-language positioning, document-understanding positioning, and tool/structured-output maturity.
 - For Tencent Hunyuan, I found clear OpenAI-compatible and function-calling docs, but I did not find a Qianfan-style `json_schema` strict-output page in the reviewed official sources.
-- For DashScope, I found explicit structured output with `json_object` and official function calling, but not a reviewed source as explicit as Qianfan's `json_schema` strict mode page.
+- Earlier DashScope/Qwen caveat is superseded by follow-up verification: Alibaba Cloud structured-output docs support `json_schema` with `strict: true` for supported Qwen models.
 - Kimi's pricing pages are partially JS-rendered in the docs UI; the product home page exposes current cache/input/output prices, and the docs confirm model capabilities, but the exact full pricing table was not fully visible in the reviewed page render.
