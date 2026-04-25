@@ -102,3 +102,39 @@ Kept planning state for smartwater-architecture-roadmap. Confirmed MVP as a dual
 ### Next Steps
 
 - None - task complete
+
+
+## Session 4: 完成审核推理模型选型
+
+**Date**: 2026-04-25
+**Task**: 完成审核推理模型选型
+**Branch**: `mvp/smartwater`
+
+### Summary
+
+完成国内审核推理模型调研，用户确认 Qwen 为主选、DeepSeek 为备选，并固化 ReviewReasoningAdapter 契约、结构化输出约束和失败处理。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `9452938` | (see git log) |
+| `eaac0f3` | (see git log) |
+| `60084bf` | (see git log) |
+| `d0f26b8` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
