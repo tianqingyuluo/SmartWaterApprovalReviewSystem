@@ -24,7 +24,7 @@
 
 * 审核推理模型供应商尚未最终选择，需要通过 `smartwater-review-inference-vendor-contract` 子任务完成调研与适配契约。
 * 具体数据库、对象存储和部署环境尚未最终选择，应在后端提交与存储子任务中形成可替换配置方案。
-* 团队成员真实 owner 尚未分派，当前首批子任务先由 `tianqingyuluo` 占位负责。
+* 团队成员真实 owner 已按后端/Worker、知识包、前端、总体契约与规范收口进行分派。
 
 ## Product Direction Options
 
@@ -237,11 +237,11 @@ V2 面向正式业务闭环和长期运营。
 | Task | Priority | Dev Type | Assignee | Scope | Key Output |
 |---|---:|---|---|---|---|
 | `04-24-smartwater-mvp-domain-contract` | P0 | fullstack | `tianqingyuluo` | architecture | MVP 域模型、状态机、跨模块 DTO 与接口契约 |
-| `04-24-smartwater-backend-submission-storage-mvp` | P0 | backend | `tianqingyuluo` | backend | Java 提交/查询 API、数据库与对象存储边界 |
-| `04-24-smartwater-python-ocr-review-worker-mvp` | P0 | backend | `tianqingyuluo` | ai-worker | Python OCR/抽取/审核 Worker 与回写契约 |
+| `04-24-smartwater-backend-submission-storage-mvp` | P0 | backend | `6newuser6` | backend | Java 提交/查询 API、数据库与对象存储边界 |
+| `04-24-smartwater-python-ocr-review-worker-mvp` | P0 | backend | `6newuser6` | ai-worker | Python OCR/抽取/审核 Worker 与回写契约 |
 | `04-24-smartwater-review-inference-vendor-contract` | P0 | fullstack | `tianqingyuluo` | ai-vendor | 国内推理模型选型、适配契约和输出约束 |
-| `04-24-smartwater-frontend-dual-page-mvp` | P1 | frontend | `tianqingyuluo` | frontend | 双页演示前端、上传、轮询、结果展示 |
-| `04-24-smartwater-regulation-knowledge-pack-mvp` | P1 | fullstack | `tianqingyuluo` | knowledge | 静态法规知识包、材料清单、字段规则和提示词片段 |
+| `04-24-smartwater-frontend-dual-page-mvp` | P1 | frontend | `yuexianwei3699` | frontend | 双页演示前端、上传、轮询、结果展示 |
+| `04-24-smartwater-regulation-knowledge-pack-mvp` | P1 | fullstack | `ymx545` | knowledge | 静态法规知识包、材料清单、字段规则和提示词片段 |
 | `04-24-smartwater-project-spec-hardening-mvp` | P1 | docs | `tianqingyuluo` | spec | `.trellis/spec/` 项目规范固化 |
 
 ### Dependency Order
