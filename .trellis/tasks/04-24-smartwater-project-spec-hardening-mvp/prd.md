@@ -45,14 +45,24 @@
 * 每条规范应能指导后续子任务实施或检查。
 * 规范要覆盖 AI/OCR adapter 的密钥、安全和可替换边界。
 * 规范要覆盖前端申请人/审批人员结果可见性差异。
+* 材料类型模型必须预留 `material_type` 扩展能力：MVP 用字符串枚举值保存，未来材料动态化时再迁移到字典表/配置表，后续支持“水资源论证报告”等材料。
+* MVP 可暂不实现 Word/Docx 解析，但完整版文件格式必须支持 Word/Docx。
+* 文件读取、OCR、PDF/Word 解析失败时允许有界重试；重试耗尽后必须映射为 `PARTIAL_SUCCESS` 或 `FAILED`，不能丢失任务状态。
 
 ## Acceptance Criteria
 
-* [ ] 后端 spec 反映 Java 服务的真实目录、API、错误、数据库和日志约定。
-* [ ] 前端 spec 反映双页演示应用的真实目录、组件、状态和类型约定。
-* [ ] 增补跨服务任务状态、结果 schema、Worker 边界和 AI adapter 约定。
-* [ ] 增补对象存储、密钥配置和异步处理注意事项。
-* [ ] 后续实现/check 子代理可通过 spec 理解项目约定。
+* [ ] 后端 spec 反映 Java 服务的真实目录、API、错误、数据库和日志约定。（待 Java MVP 实现稳定后继续固化）
+* [ ] 前端 spec 反映双页演示应用的真实目录、组件、状态和类型约定。（已固化可见性/状态/type 契约；目录和组件待前端实现稳定后补齐）
+* [x] 增补跨服务任务状态、结果 schema、Worker 边界和 AI adapter 约定。
+* [x] 增补对象存储、密钥配置和异步处理注意事项。
+* [x] 明确材料类型扩展策略和 Word/Docx 完整版支持要求。
+* [x] 后续实现/check 子代理可通过 spec 理解项目约定。
+
+## Hardening Notes
+
+* 本轮只固化已确认的跨服务契约、AI adapter、材料扩展、文件处理和前端可见性边界。
+* Java 真实目录、数据库表、API 路由、前端组件目录等仍依赖后续实现任务，暂不写成强制规范。
+* 新增 spec 已接入 backend/frontend index 的 Pre-Development Checklist，后续 before-dev 可自动提示读取。
 
 ## Dependencies
 
