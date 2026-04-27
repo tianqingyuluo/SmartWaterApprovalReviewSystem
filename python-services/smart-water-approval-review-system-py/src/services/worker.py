@@ -47,7 +47,7 @@ class SmartWaterWorker:
                     if not self._running:
                         break
                     try:
-                        task_id = str(task_data.get("task_id", ""))
+                        task_id = str(task_data.get("taskId", ""))
                         logger.info("Processing task: %s", task_id)
                         self._process_task(task_data)
                     except Exception as e:
@@ -63,14 +63,14 @@ class SmartWaterWorker:
         self._running = False
 
     def _process_task(self, task_data: dict):
-        task_id = str(task_data.get("task_id", ""))
+        task_id = str(task_data.get("taskId", ""))
 
         materials = [
             MaterialSlot(
-                material_type=m.get("material_type", ""),
-                original_file_name=m.get("original_file_name"),
-                storage_key=m.get("storage_key"),
-                file_extension=m.get("file_extension"),
+                material_type=m.get("materialType", ""),
+                original_file_name=m.get("originalFileName"),
+                storage_key=m.get("storageKey"),
+                file_extension=m.get("fileExtension"),
                 uploaded=m.get("uploaded", False),
             )
             for m in task_data.get("materials", [])
