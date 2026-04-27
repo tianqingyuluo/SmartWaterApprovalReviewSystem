@@ -48,6 +48,8 @@
 * 材料类型模型必须预留 `material_type` 扩展能力：MVP 用字符串枚举值保存，未来材料动态化时再迁移到字典表/配置表，后续支持“水资源论证报告”等材料。
 * MVP 可暂不实现 Word/Docx 解析，但完整版文件格式必须支持 Word/Docx。
 * 文件读取、OCR、PDF/Word 解析失败时允许有界重试；重试耗尽后必须映射为 `PARTIAL_SUCCESS` 或 `FAILED`，不能丢失任务状态。
+* `.claude/`、`.codex/`、`.opencode/` 等本机 AI 客户端目录不作为团队共享状态追踪，成员按自己的操作系统和客户端自行生成。
+* Trellis 命令示例需要说明 Windows 可用 `python` 替代 Linux/macOS 常见的 `python3`。
 
 ## Acceptance Criteria
 
@@ -57,6 +59,8 @@
 * [x] 增补对象存储、密钥配置和异步处理注意事项。
 * [x] 明确材料类型扩展策略和 Word/Docx 完整版支持要求。
 * [x] 后续实现/check 子代理可通过 spec 理解项目约定。
+* [x] 明确本地 AI 客户端目录不追踪、由成员自行生成。
+* [x] 明确 Windows 环境可使用 `python` 执行 Trellis 脚本。
 
 ## Hardening Notes
 

@@ -38,11 +38,29 @@
 
 ---
 
+## 本地 AI 客户端目录
+
+* `.claude/`、`.codex/`、`.opencode/` 属于本机 AI 客户端生成目录，不作为团队共享状态提交。
+* 团队共享的 Trellis 依据是 `.trellis/tasks/**`、`.trellis/spec/**`、`.agents/skills/**` 和 `AGENTS.md`。
+* 成员在自己的操作系统和 AI 客户端中自行生成或初始化本地客户端目录，避免 Windows、macOS、Linux 之间因路径、命令名、权限或客户端版本差异互相污染。
+* 如果某个客户端目录里沉淀出需要团队共享的规则，先迁移到 `.trellis/spec/`、`.agents/skills/` 或 `AGENTS.md`，再提交。
+
+---
+
+## 跨平台命令约定
+
+* Linux/macOS 示例可以使用 `python3`。
+* Windows 成员如果没有 `python3` 命令，使用 `python` 执行同一个脚本。
+* 团队文档写 Trellis 命令时，优先给出可替换形式：`python3`（Linux/macOS）或 `python`（Windows）。
+* 不因为某个成员本机缺少 `python3` 而提交平台专属 wrapper；需要兼容时优先更新文档或个人 shell 配置。
+
+---
+
 ## 标准执行流程
 
 1. 负责人从 MVP 集成分支拉取最新代码。
-2. 负责人确认自己的任务：`python3 ./.trellis/scripts/task.py list --mine`。
-3. 负责人启动任务：`python3 ./.trellis/scripts/task.py start <task-dir>`。
+2. 负责人确认自己的任务：`python3 ./.trellis/scripts/task.py list --mine`（Windows 可用 `python` 替代 `python3`）。
+3. 负责人启动任务：`python3 ./.trellis/scripts/task.py start <task-dir>`（Windows 可用 `python` 替代 `python3`）。
 4. 从 MVP 集成分支创建短任务分支：`task/<task-name>`。
 5. 按子任务 `prd.md` 和 `implement.jsonl` 实现。
 6. 如需技术调研，将结果写入该任务的 `research/*.md`。

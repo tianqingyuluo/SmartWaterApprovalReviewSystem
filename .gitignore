@@ -2,6 +2,11 @@
 .trellis/.developer
 .trellis/.current-task
 
+# Local AI client generated config
+.claude/
+.codex/
+.opencode/
+
 # Local backup files
 .agents/skills/trellis-update-spec/SKILL.md.backup
 
