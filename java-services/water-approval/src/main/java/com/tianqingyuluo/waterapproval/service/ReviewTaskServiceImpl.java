@@ -231,7 +231,12 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
                 response.setDraftOpinion((String) content.getOrDefault("draftOpinion", ""));
                 response.setMissingMaterials(parseMissingMaterials(content.get("missingMaterials")));
                 response.setExtractedFields(content.get("extractedFields"));
-                response.setModelMetadata((String) content.getOrDefault("modelMetadata", ""));
+                Object modelMeta = content.get("modelMetadata");
+                if (modelMeta instanceof String) {
+                    response.setModelMetadata((String) modelMeta);
+                } else if (modelMeta != null) {
+                    response.setModelMetadata(objectMapper.writeValueAsString(modelMeta));
+                }
             } catch (JsonProcessingException e) {
                 log.error("解析结果失败: {}", taskId, e);
                 throw new BusinessException(500, "结果解析失败");
