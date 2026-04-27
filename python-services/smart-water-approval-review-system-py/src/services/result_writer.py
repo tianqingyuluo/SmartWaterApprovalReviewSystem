@@ -10,13 +10,13 @@ logger = logging.getLogger(__name__)
 class ResultWriter:
     def write_results(self, task_id: str, result: ProcessingResult) -> bool:
         url = f"{config.BACKEND_API_BASE}/task/{task_id}/result"
-        payload = {
-            "status": result.status,
-            "result_summary": result.result_summary,
-            "applicant_result": _result_to_dict(result.applicant_result),
-            "reviewer_result": _result_to_dict(result.reviewer_result),
-            "error_message": result.error_message,
-        }
+            payload = {
+                "status": result.status,
+                "resultSummary": result.result_summary,
+                "applicantResult": _result_to_dict(result.applicant_result),
+                "reviewerResult": _result_to_dict(result.reviewer_result),
+                "errorMessage": result.error_message,
+            }
 
         try:
             with httpx.Client(timeout=30) as client:
