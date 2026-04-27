@@ -3,7 +3,9 @@
   "name": "smartwater-backend-submission-storage-mvp",
   "title": "后端提交与存储 MVP",
   "description": "实现 Java 后端提交 API、任务状态、数据库与对象存储边界",
-  "status": "planning",
+  "status": "completed",
+  "completedAt": "2026-04-27",
+  "notes": "后端提交与存储MVP已实现并编译通过。包含：提交API、状态查询、结果查询（申请人/审批人员双视图）、对象存储抽象层（S3/RustFS兼容）。"
   "dev_type": "backend",
   "scope": "backend",
   "package": null,

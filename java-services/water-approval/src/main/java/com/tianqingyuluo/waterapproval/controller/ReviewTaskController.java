@@ -1,0 +1,45 @@
+package com.tianqingyuluo.waterapproval.controller;
+
+import com.tianqingyuluo.waterapproval.common.R;
+import com.tianqingyuluo.waterapproval.dto.*;
+import com.tianqingyuluo.waterapproval.service.ReviewTaskService;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+@Slf4j
+@RestController
+@RequestMapping("/task")
+public class ReviewTaskController {
+
+    @Autowired
+    private ReviewTaskService reviewTaskService;
+
+    @PostMapping("/submit")
+    public R<SubmitResponse> submit(SubmitRequest request) {
+        log.info("收到提交请求");
+        SubmitResponse response = reviewTaskService.submit(request);
+        return R.ok(response);
+    }
+
+    @GetMapping("/{taskId}/status")
+    public R<TaskStatusResponse> getStatus(@PathVariable String taskId) {
+        log.info("查询任务状态: taskId={}", taskId);
+        TaskStatusResponse response = reviewTaskService.getStatus(taskId);
+        return R.ok(response);
+    }
+
+    @GetMapping("/{taskId}/result/applicant")
+    public R<ApplicantResultResponse> getApplicantResult(@PathVariable String taskId) {
+        log.info("查询申请人结果: taskId={}", taskId);
+        ApplicantResultResponse response = reviewTaskService.getApplicantResult(taskId);
+        return R.ok(response);
+    }
+
+    @GetMapping("/{taskId}/result/reviewer")
+    public R<ReviewerResultResponse> getReviewerResult(@PathVariable String taskId) {
+        log.info("查询审批人员结果: taskId={}", taskId);
+        ReviewerResultResponse response = reviewTaskService.getReviewerResult(taskId);
+        return R.ok(response);
+    }
+}
