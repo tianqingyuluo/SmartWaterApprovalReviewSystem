@@ -36,3 +36,6 @@ build/
 # 包含密码和密钥的配置文件
 **/application-secrets.yaml
 **/application-secrets.yml
+
+### API Test Scripts ###
+tests/
