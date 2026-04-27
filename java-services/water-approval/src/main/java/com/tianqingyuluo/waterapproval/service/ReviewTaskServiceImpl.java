@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -316,5 +317,135 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
 
     private String generateSessionId() {
         return UUID.randomUUID().toString().replace("-", "");
+    }
+
+    @Override
+    public List<Map<String, Object>> getPendingTasks() {
+        List<ReviewTask> tasks = taskMapper.selectList(
+                new LambdaQueryWrapper<ReviewTask>()
+                        .in(ReviewTask::getStatus, Arrays.asList("SUBMITTED", "QUEUED"))
+                        .orderByAsc(ReviewTask::getSubmittedAt)
+        );
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (ReviewTask task : tasks) {
+            Map<String, Object> item = new java.util.LinkedHashMap<>();
+            item.put("taskId", task.getTaskId());
+            item.put("status", task.getStatus());
+
+            List<MaterialSlot> slots = materialSlotMapper.selectList(
+                    new LambdaQueryWrapper<MaterialSlot>().eq(MaterialSlot::getTaskId, task.getTaskId())
+            );
+
+            List<Map<String, Object>> materials = new ArrayList<>();
+            for (String type : MATERIAL_TYPES) {
+                Map<String, Object> mat = new java.util.LinkedHashMap<>();
+                mat.put("materialType", type);
+
+                Optional<MaterialSlot> slot = slots.stream()
+                        .filter(s -> s.getMaterialType().equals(type))
+                        .findFirst();
+
+                mat.put("uploaded", slot.isPresent());
+                mat.put("originalFileName", slot.map(MaterialSlot::getOriginalFileName).orElse(null));
+                mat.put("storageKey", slot.map(MaterialSlot::getStorageKey).orElse(null));
+                mat.put("fileExtension", slot.map(MaterialSlot::getFileExtension).orElse(null));
+                materials.add(mat);
+            }
+            item.put("materials", materials);
+            result.add(item);
+        }
+
+        return result;
+    }
+
+    @Override
+    public void updateStatus(String taskId, String status) {
+        ReviewTask task = taskMapper.selectOne(
+                new LambdaQueryWrapper<ReviewTask>().eq(ReviewTask::getTaskId, taskId)
+        );
+
+        if (task == null) {
+            throw new BusinessException(404, "任务不存在");
+        }
+
+        task.setStatus(status);
+        task.setUpdatedAt(LocalDateTime.now());
+        taskMapper.updateById(task);
+
+        log.info("Task status updated: taskId={}, status={}", taskId, status);
+    }
+
+    @Override
+    @Transactional
+    public void writeResult(String taskId, ResultWriteRequest request) {
+        ReviewTask task = taskMapper.selectOne(
+                new LambdaQueryWrapper<ReviewTask>().eq(ReviewTask::getTaskId, taskId)
+        );
+
+        if (task == null) {
+            throw new BusinessException(404, "任务不存在");
+        }
+
+        task.setStatus(request.getStatus() != null ? request.getStatus() : task.getStatus());
+        task.setUpdatedAt(LocalDateTime.now());
+        taskMapper.updateById(task);
+
+        if (request.getApplicantResult() != null) {
+            saveResult(taskId, "APPLICANT", request.getApplicantResult());
+        }
+
+        if (request.getReviewerResult() != null) {
+            saveResult(taskId, "REVIEWER", request.getReviewerResult());
+        }
+
+        log.info("Result written for task: taskId={}, status={}", taskId, request.getStatus());
+    }
+
+    private void saveResult(String taskId, String resultType, Map<String, Object> content) {
+        ReviewResult existing = resultMapper.selectOne(
+                new LambdaQueryWrapper<ReviewResult>()
+                        .eq(ReviewResult::getTaskId, taskId)
+                        .eq(ReviewResult::getResultType, resultType)
+        );
+
+        try {
+            String json = objectMapper.writeValueAsString(content);
+
+            if (existing != null) {
+                existing.setContent(json);
+                existing.setUpdatedAt(LocalDateTime.now());
+                resultMapper.updateById(existing);
+            } else {
+                ReviewResult result = new ReviewResult();
+                result.setTaskId(taskId);
+                result.setResultType(resultType);
+                result.setContent(json);
+                result.setCreatedAt(LocalDateTime.now());
+                result.setUpdatedAt(LocalDateTime.now());
+                resultMapper.insert(result);
+            }
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize result for task: {}", taskId, e);
+            throw new BusinessException(500, "结果序列化失败");
+        }
+    }
+
+    @Override
+    public InputStream downloadMaterial(String storageKey) {
+        try {
+            return storageService.download(storageKey);
+        } catch (Exception e) {
+            log.error("Failed to download material: {}", storageKey, e);
+            throw new BusinessException(404, "材料文件不存在或无法访问");
+        }
+    }
+
+    @Override
+    public String getMaterialContentType(String storageKey) {
+        MaterialSlot slot = materialSlotMapper.selectOne(
+                new LambdaQueryWrapper<MaterialSlot>().eq(MaterialSlot::getStorageKey, storageKey)
+        );
+        return slot != null ? slot.getContentType() : "application/octet-stream";
     }
 }

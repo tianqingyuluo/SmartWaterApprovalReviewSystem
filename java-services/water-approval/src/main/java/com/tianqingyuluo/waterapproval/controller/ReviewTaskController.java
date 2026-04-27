@@ -7,6 +7,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.Map;
+
 @Slf4j
 @RestController
 @RequestMapping("/task")
@@ -22,11 +25,32 @@ public class ReviewTaskController {
         return R.ok(response);
     }
 
+    @GetMapping("/pending")
+    public R<List<Map<String, Object>>> getPendingTasks() {
+        log.info("查询待处理任务");
+        List<Map<String, Object>> tasks = reviewTaskService.getPendingTasks();
+        return R.ok(tasks);
+    }
+
     @GetMapping("/{taskId}/status")
     public R<TaskStatusResponse> getStatus(@PathVariable String taskId) {
         log.info("查询任务状态: taskId={}", taskId);
         TaskStatusResponse response = reviewTaskService.getStatus(taskId);
         return R.ok(response);
+    }
+
+    @PutMapping("/{taskId}/status")
+    public R<Void> updateStatus(@PathVariable String taskId, @RequestBody StatusUpdateRequest request) {
+        log.info("更新任务状态: taskId={}, status={}", taskId, request.getStatus());
+        reviewTaskService.updateStatus(taskId, request.getStatus());
+        return R.ok();
+    }
+
+    @PutMapping("/{taskId}/result")
+    public R<Void> writeResult(@PathVariable String taskId, @RequestBody ResultWriteRequest request) {
+        log.info("回写审核结果: taskId={}, status={}", taskId, request.getStatus());
+        reviewTaskService.writeResult(taskId, request);
+        return R.ok();
     }
 
     @GetMapping("/{taskId}/result/applicant")
