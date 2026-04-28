@@ -1,2 +1,5 @@
-{"file": ".agents/skills/trellis-finish-work/SKILL.md", "reason": "Finish work checklist"}
-{"file": ".agents/skills/trellis-check/SKILL.md", "reason": "Code quality check spec"}
+{"file": ".claude/commands/trellis/finish-work.md", "reason": "Finish work checklist"}
+{"file": ".claude/commands/trellis/check.md", "reason": "Code quality check spec"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "quality check"}
+{"file": ".trellis/spec/frontend/type-safety.md", "reason": "type safety check"}
+{"file": ".trellis/spec/frontend/component-guidelines.md", "reason": "component check"}
