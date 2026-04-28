@@ -12,7 +12,7 @@
   "assignee": "tianqingyuluo",
   "createdAt": "2026-04-24",
   "completedAt": null,
-  "branch": "task/enforce-short-branch-context",
+  "branch": "task/project-readable-docs-spec",
   "base_branch": "mvp/smartwater",
   "worktree_path": null,
   "commit": null,
