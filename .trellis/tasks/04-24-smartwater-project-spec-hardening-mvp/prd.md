@@ -50,6 +50,7 @@
 * 文件读取、OCR、PDF/Word 解析失败时允许有界重试；重试耗尽后必须映射为 `PARTIAL_SUCCESS` 或 `FAILED`，不能丢失任务状态。
 * `.claude/`、`.codex/`、`.opencode/` 等本机 AI 客户端目录不作为团队共享状态追踪，成员按自己的操作系统和客户端自行生成。
 * Trellis 命令示例需要说明 Windows 可用 `python` 替代 Linux/macOS 常见的 `python3`。
+* 启动上下文必须自动注入短任务分支纪律，提醒成员不要直接在 `main` 或 `mvp/smartwater` 上实现。
 * 项目必须维护面向人阅读的文档树 `docs/readable/**`，其中模块文档统一放在 `docs/readable/modules/<module>/`。
 * 任务完成/finish 阶段必须注入文档维护检查，让 AI 主动更新项目开发日志和相关项目文档，或明确说明无需更新。
 * `docs/readable/**` 下团队维护的项目文档必须使用中文，技术标识符、命令、API 路径、枚举值、文件路径和引用原文除外。
@@ -64,6 +65,7 @@
 * [x] 后续实现/check 子代理可通过 spec 理解项目约定。
 * [x] 明确本地 AI 客户端目录不追踪、由成员自行生成。
 * [x] 明确 Windows 环境可使用 `python` 执行 Trellis 脚本。
+* [x] 在共享 session context 与 before-dev 流程中注入短任务分支纪律。
 * [x] 增补 `docs/readable/**` 项目文档组织和 finish 阶段文档维护规范。
 * [x] 明确 `docs/readable/**` 项目文档维护语言为中文。
 
