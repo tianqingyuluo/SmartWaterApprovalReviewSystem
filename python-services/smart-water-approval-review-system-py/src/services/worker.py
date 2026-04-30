@@ -132,7 +132,10 @@ class SmartWaterWorker:
             task_id, review_result, partial_failures, missing
         )
 
-        self.writer.write_results(task_id, processing_result)
+        success = self.writer.write_results(task_id, processing_result)
+        if not success:
+            logger.error("Failed to write results for task %s, marking as FAILED", task_id)
+            self.writer.update_status(task_id, "FAILED")
 
     def _build_processing_result(
         self,

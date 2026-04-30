@@ -35,6 +35,10 @@ storage:
     bucket-name: ${S3_BUCKET:smartwater}
     region: ${S3_REGION:us-east-1}
 
+water-approval:
+  worker:
+    token: ${WORKER_TOKEN:}
+
 server:
   port: 8080
   servlet:

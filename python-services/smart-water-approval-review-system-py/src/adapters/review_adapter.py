@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 import time
 from openai import OpenAI
 from src.config import config
@@ -11,6 +12,7 @@ from src.models import (
     RiskHint,
     MaterialCompleteness,
     ModelMetadata,
+    FindingType,
 )
 
 logger = logging.getLogger(__name__)
@@ -28,12 +30,25 @@ FAILURE_CATEGORIES = [
 
 RETRYABLE_FAILURES = {"TIMEOUT", "RATE_LIMIT", "UPSTREAM_5XX"}
 
+_FINDING_CODES = ", ".join(sorted(FindingType.ALL))
+
 _SYSTEM_PROMPT = (
     "你是一个取水许可材料审核辅助工具。你的职责是帮助审批人员检查材料完整性、"
     "识别字段问题、发现一致性风险并提供审核意见草稿。"
     "你不能给出最终的批准或驳回判定。"
     "必须严格按照要求的JSON格式输出结果。"
+    f"issue.code 必须使用以下枚举值之一: {_FINDING_CODES}"
 )
+
+_REVIEW_MODE = "ASSISTIVE_REVIEW"
+_OUTPUT_LANGUAGE = "zh-CN"
+
+_SCHEMA_REQUIRED_TOP = {
+    "summary", "issues", "risk_hints", "draft_opinion",
+    "material_completeness", "basis_refs", "manual_review_notice"
+}
+
+_SCHEMA_REQUIRED_ISSUE = {"code", "severity", "message"}
 
 
 _REVIEW_JSON_SCHEMA = {
@@ -121,14 +136,19 @@ class ReviewReasoningAdapter(ReviewAdapter):
         else:
             payload["response_format"] = {"type": "json_object"}
 
+        classification = None
+        repair_attempted = False
+
         for attempt in range(config.WORKER_MAX_RETRIES):
             try:
                 logger.info("Review attempt %d/%d for task %s", attempt + 1, config.WORKER_MAX_RETRIES, task_id)
+                start_time = time.time()
                 resp = client.chat.completions.create(**payload)
+                elapsed = time.time() - start_time
                 content = resp.choices[0].message.content
                 finish = resp.choices[0].finish_reason
 
-                parsed = self._parse_and_validate(content, task_id)
+                parsed, failure = self._parse_and_validate(content, task_id)
                 if parsed is not None:
                     parsed.model_metadata = ModelMetadata(
                         provider=config.REVIEW_LLM_PROVIDER,
@@ -137,19 +157,40 @@ class ReviewReasoningAdapter(ReviewAdapter):
                         finish_reason=finish,
                         token_usage=_safe_token_usage(resp),
                     )
+                    logger.info(
+                        "Review done for task %s: model=%s latency=%.1fs tokens=%s",
+                        task_id, config.REVIEW_LLM_MODEL, elapsed,
+                        _safe_token_usage(resp),
+                    )
                     return parsed
 
-                if attempt >= config.WORKER_MAX_RETRIES - 1:
-                    return self._schema_mismatch_result(task_id)
+                classification = failure
+                logger.warning(
+                    "Review validation failed for task %s: %s latency=%.1fs attempt=%d",
+                    task_id, failure, elapsed, attempt + 1,
+                )
+
+                if repair_attempted or attempt >= config.WORKER_MAX_RETRIES - 1:
+                    return self._schema_mismatch_result(task_id, failure or "SCHEMA_MISMATCH")
+
+                repair_attempted = True
+                payload["messages"].append(
+                    {"role": "user", "content": _repair_prompt(failure)}
+                )
 
             except Exception as e:
-                logger.error("Review API error for task %s: %s", task_id, e)
-                if attempt < config.WORKER_MAX_RETRIES - 1:
+                elapsed = time.time() - start_time
+                logger.error(
+                    "Review API error for task %s: %s latency=%.1fs",
+                    task_id, e, elapsed,
+                )
+                category = _classify_error(e)
+                if attempt < config.WORKER_MAX_RETRIES - 1 and category in RETRYABLE_FAILURES:
                     time.sleep(2**attempt)
-                else:
-                    return self._error_result(task_id, str(e))
+                    continue
+                return self._error_result(task_id, str(e), category)
 
-        return self._error_result(task_id, "max retries exhausted")
+        return self._error_result(task_id, "max retries exhausted", classification or "UNKNOWN")
 
     def _build_client(self) -> OpenAI:
         return OpenAI(
@@ -190,18 +231,47 @@ class ReviewReasoningAdapter(ReviewAdapter):
                         f"- [{k.get('source_id', '')}] {k.get('source_title', '')}: {k.get('content', '')}"
                     )
 
+        parts.append(f"审核模式: {_REVIEW_MODE}, 输出语言: {_OUTPUT_LANGUAGE}")
+
         parts.append("\n## 审核要求")
         parts.append("请根据以上信息生成审核结果，包括：材料完整性、字段问题、一致性风险、审核意见草稿。")
         parts.append("注意：你只能引用上述法规依据中列出的条目，不能编造法规条文。")
 
         return "\n".join(parts)
 
-    def _parse_and_validate(self, content: str, task_id: str) -> ReviewResult | None:
+    def _parse_and_validate(self, content: str, task_id: str) -> tuple:
+        if not content or not content.strip():
+            logger.warning("Empty content from review for task %s", task_id)
+            return None, "INVALID_JSON"
+
         try:
             data = json.loads(content)
         except json.JSONDecodeError as e:
             logger.warning("Invalid JSON from review for task %s: %s", task_id, e)
-            return None
+            return None, "INVALID_JSON"
+
+        if not isinstance(data, dict):
+            logger.warning("Review output is not a JSON object for task %s", task_id)
+            return None, "SCHEMA_MISMATCH"
+
+        missing_top = _SCHEMA_REQUIRED_TOP - set(data.keys())
+        if missing_top:
+            logger.warning("Schema mismatch for task %s: missing top-level keys %s", task_id, missing_top)
+            return None, "SCHEMA_MISMATCH"
+
+        issues_raw = data.get("issues", [])
+        if not isinstance(issues_raw, list):
+            return None, "SCHEMA_MISMATCH"
+
+        for idx, i in enumerate(issues_raw):
+            if not isinstance(i, dict):
+                return None, "SCHEMA_MISMATCH"
+            missing_issue = _SCHEMA_REQUIRED_ISSUE - set(i.keys())
+            if missing_issue:
+                logger.warning(
+                    "Schema mismatch for task %s: issue[%d] missing keys %s", task_id, idx, missing_issue
+                )
+                return None, "SCHEMA_MISMATCH"
 
         try:
             issues = [
@@ -214,7 +284,7 @@ class ReviewReasoningAdapter(ReviewAdapter):
                     basis_refs=i.get("basis_refs", []),
                     applicant_visible=i.get("applicant_visible", True),
                 )
-                for i in data.get("issues", [])
+                for i in issues_raw
             ]
 
             risk_hints = [
@@ -245,17 +315,17 @@ class ReviewReasoningAdapter(ReviewAdapter):
                     "manual_review_notice",
                     "AI审核结果为辅助建议，不构成最终审批意见。",
                 ),
-            )
+            ), None
         except Exception as e:
             logger.warning("Schema validation failed for task %s: %s", task_id, e)
-            return None
+            return None, "SCHEMA_MISMATCH"
 
-    def _schema_mismatch_result(self, task_id: str) -> ReviewResult:
+    def _schema_mismatch_result(self, task_id: str, category: str = "SCHEMA_MISMATCH") -> ReviewResult:
         return ReviewResult(
             summary="AI审核输出格式校验失败",
             issues=[
                 Issue(
-                    code="SYSTEM_ERROR",
+                    code=category,
                     severity="BLOCKER",
                     message="审核推理输出格式不符合预期，需要人工复核。",
                     applicant_visible=False,
@@ -264,12 +334,12 @@ class ReviewReasoningAdapter(ReviewAdapter):
             manual_review_notice="AI审核输出格式校验失败，请人工审核所有材料。",
         )
 
-    def _error_result(self, task_id: str, error: str) -> ReviewResult:
+    def _error_result(self, task_id: str, error: str, category: str = "UPSTREAM_5XX") -> ReviewResult:
         return ReviewResult(
             summary=f"审核推理失败: {error}",
             issues=[
                 Issue(
-                    code="SYSTEM_ERROR",
+                    code=category,
                     severity="BLOCKER",
                     message=f"审核推理调用失败: {error}",
                     applicant_visible=False,
@@ -277,6 +347,34 @@ class ReviewReasoningAdapter(ReviewAdapter):
             ],
             manual_review_notice="AI审核服务暂时不可用，请稍后重试或人工审核。",
         )
+
+
+def _repair_prompt(failure_type: str) -> str:
+    if failure_type == "INVALID_JSON":
+        return (
+            "你上一次的输出不是有效的JSON格式。请严格按照JSON格式重新输出，"
+            "确保所有字段都存在且符合指定的schema。"
+        )
+    else:
+        return (
+            "你上一次的输出缺少必要的字段或字段类型不正确。"
+            "请严格按照以下schema补全所有required字段后重新输出完整的审核结果JSON。"
+        )
+
+
+def _classify_error(e: Exception) -> str:
+    msg = str(e).lower()
+    if "401" in msg or "unauthorized" in msg or "auth" in msg:
+        return "AUTH_ERROR"
+    if "429" in msg or "rate" in msg:
+        return "RATE_LIMIT"
+    if "timeout" in msg:
+        return "TIMEOUT"
+    if "content" in msg and ("filter" in msg or "policy" in msg or "safety" in msg):
+        return "CONTENT_FILTERED"
+    if re.search(r"(500|502|503|504)", msg):
+        return "UPSTREAM_5XX"
+    return "UPSTREAM_5XX"
 
 
 def _safe_token_usage(resp) -> dict:

@@ -12,6 +12,8 @@ public class MaterialSlot {
     @TableId(type = IdType.ASSIGN_ID)
     private Long id;
 
+    private String materialId;
+
     private String taskId;
 
     private String materialType;
@@ -28,6 +30,12 @@ public class MaterialSlot {
 
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime uploadedAt;
+
+    @TableField(fill = FieldFill.INSERT)
+    private LocalDateTime createdAt;
+
+    @TableField(fill = FieldFill.INSERT_UPDATE)
+    private LocalDateTime updatedAt;
 
     @TableLogic
     private Integer deleted;

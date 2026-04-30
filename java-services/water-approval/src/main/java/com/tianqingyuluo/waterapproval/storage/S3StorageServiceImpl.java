@@ -1,7 +1,7 @@
 package com.tianqingyuluo.waterapproval.storage;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
@@ -16,10 +16,10 @@ import java.net.URI;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class S3StorageServiceImpl implements StorageService {
 
-    @Autowired
-    private StorageProperties properties;
+    private final StorageProperties properties;
 
     private S3Client s3Client;
 

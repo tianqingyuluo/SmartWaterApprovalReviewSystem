@@ -1,8 +1,8 @@
 package com.tianqingyuluo.waterapproval.controller;
 
 import com.tianqingyuluo.waterapproval.service.ReviewTaskService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -13,10 +13,11 @@ import java.io.InputStream;
 @Slf4j
 @RestController
 @RequestMapping("/material")
+@WorkerApi
+@RequiredArgsConstructor
 public class MaterialController {
 
-    @Autowired
-    private ReviewTaskService reviewTaskService;
+    private final ReviewTaskService reviewTaskService;
 
     @GetMapping("/download")
     public ResponseEntity<InputStreamResource> download(@RequestParam String key) {
