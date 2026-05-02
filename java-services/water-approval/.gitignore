@@ -37,5 +37,3 @@ build/
 **/application-secrets.yaml
 **/application-secrets.yml
 
-### API Test Scripts ###
-tests/
