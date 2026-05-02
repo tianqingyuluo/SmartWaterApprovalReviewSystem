@@ -1,0 +1,56 @@
+# SmartWater 应用配置模板
+# 复制此文件为 application.yaml，按需修改数据库、存储等配置
+# 敏感信息（密码、密钥）放在 application-secrets.yaml 中
+# 各环境差异通过环境变量覆盖，默认值适用于本地开发
+
+spring:
+  application:
+    name: water-approval
+  config:
+    # 从 application-secrets.yaml 导入数据库密码、S3 密钥等
+    import: classpath:application-secrets.yaml
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:smartwater}?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
+    username: ${MYSQL_USER:root}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 100MB
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: com.tianqingyuluo.waterapproval.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+      id-type: assign_id
+
+storage:
+  s3:
+    endpoint: ${S3_ENDPOINT:http://localhost:9000}
+    bucket-name: ${S3_BUCKET:smartwater}
+    region: ${S3_REGION:us-east-1}
+
+water-approval:
+  worker:
+    # Worker API 鉴权令牌，生产环境必须设置，本地开发可留空
+    token: ${WORKER_TOKEN:}
+
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+logging:
+  level:
+    com.tianqingyuluo.waterapproval: INFO
