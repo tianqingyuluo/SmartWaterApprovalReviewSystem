@@ -173,7 +173,7 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
                 Map<String, Object> content = objectMapper.readValue(result.getContent(), Map.class);
                 response.setSummary((String) content.getOrDefault("summary", ""));
                 response.setIssues(parseIssues(content.get("issues")));
-                response.setMissingMaterials(parseMissingMaterials(content.get("missingMaterials")));
+                response.setMissingMaterials(parseMissingMaterialsFromContent(content));
             } catch (JsonProcessingException e) {
                 log.error("解析结果失败: {}", taskId, e);
                 throw new BusinessException(500, "结果解析失败");
@@ -208,7 +208,7 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
                 response.setIssues(parseReviewerIssues(content.get("issues")));
                 response.setRiskHints(parseRiskHints(content.get("riskHints")));
                 response.setDraftOpinion((String) content.getOrDefault("draftOpinion", ""));
-                response.setMissingMaterials(parseMissingMaterials(content.get("missingMaterials")));
+                response.setMissingMaterials(parseMissingMaterialsFromContent(content));
                 response.setExtractedFields(content.get("extractedFields"));
                 Object modelMeta = content.get("modelMetadata");
                 if (modelMeta instanceof String) {
@@ -279,6 +279,22 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
             }
         }
         return riskHints;
+    }
+
+    private List<String> parseMissingMaterialsFromContent(Map<String, Object> content) {
+        Object mcObj = content.get("materialCompleteness");
+        if (mcObj instanceof Map) {
+            Object missingObj = ((Map<String, Object>) mcObj).get("missing");
+            if (missingObj instanceof List) {
+                return (List<String>) missingObj;
+            }
+        }
+        // Fallback: try top-level missingMaterials
+        Object topLevel = content.get("missingMaterials");
+        if (topLevel instanceof List) {
+            return (List<String>) topLevel;
+        }
+        return new ArrayList<>();
     }
 
     private List<String> parseMissingMaterials(Object missingObj) {

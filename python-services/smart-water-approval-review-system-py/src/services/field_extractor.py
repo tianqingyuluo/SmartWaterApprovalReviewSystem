@@ -11,6 +11,10 @@ logger = logging.getLogger(__name__)
 class FieldExtractor:
     def __init__(self):
         self.ocr = GlmOcrAdapter()
+        self._headers = {}
+        token = getattr(config, "WORKER_TOKEN", None) or getattr(config, "BACKEND_WORKER_TOKEN", None)
+        if token:
+            self._headers["X-Worker-Token"] = token
 
     def extract(self, material: MaterialSlot) -> list[ExtractedField]:
         if not material.storage_key:
@@ -48,7 +52,7 @@ class FieldExtractor:
         url = f"{config.BACKEND_API_BASE}/material/download?key={storage_key}"
         try:
             with httpx.Client(timeout=60) as client:
-                resp = client.get(url)
+                resp = client.get(url, headers=self._headers)
                 resp.raise_for_status()
                 return resp.content
         except Exception as e:

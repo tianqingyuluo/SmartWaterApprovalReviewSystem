@@ -2,7 +2,7 @@ spring:
   application:
     name: water-approval
   config:
-    import: classpath:application-secrets.yaml
+    import: optional:classpath:application-secrets.yaml
   datasource:
     url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:smartwater}?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
     username: ${MYSQL_USER:root}
