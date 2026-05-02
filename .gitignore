@@ -13,6 +13,9 @@
 # Python virtual environments
 .venv/
 
+# Environment files with secrets
+.env
+
 # Common OS/editor noise
 .DS_Store
 Thumbs.db
