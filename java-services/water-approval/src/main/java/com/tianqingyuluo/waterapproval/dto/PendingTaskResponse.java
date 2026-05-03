@@ -7,6 +7,7 @@ import java.util.List;
 @Data
 public class PendingTaskResponse {
     private String taskId;
+    private String sessionId;
     private String status;
     private List<PendingMaterial> materials;
 

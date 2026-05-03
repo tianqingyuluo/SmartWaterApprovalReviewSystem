@@ -12,7 +12,7 @@ class FieldExtractor:
     def __init__(self):
         self.ocr = GlmOcrAdapter()
         self._headers = {}
-        token = getattr(config, "WORKER_TOKEN", None) or getattr(config, "BACKEND_WORKER_TOKEN", None)
+        token = getattr(config, "WORKER_TOKEN", None)
         if token:
             self._headers["X-Worker-Token"] = token
 

@@ -359,6 +359,7 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
             if (updated > 0) {
                 PendingTaskResponse item = new PendingTaskResponse();
                 item.setTaskId(task.getTaskId());
+                item.setSessionId(task.getSessionId());
                 item.setStatus("PROCESSING");
 
                 List<MaterialSlot> slots = materialSlotMapper.selectList(

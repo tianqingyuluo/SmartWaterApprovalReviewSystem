@@ -1,7 +1,9 @@
+import json
 import logging
-import time
+import os
 import signal
 import sys
+import time
 from typing import Optional
 from src.config import config
 from src.models import (
@@ -103,6 +105,7 @@ class SmartWaterWorker:
             try:
                 review_result = self.reviewer.review(
                     task_id=task_id,
+                    session_id=str(task_data.get("sessionId", "")),
                     extracted_fields=extracted_fields,
                     material_types=material_types,
                     missing_materials=missing,
@@ -192,9 +195,6 @@ class SmartWaterWorker:
 
     def _load_knowledge_pack(self):
         try:
-            import os
-            import json
-
             pack_dir = config.KNOWLEDGE_PACK_DIR
             if not os.path.isdir(pack_dir):
                 logger.warning("Knowledge pack directory not found: %s", pack_dir)

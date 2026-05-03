@@ -1,4 +1,5 @@
 import logging
+import time
 import httpx
 from src.config import config
 from src.models import ProcessingResult, ReviewResult
@@ -62,7 +63,7 @@ def _result_to_dict(result: ReviewResult | None) -> dict | None:
 class ResultWriter:
     def __init__(self):
         self._headers = {}
-        token = getattr(config, "WORKER_TOKEN", None) or getattr(config, "BACKEND_WORKER_TOKEN", None)
+        token = getattr(config, "WORKER_TOKEN", None)
         if token:
             self._headers["X-Worker-Token"] = token
 
@@ -91,7 +92,6 @@ class ResultWriter:
                     task_id, attempt + 1, retries, e
                 )
                 if attempt < retries - 1:
-                    import time
                     time.sleep(2 ** attempt)
 
         logger.error("Giving up writing result for task %s after %d retries: %s", task_id, retries, last_error)
@@ -113,7 +113,6 @@ class ResultWriter:
                     task_id, attempt + 1, retries, e
                 )
                 if attempt < retries - 1:
-                    import time
                     time.sleep(2 ** attempt)
 
         logger.error("Giving up updating status for task %s after %d retries", task_id, retries)

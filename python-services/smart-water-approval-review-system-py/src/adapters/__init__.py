@@ -13,6 +13,7 @@ class ReviewAdapter(ABC):
     def review(
         self,
         task_id: str,
+        session_id: str,
         extracted_fields: list[ExtractedField],
         material_types: list[str],
         missing_materials: list[str],

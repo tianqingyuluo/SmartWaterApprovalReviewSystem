@@ -106,7 +106,7 @@ class GlmOcrAdapter(OcrAdapter):
                 return _build_field_hash(parsed.get("fields", []))
 
         except Exception as e:
-            logger.error("GLM OCR API call failed: %s", e)
+            logger.error("GLM OCR API call failed")
             return [
                 ExtractedField(
                     field_key="ocr_error",

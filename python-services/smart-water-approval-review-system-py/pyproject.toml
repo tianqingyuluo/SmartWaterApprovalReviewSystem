@@ -13,3 +13,18 @@ dependencies = [
 
 [project.optional-dependencies]
 dashscope = ["dashscope>=1.21.0"]
+dev = ["ruff>=0.8.0", "mypy>=1.13.0"]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "B", "UP"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true

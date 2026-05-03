@@ -104,6 +104,7 @@ class ReviewReasoningAdapter(ReviewAdapter):
     def review(
         self,
         task_id: str,
+        session_id: str,
         extracted_fields: list[ExtractedField],
         material_types: list[str],
         missing_materials: list[str],
@@ -141,7 +142,7 @@ class ReviewReasoningAdapter(ReviewAdapter):
 
         for attempt in range(config.WORKER_MAX_RETRIES):
             try:
-                logger.info("Review attempt %d/%d for task %s", attempt + 1, config.WORKER_MAX_RETRIES, task_id)
+                logger.info("Review attempt %d/%d for task %s session %s", attempt + 1, config.WORKER_MAX_RETRIES, task_id, session_id[:8] + "..." if len(session_id) > 8 else session_id)
                 start_time = time.time()
                 resp = client.chat.completions.create(**payload)
                 elapsed = time.time() - start_time
