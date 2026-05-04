@@ -23,6 +23,4 @@ Thumbs.db
 **/.idea/
 *.iml
 tests/.task_cache.json
-.trellis/workspace/
 .trellis/tasks/00-join-*/
-.trellis/.template-hashes.json

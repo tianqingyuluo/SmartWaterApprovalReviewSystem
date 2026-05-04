@@ -51,7 +51,7 @@ chmod +x src/main/resources/db/init-db.sh
 
 **方式二：手动执行**
 ```bash
-mysql -u root -p < src/main/resources/db/init.sql
+mysql -u root -p < src/main/resources/db/schema.sql
 ```
 
 ### 3. 启动服务
