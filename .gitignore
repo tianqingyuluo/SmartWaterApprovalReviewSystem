@@ -13,6 +13,14 @@
 # Python virtual environments
 .venv/
 
+# Environment files with secrets
+.env
+
 # Common OS/editor noise
 .DS_Store
 Thumbs.db
+.idea/
+**/.idea/
+*.iml
+tests/.task_cache.json
+.trellis/tasks/00-join-*/

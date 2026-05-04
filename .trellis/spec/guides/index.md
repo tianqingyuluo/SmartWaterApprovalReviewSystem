@@ -27,6 +27,7 @@ These guides help you **ask the right questions before coding**.
 ## Project Collaboration
 
 * [团队协作纪律](../team-collaboration.md) — Trellis 任务分派、短任务分支、PR 审核和 MVP 集成纪律。
+* [Project Documentation Discipline](../project-documentation.md) — `docs/readable/**` 项目文档、开发日志和任务收尾文档维护规则。
 
 ---
 

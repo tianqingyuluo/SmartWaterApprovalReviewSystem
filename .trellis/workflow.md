@@ -118,7 +118,8 @@ Phase 3: Finish  → distill lessons + wrap-up
 - 3.1 Quality verification `[required · repeatable]`
 - 3.2 Debug retrospective `[on demand]`
 - 3.3 Spec update `[required · once]`
-- 3.4 Wrap-up reminder
+- 3.4 Readable documentation update `[required · once]`
+- 3.5 Wrap-up reminder
 
 ### Rules
 
@@ -360,7 +361,15 @@ Load the `trellis-update-spec` skill and review whether this task produced new k
 
 Update the docs under `.trellis/spec/` accordingly. Even if the conclusion is "nothing to update", walk through the judgment.
 
-#### 3.4 Wrap-up reminder
+#### 3.4 Readable documentation update `[required · once]`
+
+Read `.trellis/spec/project-documentation.md` and update human-readable project docs under `docs/readable/**` when the task changed APIs, module behavior, configuration, operations, architecture, known issues, or project timeline.
+
+At minimum, every PR or merge-ready task must add/update the monthly development log under `docs/readable/dev-log/YYYY-MM.md`.
+
+If no readable docs need changes, state that explicitly in the final summary and explain why.
+
+#### 3.5 Wrap-up reminder
 
 After the above, remind the user they can run `/finish-work` to wrap up (archive the task, record the session).
 
@@ -392,7 +401,7 @@ Research belongs in `{task_dir}/research/*.md`, written by `trellis-research` su
 [/workflow-state:planning]
 
 [workflow-state:in_progress]
-Flow: trellis-implement → trellis-check → trellis-update-spec → finish
+Flow: trellis-implement → trellis-check → trellis-update-spec → readable docs → finish
 Check conversation history + git status to determine current step; do NOT skip trellis-check.
 [/workflow-state:in_progress]
 

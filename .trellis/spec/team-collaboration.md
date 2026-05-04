@@ -76,9 +76,51 @@
 * 是否只完成了一个 Trellis 子任务？
 * 是否满足该子任务 `prd.md` 的 `Acceptance Criteria`？
 * 是否遵守父任务定义的 MVP 边界和模块职责？
-* 是否跑过必要的测试、lint 或 type-check？
+* 是否跑过必要的测试、lint 或 type-check，并在 PR 描述或评论中记录命令和结果？
 * 是否影响跨模块契约；如果影响，是否同步更新相关 PRD/spec？
 * 是否没有引入密钥、个人本地文件或无关 workspace 状态？
+
+### PR Quality Gate
+
+Every implementation PR must leave enough automated evidence for reviewers to trust the change without manually reconstructing it.
+
+Required before merge:
+
+| Scope touched | Required evidence |
+|---|---|
+| Java backend | `./mvnw test` passes from `java-services/water-approval` in a clean checkout. |
+| Python Worker | `python -m compileall src main.py` passes, and project unit tests pass when a test runner exists. |
+| Cross-service DTO/status/schema | Contract tests or focused unit tests assert request/response fields, enum values, and failure mapping. |
+| Database/schema | Migration/init script is synchronized with entity fields and verified by test or documented command. |
+| Object storage | Unit tests mock/fake storage; real RustFS is used only in explicit integration checks. |
+| Code-review bugfix | A regression test or assertion is added for the reviewed defect. |
+
+Rules:
+
+* `compileall` and Java compilation prove syntax/build only; they do not replace unit tests for business behavior.
+* A PR with no effective tests must be treated as incomplete unless it is documentation-only.
+* Ordinary PR tests must not require real MySQL, RustFS, OCR, LLM, internet access, or uncommitted secret files.
+* Integration checks that use real middleware must be explicit, for example `integration` profile, separate CI job, or documented manual command.
+* If a test cannot be automated yet, the PR must state the reason, the manual verification performed, and the follow-up task.
+
+### TDD Discipline
+
+The team uses selective TDD instead of blanket TDD.
+
+Mandatory test-first or same-commit regression tests:
+
+* Fixing a bug found by review, CI, manual QA, or production-like testing.
+* Changing task status transitions, API DTOs, Worker writeback schema, or applicant/reviewer visibility.
+* Changing security boundaries such as `sessionId`, Worker token, secrets, or download authorization.
+* Changing middleware integration boundaries such as database schema or RustFS/object-storage access.
+
+Not mandatory for strict TDD:
+
+* Exploratory MVP UI shape.
+* Documentation-only updates.
+* Small refactors that do not change behavior, provided existing tests still pass.
+
+For AI agents: when a reviewer reports a defect, do not only patch the implementation. Add the smallest regression test that would have caught the defect, then apply the fix and rerun the relevant quality gate.
 
 ---
 
