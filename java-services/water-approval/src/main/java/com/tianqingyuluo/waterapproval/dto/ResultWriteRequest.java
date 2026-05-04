@@ -10,4 +10,5 @@ public class ResultWriteRequest {
     private Map<String, Object> applicantResult;
     private Map<String, Object> reviewerResult;
     private String errorMessage;
+    private String knowledgePackVersion;
 }

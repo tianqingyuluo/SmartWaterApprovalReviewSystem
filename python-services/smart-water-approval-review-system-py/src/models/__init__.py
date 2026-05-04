@@ -109,3 +109,4 @@ class ProcessingResult(BaseModel):
     applicant_result: ReviewResult | None = None
     reviewer_result: ReviewResult | None = None
     error_message: str | None = None
+    knowledge_pack_version: str | None = None

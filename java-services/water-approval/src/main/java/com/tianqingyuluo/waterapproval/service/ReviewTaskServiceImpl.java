@@ -431,6 +431,9 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
             ProcessingStatus.validateTransition(task.getStatus(), newStatus);
             task.setStatus(newStatus);
         }
+        if (request.getKnowledgePackVersion() != null) {
+            task.setKnowledgePackVersion(request.getKnowledgePackVersion());
+        }
         task.setUpdatedAt(LocalDateTime.now());
         taskMapper.updateById(task);
 

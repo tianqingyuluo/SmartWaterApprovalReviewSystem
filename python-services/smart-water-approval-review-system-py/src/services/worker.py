@@ -1,10 +1,9 @@
-import json
 import logging
 import os
 import signal
-import sys
 import time
-from typing import Optional
+
+from knowledge_pack import KnowledgePackError, load_knowledge_pack, normalize_knowledge_fragments
 from src.config import config
 from src.models import (
     MaterialSlot,
@@ -12,7 +11,6 @@ from src.models import (
     ReviewResult,
     ProcessingResult,
     Issue,
-    RiskHint,
     MaterialCompleteness,
 )
 from src.services.field_extractor import FieldExtractor
@@ -29,6 +27,7 @@ class SmartWaterWorker:
         self.writer = ResultWriter()
         self._running = False
         self._knowledge_cache: list = []
+        self._knowledge_pack_version: str | None = None
 
     def start(self):
         logger.info("SmartWater Worker starting...")
@@ -172,6 +171,7 @@ class SmartWaterWorker:
             result_summary=result_summary,
             applicant_result=applicant_result,
             reviewer_result=review_result,
+            knowledge_pack_version=self._knowledge_pack_version,
         )
 
     def _no_fields_result(self, missing: list[str]) -> ReviewResult:
@@ -200,16 +200,25 @@ class SmartWaterWorker:
                 logger.warning("Knowledge pack directory not found: %s", pack_dir)
                 return
 
+            preferred_pack = os.path.join(pack_dir, "water_permit_mvp.json")
+            if os.path.isfile(preferred_pack):
+                pack = load_knowledge_pack(preferred_pack)
+                self._knowledge_pack_version = str(pack.get("version") or "")
+                self._knowledge_cache = normalize_knowledge_fragments(pack)
+                logger.info(
+                    "Loaded knowledge pack version=%s fragments=%d",
+                    self._knowledge_pack_version,
+                    len(self._knowledge_cache),
+                )
+                return
+
             for fname in os.listdir(pack_dir):
                 if fname.endswith(".json"):
                     path = os.path.join(pack_dir, fname)
-                    with open(path, encoding="utf-8") as f:
-                        data = json.load(f)
-                        if isinstance(data, list):
-                            self._knowledge_cache.extend(data)
-                        else:
-                            self._knowledge_cache.append(data)
+                    pack = load_knowledge_pack(path)
+                    self._knowledge_pack_version = str(pack.get("version") or "")
+                    self._knowledge_cache.extend(normalize_knowledge_fragments(pack))
 
             logger.info("Loaded %d knowledge fragments", len(self._knowledge_cache))
-        except Exception as e:
+        except (KnowledgePackError, OSError) as e:
             logger.warning("Failed to load knowledge pack: %s", e)

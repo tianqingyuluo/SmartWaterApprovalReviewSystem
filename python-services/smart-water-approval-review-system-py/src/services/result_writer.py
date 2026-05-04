@@ -94,6 +94,7 @@ class ResultWriter:
             "applicantResult": _result_to_dict(result.applicant_result),
             "reviewerResult": _result_to_dict(result.reviewer_result),
             "errorMessage": result.error_message,
+            "knowledgePackVersion": result.knowledge_pack_version,
         }
 
         last_error = None

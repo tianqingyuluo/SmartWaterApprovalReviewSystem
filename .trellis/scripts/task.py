@@ -39,6 +39,7 @@ from common.paths import (
     set_current_task,
     clear_current_task,
 )
+from common.active_task import resolve_active_task
 from common.task_utils import resolve_task_dir, run_task_hooks
 from common.tasks import iter_active_tasks, children_progress
 
@@ -120,6 +121,26 @@ def cmd_finish(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_current(args: argparse.Namespace) -> int:
+    """Print the current active task."""
+    repo_root = get_repo_root()
+    active = resolve_active_task(repo_root, {}, platform=getattr(args, "platform", None))
+
+    if not active.task_path:
+        print("No current task set")
+        if getattr(args, "source", False):
+            print(f"Source: {active.source}")
+        return 0
+
+    print(f"Current task: {active.task_path}")
+    if getattr(args, "source", False):
+        print(f"Source: {active.source}")
+    if active.stale:
+        print("Status: stale")
+        return 1
+    return 0
+
+
 # =============================================================================
 # Command: list
 # =============================================================================
@@ -153,13 +174,15 @@ def cmd_list(args: argparse.Namespace) -> int:
         nonlocal count
         t = all_tasks[dir_name]
 
+        should_print = True
+
         # Apply --mine filter
         if filter_mine and (t.assignee or "-") != developer:
-            return
+            should_print = False
 
         # Apply --status filter
         if filter_status and t.status != filter_status:
-            return
+            should_print = False
 
         relative_path = f"{DIR_WORKFLOW}/{DIR_TASKS}/{dir_name}"
         marker = ""
@@ -174,16 +197,18 @@ def cmd_list(args: argparse.Namespace) -> int:
 
         prefix = "  " * indent + "  - "
 
-        if filter_mine:
-            print(f"{prefix}{dir_name}/ ({t.status}){pkg_tag}{progress}{marker}")
-        else:
-            print(f"{prefix}{dir_name}/ ({t.status}){pkg_tag}{progress} [{colored(t.assignee or '-', Colors.CYAN)}]{marker}")
-        count += 1
+        if should_print:
+            if filter_mine:
+                print(f"{prefix}{dir_name}/ ({t.status}){pkg_tag}{progress}{marker}")
+            else:
+                print(f"{prefix}{dir_name}/ ({t.status}){pkg_tag}{progress} [{colored(t.assignee or '-', Colors.CYAN)}]{marker}")
+            count += 1
 
-        # Print children indented
+        # Keep traversing children even when the parent is filtered out.
+        child_indent = indent + 1 if should_print else indent
         for child_name in t.children:
             if child_name in all_tasks:
-                _print_task(child_name, indent + 1)
+                _print_task(child_name, child_indent)
 
     # Display only top-level tasks (those without a parent)
     for dir_name in sorted(all_tasks.keys()):
@@ -252,6 +277,7 @@ Usage:
   python3 task.py add-context <dir> <jsonl> <path> [reason]  Add entry to jsonl
   python3 task.py validate <dir>                     Validate jsonl files
   python3 task.py list-context <dir>                 List jsonl entries
+  python3 task.py current [--source]                 Show current task
   python3 task.py start <dir>                        Set as current task
   python3 task.py finish                             Clear current task
   python3 task.py set-branch <dir> <branch>          Set git branch
@@ -280,6 +306,7 @@ Examples:
   python3 task.py init-context .trellis/tasks/01-21-add-login backend
   python3 task.py init-context .trellis/tasks/01-21-add-login backend --package cli
   python3 task.py add-context <dir> implement .trellis/spec/cli/backend/auth.md "Auth guidelines"
+  python3 task.py current --source
   python3 task.py set-branch <dir> task/add-login
   python3 task.py start .trellis/tasks/01-21-add-login
   python3 task.py finish
@@ -342,6 +369,11 @@ def main() -> int:
     p_listctx = subparsers.add_parser("list-context", help="List context entries")
     p_listctx.add_argument("dir", help="Task directory")
 
+    # current
+    p_current = subparsers.add_parser("current", help="Show current task")
+    p_current.add_argument("--source", action="store_true", help="Show active-task source")
+    p_current.add_argument("--platform", help="Platform name for session-aware lookup")
+
     # start
     p_start = subparsers.add_parser("start", help="Set current task")
     p_start.add_argument("dir", help="Task directory")
@@ -400,6 +432,7 @@ def main() -> int:
         "add-context": cmd_add_context,
         "validate": cmd_validate,
         "list-context": cmd_list_context,
+        "current": cmd_current,
         "start": cmd_start,
         "finish": cmd_finish,
         "set-branch": cmd_set_branch,
