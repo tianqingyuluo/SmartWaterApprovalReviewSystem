@@ -138,3 +138,40 @@ Kept planning state for smartwater-architecture-roadmap. Confirmed MVP as a dual
 ### Next Steps
 
 - None - task complete
+
+
+## Session 5: 法规知识包 MVP 收尾
+
+**Date**: 2026-05-05
+**Task**: 法规知识包 MVP 收尾
+**Branch**: `task/smartwater-regulation-knowledge-pack-mvp`
+
+### Summary
+
+归档 PR6 法规知识包子任务，记录知识包与 Worker/Java 回写契约对齐结果。
+
+### Main Changes
+
+- Archived `.trellis/tasks/04-24-smartwater-regulation-knowledge-pack-mvp` to `.trellis/tasks/archive/2026-05/`.
+- Recorded PR #6 contract alignment after merging the PR5/MVP baseline into the knowledge-pack branch.
+- Updated readable documentation for the knowledge pack version writeback and `basisRefs` validation behavior.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8f1fada` | fix: 对齐法规知识包与Worker回写契约 |
+
+### Testing
+
+- [OK] `uv run python -m unittest discover -s tests -v` passed, 15 tests.
+- [OK] `uv run python -m compileall main.py src tests knowledge_pack` passed.
+- [OK] `./mvnw test` passed in non-sandbox environment, 47 tests.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

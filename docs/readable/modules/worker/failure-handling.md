@@ -37,3 +37,15 @@ Python Worker 调用以下 JSON 接口时，必须同时校验 HTTP 状态码和
 - `update_status()` 和 `write_results()` 使用有界重试，失败后返回 `False`，由上层 Worker 决定是否继续降级或写入失败状态。
 - `fetch_pending_tasks()` 调用失败时记录日志并返回空列表，避免轮询线程崩溃。
 - 非法状态流转、任务不存在、token 错误等业务失败不能被视为成功完成的回写。
+
+## 法规知识包与依据引用
+
+Worker 默认加载 `knowledge_pack/water_permit_mvp.json`。该文件提供 MVP 材料清单、字段规则、审核依据、提示词片段和人工复核规则。
+
+处理约定：
+
+- Worker 读取知识包的 `version`，并在结果回写时携带 `knowledgePackVersion`。
+- Java 后端将 `knowledgePackVersion` 保存到 `review_task.knowledge_pack_version`，用于追溯本次审核使用的知识版本。
+- Worker 会把 `reviewBasis[]` 和 `promptSnippets[]` 归一化为审核推理 adapter 使用的 `knowledgeFragments`。
+- 模型输出中的 `basisRefs` 只能引用本次输入的知识片段 ID，例如 `BASIS_MATERIAL_INITIAL_LIST`，不能编造法规名称、条款号或来源 ID。
+- 如果模型返回未输入的 `basisRefs`，adapter 会将结果判为 `SCHEMA_MISMATCH`，避免把不可追溯依据写回后端。
