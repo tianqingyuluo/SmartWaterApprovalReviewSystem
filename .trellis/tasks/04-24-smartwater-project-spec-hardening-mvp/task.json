@@ -2,7 +2,7 @@
   "id": "smartwater-project-spec-hardening-mvp",
   "name": "smartwater-project-spec-hardening-mvp",
   "title": "项目规范固化 MVP",
-  "description": "把本轮架构、后端、前端和跨服务约定固化进 .trellis/spec",
+  "description": "把本轮架构、后端、前端和跨服务约定固化进 .trellis/spec。当前阶段性已完成跨服务契约、AI adapter、前端可见性、可读文档维护和短任务分支纪律固化；剩余阻塞是等待后端/前端真实实现稳定后补 Java 目录/API/错误/数据库/日志与前端目录/组件细节，并在收尾时补 docs/readable/dev-log 或明确无需更新。",
   "status": "planning",
   "dev_type": "docs",
   "scope": "spec",

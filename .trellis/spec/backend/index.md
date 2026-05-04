@@ -17,7 +17,7 @@ This directory contains guidelines for backend development. Fill in each file wi
 | [Directory Structure](./directory-structure.md) | Module organization and file layout | Partial |
 | [Database Guidelines](./database-guidelines.md) | ORM patterns, queries, migrations | Partial |
 | [Error Handling](./error-handling.md) | Error types, handling strategies | Partial |
-| [Quality Guidelines](./quality-guidelines.md) | Code standards, forbidden patterns | Partial |
+| [Quality Guidelines](./quality-guidelines.md) | Code standards, test/CI gates, forbidden patterns | Active |
 | [Logging Guidelines](./logging-guidelines.md) | Structured logging, log levels | Partial |
 | [SmartWater MVP Contracts](./smartwater-mvp-contracts.md) | Cross-service domain enums, task states, material storage, visibility boundaries | Active |
 | [Review Reasoning Adapter](./review-reasoning-adapter.md) | Qwen/DeepSeek adapter, schema output, retries, redacted logging | Active |
@@ -45,8 +45,8 @@ The goal is to help AI assistants and new team members understand how YOUR proje
 Before backend, Python Worker, or cross-service work, read:
 
 - [SmartWater MVP Contracts](./smartwater-mvp-contracts.md)
+- [Quality Guidelines](./quality-guidelines.md)
 - [Review Reasoning Adapter](./review-reasoning-adapter.md) when touching AI review reasoning or Worker integration
 - [Error Handling](./error-handling.md)
 - [Logging Guidelines](./logging-guidelines.md)
 - [Database Guidelines](./database-guidelines.md) when adding persistence
-
