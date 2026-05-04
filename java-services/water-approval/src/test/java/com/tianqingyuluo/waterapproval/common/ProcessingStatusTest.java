@@ -59,7 +59,7 @@ class ProcessingStatusTest {
             "FAILED, PARTIAL_SUCCESS",
     })
     void shouldRejectInvalidTransitions(String from, String to) {
-        assertThrows(IllegalArgumentException.class,
+        assertThrows(BusinessException.class,
                 () -> ProcessingStatus.validateTransition(from, to));
     }
 
@@ -71,13 +71,13 @@ class ProcessingStatusTest {
 
     @Test
     void shouldRejectTransitionFromInvalidCurrentState() {
-        assertThrows(IllegalArgumentException.class,
+        assertThrows(BusinessException.class,
                 () -> ProcessingStatus.validateTransition("INVALID", "PROCESSING"));
     }
 
     @Test
     void shouldRejectTransitionToInvalidState() {
-        assertThrows(IllegalArgumentException.class,
+        assertThrows(BusinessException.class,
                 () -> ProcessingStatus.validateTransition("SUBMITTED", "INVALID"));
     }
 

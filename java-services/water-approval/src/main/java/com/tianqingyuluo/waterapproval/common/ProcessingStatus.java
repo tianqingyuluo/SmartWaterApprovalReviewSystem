@@ -23,28 +23,30 @@ public enum ProcessingStatus {
     );
 
     public static boolean isValid(String status) {
-        return Arrays.stream(values()).anyMatch(s -> s.name().equals(status));
+        return status != null && Arrays.stream(values()).anyMatch(s -> s.name().equals(status));
     }
 
     public static boolean isTerminal(String status) {
-        return TERMINAL_STATES.stream().anyMatch(s -> s.name().equals(status));
+        return status != null && TERMINAL_STATES.stream().anyMatch(s -> s.name().equals(status));
     }
 
     public static void validateTransition(String currentStatus, String newStatus) {
+        if (!isValid(currentStatus)) {
+            throw new BusinessException(400, "无效的当前任务状态: " + currentStatus);
+        }
         if (!isValid(newStatus)) {
-            throw new IllegalArgumentException("无效的任务状态: " + newStatus);
+            throw new BusinessException(400, "无效的任务状态: " + newStatus);
         }
         if (currentStatus.equals(newStatus)) {
             return;
         }
+
         ProcessingStatus current = valueOf(currentStatus);
         ProcessingStatus target = valueOf(newStatus);
-
         Set<ProcessingStatus> allowed = ALLOWED_TRANSITIONS.get(current);
+
         if (allowed == null || !allowed.contains(target)) {
-            throw new IllegalArgumentException(
-                    "不允许的状态流转: " + currentStatus + " -> " + newStatus
-            );
+            throw new BusinessException(409, "不允许的状态流转: " + currentStatus + " -> " + newStatus);
         }
     }
 }

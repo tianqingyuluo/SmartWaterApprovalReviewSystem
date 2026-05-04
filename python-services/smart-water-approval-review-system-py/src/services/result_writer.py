@@ -60,6 +60,25 @@ def _result_to_dict(result: ReviewResult | None) -> dict | None:
     return d
 
 
+def _parse_backend_response(resp: httpx.Response) -> dict:
+    resp.raise_for_status()
+
+    try:
+        payload = resp.json()
+    except ValueError as exc:
+        raise RuntimeError("Backend returned non-JSON response") from exc
+
+    if not isinstance(payload, dict):
+        raise RuntimeError("Backend returned unexpected response shape")
+
+    code = payload.get("code")
+    message = payload.get("message", "Unknown backend error")
+    if code != 200:
+        raise RuntimeError(f"Backend business error code={code}: {message}")
+
+    return payload
+
+
 class ResultWriter:
     def __init__(self):
         self._headers = {}
@@ -82,7 +101,7 @@ class ResultWriter:
             try:
                 with httpx.Client(timeout=30) as client:
                     resp = client.put(url, json=payload, headers=self._headers)
-                    resp.raise_for_status()
+                    _parse_backend_response(resp)
                     logger.info("Result written for task %s, status=%s", task_id, result.status)
                     return True
             except Exception as e:
@@ -100,14 +119,16 @@ class ResultWriter:
     def update_status(self, task_id: str, status: str, retries: int = 3) -> bool:
         url = f"{config.BACKEND_API_BASE}/task/{task_id}/status"
         payload = {"status": status}
+        last_error = None
 
         for attempt in range(retries):
             try:
                 with httpx.Client(timeout=30) as client:
                     resp = client.put(url, json=payload, headers=self._headers)
-                    resp.raise_for_status()
+                    _parse_backend_response(resp)
                     return True
             except Exception as e:
+                last_error = e
                 logger.error(
                     "Failed to update status for task %s (attempt %d/%d): %s",
                     task_id, attempt + 1, retries, e
@@ -115,7 +136,12 @@ class ResultWriter:
                 if attempt < retries - 1:
                     time.sleep(2 ** attempt)
 
-        logger.error("Giving up updating status for task %s after %d retries", task_id, retries)
+        logger.error(
+            "Giving up updating status for task %s after %d retries: %s",
+            task_id,
+            retries,
+            last_error,
+        )
         return False
 
     def fetch_pending_tasks(self) -> list[dict]:
@@ -123,9 +149,9 @@ class ResultWriter:
         try:
             with httpx.Client(timeout=30) as client:
                 resp = client.get(url, headers=self._headers)
-                resp.raise_for_status()
-                data = resp.json()
-                return data.get("data", []) if isinstance(data, dict) else []
+                data = _parse_backend_response(resp)
+                result = data.get("data", [])
+                return result if isinstance(result, list) else []
         except Exception as e:
             logger.error("Failed to fetch pending tasks: %s", e)
             return []

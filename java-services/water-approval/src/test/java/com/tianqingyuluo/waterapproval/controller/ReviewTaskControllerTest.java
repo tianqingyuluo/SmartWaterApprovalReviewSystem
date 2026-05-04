@@ -1,7 +1,13 @@
 package com.tianqingyuluo.waterapproval.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tianqingyuluo.waterapproval.dto.*;
+import com.tianqingyuluo.waterapproval.common.BusinessException;
+import com.tianqingyuluo.waterapproval.dto.ApplicantResultResponse;
+import com.tianqingyuluo.waterapproval.dto.PendingTaskResponse;
+import com.tianqingyuluo.waterapproval.dto.ResultWriteRequest;
+import com.tianqingyuluo.waterapproval.dto.ReviewerResultResponse;
+import com.tianqingyuluo.waterapproval.dto.StatusUpdateRequest;
+import com.tianqingyuluo.waterapproval.dto.TaskStatusResponse;
 import com.tianqingyuluo.waterapproval.service.ReviewTaskService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,11 +20,14 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -98,7 +107,7 @@ class ReviewTaskControllerTest {
     void updateStatusWithInvalidStatusShouldReturnError() throws Exception {
         StatusUpdateRequest req = new StatusUpdateRequest();
         req.setStatus("INVALID_STATUS");
-        doThrow(new IllegalArgumentException("无效的任务状态: INVALID_STATUS"))
+        doThrow(new BusinessException(400, "无效的任务状态: INVALID_STATUS"))
                 .when(reviewTaskService).updateStatus(eq("task-1"), eq("INVALID_STATUS"));
 
         mockMvc.perform(put("/task/task-1/status")
@@ -106,14 +115,14 @@ class ReviewTaskControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(500));
+                .andExpect(jsonPath("$.code").value(400));
     }
 
     @Test
     void updateStatusWithInvalidTransitionShouldReturnError() throws Exception {
         StatusUpdateRequest req = new StatusUpdateRequest();
         req.setStatus("COMPLETED");
-        doThrow(new IllegalArgumentException("不允许的状态流转: SUBMITTED -> COMPLETED"))
+        doThrow(new BusinessException(409, "不允许的状态流转: SUBMITTED -> COMPLETED"))
                 .when(reviewTaskService).updateStatus(eq("task-1"), eq("COMPLETED"));
 
         mockMvc.perform(put("/task/task-1/status")
@@ -121,7 +130,7 @@ class ReviewTaskControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(500));
+                .andExpect(jsonPath("$.code").value(409));
     }
 
     @Test
