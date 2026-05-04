@@ -111,6 +111,7 @@ class ReviewReasoningAdapter(ReviewAdapter):
         knowledge_fragments: list,
     ) -> ReviewResult:
         client = self._build_client()
+        allowed_basis_refs = _knowledge_fragment_ids(knowledge_fragments)
         user_prompt = self._build_user_prompt(
             extracted_fields, material_types, missing_materials, knowledge_fragments
         )
@@ -149,7 +150,7 @@ class ReviewReasoningAdapter(ReviewAdapter):
                 content = resp.choices[0].message.content
                 finish = resp.choices[0].finish_reason
 
-                parsed, failure = self._parse_and_validate(content, task_id)
+                parsed, failure = self._parse_and_validate(content, task_id, allowed_basis_refs)
                 if parsed is not None:
                     parsed.model_metadata = ModelMetadata(
                         provider=config.REVIEW_LLM_PROVIDER,
@@ -240,7 +241,12 @@ class ReviewReasoningAdapter(ReviewAdapter):
 
         return "\n".join(parts)
 
-    def _parse_and_validate(self, content: str, task_id: str) -> tuple:
+    def _parse_and_validate(
+        self,
+        content: str,
+        task_id: str,
+        allowed_basis_refs: set[str] | None = None,
+    ) -> tuple:
         if not content or not content.strip():
             logger.warning("Empty content from review for task %s", task_id)
             return None, "INVALID_JSON"
@@ -274,6 +280,19 @@ class ReviewReasoningAdapter(ReviewAdapter):
                 )
                 return None, "SCHEMA_MISMATCH"
 
+        risk_hints_raw = data.get("risk_hints", [])
+        if not isinstance(risk_hints_raw, list):
+            return None, "SCHEMA_MISMATCH"
+
+        invalid_refs = _invalid_basis_refs(data, allowed_basis_refs)
+        if invalid_refs:
+            logger.warning(
+                "Schema mismatch for task %s: invented basisRefs %s",
+                task_id,
+                sorted(invalid_refs),
+            )
+            return None, "SCHEMA_MISMATCH"
+
         try:
             issues = [
                 Issue(
@@ -295,7 +314,7 @@ class ReviewReasoningAdapter(ReviewAdapter):
                     basis_refs=r.get("basis_refs", []),
                     requires_manual_review=r.get("requires_manual_review", False),
                 )
-                for r in data.get("risk_hints", [])
+                for r in risk_hints_raw
             ]
 
             mc = data.get("material_completeness", {})
@@ -387,3 +406,39 @@ def _safe_token_usage(resp) -> dict:
         }
     except Exception:
         return {}
+
+
+def _knowledge_fragment_ids(knowledge_fragments: list) -> set[str]:
+    ids: set[str] = set()
+    for fragment in knowledge_fragments:
+        if hasattr(fragment, "source_id"):
+            source_id = getattr(fragment, "source_id", None)
+        elif isinstance(fragment, dict):
+            source_id = fragment.get("source_id") or fragment.get("sourceId") or fragment.get("id")
+        else:
+            source_id = None
+
+        if source_id:
+            ids.add(str(source_id))
+    return ids
+
+
+def _invalid_basis_refs(data: dict, allowed_basis_refs: set[str] | None) -> set[str]:
+    if allowed_basis_refs is None:
+        return set()
+
+    observed: set[str] = set()
+    for ref in data.get("basis_refs", []):
+        observed.add(str(ref))
+
+    for issue in data.get("issues", []):
+        if isinstance(issue, dict):
+            for ref in issue.get("basis_refs", []):
+                observed.add(str(ref))
+
+    for hint in data.get("risk_hints", []):
+        if isinstance(hint, dict):
+            for ref in hint.get("basis_refs", []):
+                observed.add(str(ref))
+
+    return observed - allowed_basis_refs

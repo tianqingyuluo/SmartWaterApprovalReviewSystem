@@ -16,28 +16,29 @@ Worker 通过 HTTP 调用 Java 后端，需要以下端点：
   "code": 200,
   "data": [
     {
-      "task_id": "SWA1B2C3D4E5F6G7H",
+      "taskId": "SWA1B2C3D4E5F6G7H",
+      "sessionId": "a1b2c3d4e5f6789012345678abcdef01",
       "status": "SUBMITTED",
       "materials": [
         {
-          "material_type": "APPLICATION_FORM",
-          "original_file_name": "test.pdf",
-          "storage_key": "SWA1B2/APPLICATION_FORM/uuid.pdf",
-          "file_extension": "pdf",
+          "materialType": "APPLICATION_FORM",
+          "originalFileName": "test.pdf",
+          "storageKey": "SWA1B2/APPLICATION_FORM/uuid.pdf",
+          "fileExtension": "pdf",
           "uploaded": true
         },
         {
-          "material_type": "BUSINESS_LICENSE",
-          "original_file_name": "license.jpg",
-          "storage_key": "SWA1B2/BUSINESS_LICENSE/uuid.jpg",
-          "file_extension": "jpg",
+          "materialType": "BUSINESS_LICENSE",
+          "originalFileName": "license.jpg",
+          "storageKey": "SWA1B2/BUSINESS_LICENSE/uuid.jpg",
+          "fileExtension": "jpg",
           "uploaded": true
         },
         {
-          "material_type": "ID_CARD",
-          "original_file_name": null,
-          "storage_key": null,
-          "file_extension": null,
+          "materialType": "ID_CARD",
+          "originalFileName": null,
+          "storageKey": null,
+          "fileExtension": null,
           "uploaded": false
         }
       ]
@@ -67,46 +68,47 @@ Worker 通过 HTTP 调用 Java 后端，需要以下端点：
 ```json
 {
   "status": "COMPLETED",
-  "result_summary": "申请材料基本完整，发现一个警告",
-  "applicant_result": {
+  "resultSummary": "申请材料基本完整，发现一个警告",
+  "knowledgePackVersion": "water-permit-mvp-2026-04-27",
+  "applicantResult": {
     "summary": "材料审核完成",
     "issues": [
       { "code": "MISSING_MATERIAL", "severity": "WARNING", "message": "缺少身份证" }
     ],
-    "material_completeness": { "received": ["APPLICATION_FORM"], "missing": ["ID_CARD", "BUSINESS_LICENSE"], "unrecognized": [] },
-    "manual_review_notice": "AI审核结果为辅助建议"
+    "materialCompleteness": { "received": ["APPLICATION_FORM"], "missing": ["ID_CARD", "BUSINESS_LICENSE"], "unrecognized": [] },
+    "manualReviewNotice": "AI审核结果为辅助建议"
   },
-  "reviewer_result": {
+  "reviewerResult": {
     "summary": "材料审核完成",
     "issues": [
       {
         "code": "MISSING_MATERIAL",
         "severity": "WARNING",
         "message": "缺少身份证材料",
-        "material_type": "ID_CARD",
-        "field_key": null,
-        "basis_refs": ["REG-001"],
-        "applicant_visible": true
+        "materialType": "ID_CARD",
+        "fieldKey": null,
+        "basisRefs": ["BASIS_MATERIAL_INITIAL_LIST"],
+        "applicantVisible": true
       }
     ],
-    "risk_hints": [
+    "riskHints": [
       {
-        "risk_level": "MEDIUM",
+        "riskLevel": "MEDIUM",
         "description": "材料不完整",
-        "basis_refs": ["REG-001"],
-        "requires_manual_review": true
+        "basisRefs": ["BASIS_MATERIAL_INITIAL_LIST"],
+        "requiresManualReview": true
       }
     ],
-    "draft_opinion": "建议补充身份证扫描件",
-    "material_completeness": { "received": ["APPLICATION_FORM"], "missing": ["ID_CARD", "BUSINESS_LICENSE"], "unrecognized": [] },
-    "basis_refs": ["REG-001"],
-    "manual_review_notice": "AI审核结果为辅助建议，不构成最终审批意见。",
-    "model_metadata": {
+    "draftOpinion": "建议补充身份证扫描件",
+    "materialCompleteness": { "received": ["APPLICATION_FORM"], "missing": ["ID_CARD", "BUSINESS_LICENSE"], "unrecognized": [] },
+    "basisRefs": ["BASIS_MATERIAL_INITIAL_LIST"],
+    "manualReviewNotice": "AI审核结果为辅助建议，不构成最终审批意见。",
+    "modelMetadata": {
       "provider": "dashscope",
       "model": "qwen-max",
-      "request_id": "req-xxx",
-      "finish_reason": "stop",
-      "token_usage": { "prompt_tokens": 500, "completion_tokens": 200, "total_tokens": 700 }
+      "requestId": "req-xxx",
+      "finishReason": "stop",
+      "tokenUsage": { "prompt_tokens": 500, "completion_tokens": 200, "total_tokens": 700 }
     }
   }
 }
@@ -186,7 +188,7 @@ python main.py
 ```
 Worker启动
   │
-  ├─ 加载知识包 (knowledge_pack/*.json)
+  ├─ 加载知识包 (knowledge_pack/water_permit_mvp.json)
   │
   └─ 轮询循环 (每 WORKER_POLL_INTERVAL 秒)
        │
@@ -202,23 +204,15 @@ Worker启动
        │   └─ Qwen/DeepSeek → 生成 ReviewResult
        │
        ├─ 组装结果:
-       │   ├─ applicantResult (过滤 applicant_visible=true)
-       │   └─ reviewerResult (完整结果)
+       │   ├─ applicantResult (过滤 applicantVisible=true)
+       │   ├─ reviewerResult (完整结果)
+       │   └─ knowledgePackVersion (来自知识包 version)
        │
        └─ PUT /api/task/{id}/result  → 回写 COMPLETED/PARTIAL_SUCCESS/FAILED
 ```
 
----
+## 四、知识包契约
 
-## 四、注意：Java 后端缺少的接口
+Worker 启动时加载 `knowledge_pack/water_permit_mvp.json`，并把其中的 `reviewBasis[]` 和 `promptSnippets[]` 归一化为审核推理 adapter 使用的 `knowledgeFragments`。模型输出中的 `basisRefs` 只能引用本次传给 adapter 的 fragment ID，例如 `BASIS_MATERIAL_INITIAL_LIST` 或 `PROMPT_BASIS_LIMIT`，不能编造法规名称、条款号或来源 ID。
 
-Worker 依赖以下接口，当前 Java 后端尚未实现，**需要补充**：
-
-| 接口 | 方法 | 说明 |
-|------|------|------|
-| `/api/task/pending` | GET | 返回待处理任务列表 |
-| `/api/task/{id}/result` | PUT | 接收 Worker 回写的审核结果 |
-| `/api/material/download?key=` | GET | 根据 storage_key 下载原始文件 |
-| `/api/task/{id}/status` | PUT | 更新任务状态（Worker调用） |
-
-需要我帮你把这些接口补到 Java 后端里吗？
+Worker 回写结果时必须携带 `knowledgePackVersion`，Java 后端将该值保存到 `review_task.knowledge_pack_version`，用于后续追溯本次审核使用的知识包版本。

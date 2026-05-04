@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from knowledge_pack import load_knowledge_pack
+from knowledge_pack import load_knowledge_pack, normalize_knowledge_fragments
 
 
 class KnowledgePackTests(unittest.TestCase):
@@ -38,6 +38,19 @@ class KnowledgePackTests(unittest.TestCase):
 
         self.assertEqual(data["language"], "zh-CN")
         self.assertTrue(data["citationFormat"]["basisRefRule"])
+
+    def test_knowledge_pack_normalizes_to_adapter_fragments(self):
+        pack = load_knowledge_pack()
+
+        fragments = normalize_knowledge_fragments(pack)
+        source_ids = {fragment["source_id"] for fragment in fragments}
+
+        self.assertIn("BASIS_MATERIAL_INITIAL_LIST", source_ids)
+        self.assertIn("PROMPT_BASIS_LIMIT", source_ids)
+        for fragment in fragments:
+            self.assertTrue(fragment["source_id"])
+            self.assertTrue(fragment["source_title"])
+            self.assertTrue(fragment["content"])
 
 
 if __name__ == "__main__":
