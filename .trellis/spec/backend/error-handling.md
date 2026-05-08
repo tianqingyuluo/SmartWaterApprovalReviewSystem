@@ -107,3 +107,6 @@ async def business_error_handler(request, exc: BusinessError):
 - AI 服务调用失败时返回明确的错误信息，不返回原始堆栈
 - 外部服务调用（OCR、向量数据库等）必须有超时和重试机制
 - LangChain Agent 执行异常需记录完整上下文日志
+- Python Worker 调用 Java 后端统一 `R<T>` 接口时，必须先执行 `raise_for_status()`，再解析 JSON 并要求 `code == 200` 才算成功
+- 当 Java 后端返回 HTTP 200 但业务 `code != 200`（例如 403、404、409）时，Worker 必须按失败处理，进入现有重试、降级或失败路径，不能当作成功
+- 二进制下载接口（例如 `/material/download`）不走 `R<T>` 包装时，可以只按 HTTP 状态码判断成功与否

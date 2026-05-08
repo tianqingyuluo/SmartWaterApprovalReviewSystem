@@ -200,6 +200,14 @@ Invariants:
 
 Java backend owns upload acceptance and object storage persistence. Python Worker reads materials through references and must not own archive policy.
 
+Storage provider decision:
+
+- Runtime/local integration target: RustFS.
+- API style: S3-compatible object storage API, so Java may use an S3-compatible SDK/client behind `StorageService`.
+- Business code must depend on object-storage abstractions and metadata, not RustFS-specific SDK classes.
+- Ordinary unit tests must mock or fake `StorageService`; real RustFS belongs only in explicit integration tests or manual end-to-end verification.
+- Config and docs must use project-neutral or RustFS-specific names consistently. Do not describe the required middleware as MinIO.
+
 Material metadata must include enough information for both MVP and full-version parsing:
 
 | Field | Notes |
@@ -237,11 +245,86 @@ Rules:
 
 ---
 
+## Regulation Knowledge Pack Contract
+
+The MVP regulation knowledge pack is a static Python Worker asset.
+
+### 1. Scope / Trigger
+
+- Trigger: any Python Worker implementation that assembles review prompts or validates model `basisRefs`.
+- Asset path: `python-services/smart-water-approval-review-system-py/knowledge_pack/water_permit_mvp.json`.
+- Loader: `knowledge_pack.load_knowledge_pack(path: str | Path | None = None) -> dict`.
+- The Worker must copy `pack["version"]` into `ReviewTask.knowledgePackVersion` / Worker result callbacks.
+
+### 2. Required JSON Sections
+
+```json
+[
+  "version",
+  "materialChecklist",
+  "applicationFieldRules",
+  "reviewBasis",
+  "promptSnippets",
+  "manualReviewRules"
+]
+```
+
+Each fragment that can be sent to the review reasoning adapter must expose stable IDs:
+
+| Section | Required ID fields | Purpose |
+|---|---|---|
+| `materialChecklist[]` | `id`, `materialType`, `basisRefs[]` | MVP slot checklist and missing-material messages. |
+| `applicationFieldRules[]` | `id`, `fieldPath`, `basisRefs[]` | Field completeness, format, consistency, and manual-review hints. |
+| `reviewBasis[]` | `id`, `sourceId`, `sourceTitle`, `summary` | Citable legal/process/field basis fragments. |
+| `promptSnippets[]` | `id`, `kind`, `text` | Prompt assembly constraints and wording. |
+| `manualReviewRules[]` | `id`, `findingCode`, `basisRefs[]` | Rules that must never become automatic final decisions. |
+
+### 3. Validation & Error Matrix
+
+| Condition | Expected behavior |
+|---|---|
+| Pack file missing | `load_knowledge_pack()` raises `KnowledgePackError`. |
+| Invalid JSON | `load_knowledge_pack()` raises `KnowledgePackError`. |
+| Required section missing | `load_knowledge_pack()` raises `KnowledgePackError`. |
+| `basisRefs[]` points outside `reviewBasis[].id` | Unit test must fail before merge. |
+| Model returns a `basisRef` not included in request fragments | Worker must reject/repair the model output before writeback. |
+
+### 4. Good/Base/Bad Cases
+
+- Good: Worker sends selected `reviewBasis` fragments and the model cites only those IDs.
+- Base: Missing `BUSINESS_LICENSE` creates `MISSING_MATERIAL` with applicant-safe copy and reviewer copy.
+- Bad: Model invents a regulation/article ID or uses final approval wording. The Worker must not write that result.
+
+### 5. Tests Required
+
+- Unit test loads `water_permit_mvp.json`.
+- Unit test asserts the MVP material types are exactly `APPLICATION_FORM`, `BUSINESS_LICENSE`, and `ID_CARD`.
+- Unit test asserts every configured `basisRefs[]` value is present in `reviewBasis[].id`.
+
+### 6. Wrong vs Correct
+
+#### Wrong
+
+```text
+Prompt: "参考相关法律审核"
+Output basisRefs: ["浙江水法第999条"]
+```
+
+#### Correct
+
+```text
+Prompt fragment includes reviewBasis id BASIS_PUBLIC_NOTICE
+Output basisRefs: ["BASIS_PUBLIC_NOTICE"]
+```
+
+---
+
 ## Forbidden Patterns
 
 - Do not introduce alternate enum names such as `WATER_INTAKE_APPLICATION` unless the contract is updated everywhere.
 - Do not expose `reviewerResult` directly on applicant pages.
 - Do not treat AI `draftOpinion` as a final administrative decision.
 - Do not let Python Worker own object storage persistence policy.
+- Do not make ordinary unit tests require a running RustFS instance or real object-storage credentials.
 - Do not log raw OCR text, full prompts, ID-card numbers, or full business-license recognition text.
 - Do not drop task state when file reading, OCR, PDF parsing, or future Word parsing fails; map failures to retryable processing errors, `PARTIAL_SUCCESS`, or `FAILED`.

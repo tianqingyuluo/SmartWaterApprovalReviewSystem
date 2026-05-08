@@ -64,7 +64,7 @@
       </div>
     </div>
 
-    <div v-if="isPolling && !showApplicantResult" class="polling-section">
+    <div v-if="isPolling && !isTerminalStatus" class="polling-section">
       <StatusBadge :status="taskStatus" audience="applicant" />
       <p class="polling-hint">审核处理中，请稍候...</p>
     </div>
@@ -98,6 +98,17 @@
         </ul>
       </div>
 
+      <div class="app-result-actions">
+        <button class="btn-new" @click="resetForm">提交新的材料</button>
+      </div>
+    </div>
+
+    <div v-if="taskStatus === 'FAILED'" class="applicant-result">
+      <h2>预检查结果</h2>
+      <div class="app-result-card issues">
+        <h3>暂无法生成结果</h3>
+        <p>请检查材料文件是否可读，或重新提交新的任务。</p>
+      </div>
       <div class="app-result-actions">
         <button class="btn-new" @click="resetForm">提交新的材料</button>
       </div>
@@ -148,10 +159,14 @@ const isPolling = ref(false)
 const taskStatus = ref<ProcessingStatus>('SUBMITTED')
 const taskData = ref<ApplicantResultView | null>(null)
 
+const TERMINAL_STATUSES: ProcessingStatus[] = ['COMPLETED', 'PARTIAL_SUCCESS', 'FAILED']
+
 const showApplicantResult = computed(() =>
   taskData.value !== null &&
   (taskStatus.value === 'COMPLETED' || taskStatus.value === 'PARTIAL_SUCCESS'),
 )
+
+const isTerminalStatus = computed(() => TERMINAL_STATUSES.includes(taskStatus.value))
 
 function severityLabel(severity: Severity): string {
   if (severity === 'BLOCKER') return '阻断'
@@ -194,8 +209,6 @@ function clearSlot(type: string) {
   if (input) input.value = ''
 }
 
-const TERMINAL_STATUSES: ProcessingStatus[] = ['COMPLETED', 'PARTIAL_SUCCESS', 'FAILED']
-
 async function fetchApplicantResult() {
   try {
     const res = await getApplicantResult(taskId.value, sessionId.value)
@@ -207,12 +220,6 @@ async function fetchApplicantResult() {
 
 async function handleSubmit() {
   submitError.value = ''
-
-  const hasFiles = slots.some((s) => s.file !== null)
-  if (!hasFiles) {
-    submitError.value = '请至少上传一个材料文件'
-    return
-  }
 
   submitting.value = true
   try {

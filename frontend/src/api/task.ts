@@ -7,6 +7,11 @@ import type {
   ReviewerResultResponse,
   ApplicantResultView,
   ReviewerResultView,
+  ApplicantIssueDto,
+  ReviewerIssueDto,
+  RiskHintDto,
+  Finding,
+  ResultSummary,
 } from '@/types'
 
 // ── API functions ──
@@ -41,7 +46,7 @@ export function toApplicantResultView(dto: ApplicantResultResponse): ApplicantRe
   return {
     status: dto.status,
     missingMaterials: dto.missingMaterials,
-    fieldIssues: dto.issues,
+    fieldIssues: dto.issues.map(toApplicantFinding),
     suggestions: buildApplicantSuggestions(dto),
   }
 }
@@ -53,17 +58,62 @@ export function toReviewerResultView(
   return {
     status: resultDto.status,
     materials: statusDto.materials,
-    summary: resultDto.summary,
-    extractedFields: resultDto.extractedFields,
-    fieldConfidence: resultDto.fieldConfidence ?? null,
-    materialSummaries: resultDto.materialSummaries ?? {},
-    findings: resultDto.issues,
-    riskHints: resultDto.riskHints,
+    summary: summarizeIssues(resultDto.issues),
+    extractedFields: normalizeExtractedFields(resultDto.extractedFields),
+    fieldConfidence: null,
+    materialSummaries: {},
+    findings: resultDto.issues.map(toReviewerFinding),
+    riskHints: resultDto.riskHints.map(formatRiskHint),
     draftOpinion: resultDto.draftOpinion,
-    manualReviewNotice: resultDto.manualReviewNotice ?? '',
-    failureCategory: resultDto.failureCategory ?? null,
-    failureReason: resultDto.failureReason ?? null,
+    manualReviewNotice: '',
+    failureCategory: resultDto.status === 'FAILED' ? 'SYSTEM_ERROR' : null,
+    failureReason: resultDto.status === 'FAILED' ? resultDto.summary : null,
   }
+}
+
+function toApplicantFinding(issue: ApplicantIssueDto): Finding {
+  return {
+    findingType: issue.code,
+    severity: issue.severity,
+    audience: 'APPLICANT',
+    description: issue.message,
+    basis: null,
+  }
+}
+
+function toReviewerFinding(issue: ReviewerIssueDto): Finding {
+  return {
+    findingType: issue.code,
+    severity: issue.severity,
+    audience: issue.applicantVisible ? 'APPLICANT' : 'REVIEWER',
+    description: issue.message,
+    basis: issue.basisRefs?.join('、') ?? null,
+  }
+}
+
+function formatRiskHint(hint: RiskHintDto): string {
+  const basisText = hint.basisRefs?.length ? ` 依据: ${hint.basisRefs.join('、')}` : ''
+  const manualText = hint.requiresManualReview ? ' 需人工复核。' : ''
+  return `[${hint.riskLevel}] ${hint.description}${basisText}${manualText}`
+}
+
+function summarizeIssues(issues: Array<{ severity: string }>): ResultSummary {
+  return {
+    totalFindings: issues.length,
+    blockerCount: issues.filter((f) => f.severity === 'BLOCKER').length,
+    warningCount: issues.filter((f) => f.severity === 'WARNING').length,
+    infoCount: issues.filter((f) => f.severity === 'INFO').length,
+  }
+}
+
+function normalizeExtractedFields(value: unknown): Record<string, string> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {}
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).map(([key, fieldValue]) => [key, String(fieldValue ?? '')]),
+  )
 }
 
 function buildApplicantSuggestions(dto: ApplicantResultResponse): string[] {

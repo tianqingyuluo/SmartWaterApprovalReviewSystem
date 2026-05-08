@@ -34,9 +34,10 @@ export const MATERIAL_FORM_FIELDS: Record<MaterialType, string> = {
 export interface MaterialSlot {
   materialType: MaterialType
   originalFileName: string | null
-  fileExtension: string | null
-  fileSize: number | null
-  uploadedAt: string | null
+  uploaded: boolean
+  fileExtension?: string | null
+  fileSize?: number | null
+  uploadedAt?: string | null
 }
 
 export interface Finding {
@@ -54,11 +55,34 @@ export interface ResultSummary {
   infoCount: number
 }
 
+export interface ApplicantIssueDto {
+  code: string
+  severity: Severity
+  message: string
+}
+
+export interface ReviewerIssueDto extends ApplicantIssueDto {
+  materialType?: MaterialType | null
+  fieldKey?: string | null
+  basisRefs?: string[] | null
+  applicantVisible?: boolean | null
+}
+
+export interface RiskHintDto {
+  riskLevel: string
+  description: string
+  basisRefs?: string[] | null
+  requiresManualReview?: boolean | null
+}
+
 // ── Submit ──
 
 export interface SubmitResponse {
   taskId: string
   sessionId: string
+  status?: ProcessingStatus
+  submittedAt?: string
+  materials?: MaterialSlot[]
 }
 
 // ── Backend DTOs (match actual endpoint response shapes) ──
@@ -77,8 +101,8 @@ export interface TaskStatusResponse {
 export interface ApplicantResultResponse {
   taskId: string
   status: ProcessingStatus
-  summary: ResultSummary
-  issues: Finding[]
+  summary: string
+  issues: ApplicantIssueDto[]
   missingMaterials: MaterialType[]
 }
 
@@ -86,18 +110,13 @@ export interface ApplicantResultResponse {
 export interface ReviewerResultResponse {
   taskId: string
   status: ProcessingStatus
-  summary: ResultSummary
-  issues: Finding[]
-  riskHints: string[]
+  summary: string
+  issues: ReviewerIssueDto[]
+  riskHints: RiskHintDto[]
   draftOpinion: string
   missingMaterials: MaterialType[]
-  extractedFields: Record<string, string>
-  fieldConfidence?: Record<string, number>
-  materialSummaries?: Record<string, string>
-  manualReviewNotice?: string
-  modelMetadata?: Record<string, unknown>
-  failureCategory?: string | null
-  failureReason?: string | null
+  extractedFields: unknown
+  modelMetadata?: string | null
 }
 
 // ── View models (transformed from backend DTOs for page consumption) ──

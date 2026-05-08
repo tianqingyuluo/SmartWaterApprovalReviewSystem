@@ -1,0 +1,919 @@
+{
+  "version": "water-permit-mvp-2026-04-27",
+  "language": "zh-CN",
+  "domain": "取水许可智能辅助审核 MVP",
+  "contractVersion": "smartwater-mvp-contracts",
+  "sourceDocuments": [
+    {
+      "sourceId": "SRC_PROCESS_DOC",
+      "title": "取水许可办理需资料及流程",
+      "path": "docs/参考资料/取水许可办理需资料及流程.docx",
+      "notes": "办理依据、材料清单、水资源论证分类、公示和验收流程。"
+    },
+    {
+      "sourceId": "SRC_FIELD_INSTRUCTIONS",
+      "title": "取水许可申请书填表说明",
+      "path": "docs/参考资料/填报说明.docx",
+      "notes": "申请书字段填报口径、取水用途、计量方式和退水信息。"
+    },
+    {
+      "sourceId": "SRC_APPLICATION_FORM",
+      "title": "取水许可申请书",
+      "path": "docs/参考资料/申请书.docx",
+      "notes": "申请书模板字段和枚举选项。"
+    },
+    {
+      "sourceId": "SRC_SAMPLE_BUSINESS_LICENSE",
+      "title": "营业执照样例",
+      "path": "docs/参考资料/营业执照.jpg",
+      "notes": "MVP 证照 OCR 样例。"
+    },
+    {
+      "sourceId": "SRC_SAMPLE_ID_CARD",
+      "title": "身份证样例",
+      "path": "docs/参考资料/身份证.jpg",
+      "notes": "MVP 身份证 OCR 样例。"
+    }
+  ],
+  "materialChecklist": [
+    {
+      "id": "MAT_APPLICATION_FORM",
+      "materialType": "APPLICATION_FORM",
+      "displayName": "取水许可申请书",
+      "requiredForCompleteReview": true,
+      "acceptedFileTypes": ["jpg", "jpeg", "png", "pdf"],
+      "maxFiles": 1,
+      "missingFinding": {
+        "code": "MISSING_MATERIAL",
+        "severity": "BLOCKER",
+        "messageForApplicant": "缺少取水许可申请书，无法识别申请人、项目、取水水源和取水量等核心信息。",
+        "messageForReviewer": "缺少取水许可申请书，智能审核无法完成核心字段抽取和取水事项核对。"
+      },
+      "sourceRefs": ["SRC_PROCESS_DOC", "SRC_APPLICATION_FORM"],
+      "basisRefs": ["BASIS_MATERIAL_INITIAL_LIST"]
+    },
+    {
+      "id": "MAT_BUSINESS_LICENSE",
+      "materialType": "BUSINESS_LICENSE",
+      "displayName": "营业执照",
+      "requiredForCompleteReview": true,
+      "acceptedFileTypes": ["jpg", "jpeg", "png", "pdf"],
+      "maxFiles": 1,
+      "missingFinding": {
+        "code": "MISSING_MATERIAL",
+        "severity": "WARNING",
+        "messageForApplicant": "缺少营业执照，审批人员无法核对单位名称、统一社会信用代码和法定代表人。",
+        "messageForReviewer": "缺少营业执照，主体资格和申请书单位信息一致性需要人工补充核对。"
+      },
+      "sourceRefs": ["SRC_PROCESS_DOC", "SRC_SAMPLE_BUSINESS_LICENSE"],
+      "basisRefs": ["BASIS_MATERIAL_INITIAL_LIST"]
+    },
+    {
+      "id": "MAT_ID_CARD",
+      "materialType": "ID_CARD",
+      "displayName": "法定代表人身份证",
+      "requiredForCompleteReview": true,
+      "acceptedFileTypes": ["jpg", "jpeg", "png", "pdf"],
+      "maxFiles": 1,
+      "missingFinding": {
+        "code": "MISSING_MATERIAL",
+        "severity": "WARNING",
+        "messageForApplicant": "缺少法定代表人身份证，审批人员无法核对个人身份信息。",
+        "messageForReviewer": "缺少法定代表人身份证，法定代表人与身份证姓名一致性需要人工补充核对。"
+      },
+      "sourceRefs": ["SRC_PROCESS_DOC", "SRC_SAMPLE_ID_CARD"],
+      "basisRefs": ["BASIS_MATERIAL_INITIAL_LIST"]
+    }
+  ],
+  "futureMaterials": [
+    {
+      "id": "MAT_APPLICATION_REPORT",
+      "displayName": "申请报告",
+      "mvpStatus": "OUT_OF_SCOPE",
+      "sourceRefs": ["SRC_PROCESS_DOC"]
+    },
+    {
+      "id": "MAT_THIRD_PARTY_INTEREST_STATEMENT",
+      "displayName": "第三者利害关系说明",
+      "mvpStatus": "OUT_OF_SCOPE",
+      "sourceRefs": ["SRC_PROCESS_DOC"]
+    },
+    {
+      "id": "MAT_WATER_RESOURCE_ASSESSMENT",
+      "displayName": "水资源论证",
+      "mvpStatus": "OUT_OF_SCOPE_REVIEW_HINT_ONLY",
+      "sourceRefs": ["SRC_PROCESS_DOC"]
+    }
+  ],
+  "applicationFieldRules": [
+    {
+      "id": "FIELD_APPLICANT_NAME",
+      "fieldPath": "applicantProfile.applicantName",
+      "displayName": "申请人",
+      "materialType": "APPLICATION_FORM",
+      "required": true,
+      "ruleType": "IDENTITY_CONSISTENCY",
+      "instruction": "申请取水的单位或个人名称。单位名称应与注册登记信息一致，个人名称应与身份证信息一致。",
+      "compareWith": [
+        "credentialProfile.businessLicense.organizationName",
+        "credentialProfile.idCard.name"
+      ],
+      "findingCodeWhenMissing": "MISSING_FIELD",
+      "findingCodeWhenInconsistent": "INCONSISTENT_IDENTITY",
+      "sourceRefs": ["SRC_FIELD_INSTRUCTIONS", "SRC_APPLICATION_FORM"],
+      "basisRefs": ["BASIS_FIELD_APPLICANT_IDENTITY"]
+    },
+    {
+      "id": "FIELD_CREDIT_CODE_OR_ID",
+      "fieldPath": "applicantProfile.unifiedSocialCreditCode",
+      "displayName": "统一社会信用代码（身份证号码）",
+      "materialType": "APPLICATION_FORM",
+      "required": true,
+      "ruleType": "CREDENTIAL_CONSISTENCY",
+      "instruction": "法人或其他组织填写统一社会信用代码；个人填写身份证号码。",
+      "compareWith": [
+        "credentialProfile.businessLicense.unifiedSocialCreditCode",
+        "credentialProfile.idCard.idNumber"
+      ],
+      "findingCodeWhenMissing": "MISSING_FIELD",
+      "findingCodeWhenInconsistent": "INCONSISTENT_CREDENTIAL",
+      "sourceRefs": ["SRC_FIELD_INSTRUCTIONS", "SRC_APPLICATION_FORM"],
+      "basisRefs": ["BASIS_FIELD_CREDENTIAL_ID"]
+    },
+    {
+      "id": "FIELD_LEGAL_REPRESENTATIVE",
+      "fieldPath": "applicantProfile.legalRepresentative",
+      "displayName": "法定代表人",
+      "materialType": "APPLICATION_FORM",
+      "requiredWhen": "applicantType is ORGANIZATION",
+      "ruleType": "IDENTITY_CONSISTENCY",
+      "instruction": "申请人为法人或其他组织时填写法定代表人；个人申请时不填。",
+      "compareWith": [
+        "credentialProfile.businessLicense.legalRepresentative",
+        "credentialProfile.idCard.name"
+      ],
+      "findingCodeWhenMissing": "MISSING_FIELD",
+      "findingCodeWhenInconsistent": "INCONSISTENT_IDENTITY",
+      "sourceRefs": ["SRC_FIELD_INSTRUCTIONS", "SRC_APPLICATION_FORM"],
+      "basisRefs": ["BASIS_FIELD_LEGAL_REPRESENTATIVE"]
+    },
+    {
+      "id": "FIELD_REGISTERED_ADDRESS",
+      "fieldPath": "applicantProfile.registeredAddress",
+      "displayName": "住所（住址）",
+      "materialType": "APPLICATION_FORM",
+      "required": true,
+      "ruleType": "CREDENTIAL_CONSISTENCY",
+      "instruction": "单位按工商或事业单位登记机关登记的注册地址填写，应与注册登记信息一致；个人填写身份证载明住址。",
+      "compareWith": [
+        "credentialProfile.businessLicense.registeredAddress",
+        "credentialProfile.idCard.address"
+      ],
+      "findingCodeWhenMissing": "MISSING_FIELD",
+      "findingCodeWhenInconsistent": "INCONSISTENT_CREDENTIAL",
+      "sourceRefs": ["SRC_FIELD_INSTRUCTIONS", "SRC_APPLICATION_FORM"],
+      "basisRefs": ["BASIS_FIELD_REGISTERED_ADDRESS"]
+    },
+    {
+      "id": "FIELD_BUSINESS_ADDRESS",
+      "fieldPath": "applicantProfile.businessAddress",
+      "displayName": "生产经营场所地址",
+      "materialType": "APPLICATION_FORM",
+      "required": true,
+      "ruleType": "COMPLETENESS",
+      "instruction": "填写申请人生产经营地点，细化到具体街道、小区门牌号。",
+      "findingCodeWhenMissing": "MISSING_FIELD",
+      "sourceRefs": ["SRC_FIELD_INSTRUCTIONS", "SRC_APPLICATION_FORM"],
+      "basisRefs": ["BASIS_FIELD_BUSINESS_ADDRESS"]
+    },
+    {
+      "id": "FIELD_INDUSTRY_CATEGORY",
+      "fieldPath": "applicantProfile.industryCategory",
+      "displayName": "行业类别",
+      "materialType": "APPLICATION_FORM",
+      "required": true,
+      "ruleType": "FORMAT_OR_MANUAL_REVIEW",
+      "instruction": "按照国民经济行业分类标准 GB/T 4754-2017 的中类填写。",
+      "findingCodeWhenMissing": "MISSING_FIELD",
+      "manualReview": true,
+      "sourceRefs": ["SRC_FIELD_INSTRUCTIONS", "SRC_APPLICATION_FORM"],
+      "basisRefs": ["BASIS_FIELD_INDUSTRY_CATEGORY"]
+    },
+    {
+      "id": "FIELD_CONTACT",
+      "fieldPath": "applicantProfile.contactName",
+      "displayName": "联系人",
+      "materialType": "APPLICATION_FORM",
+      "required": true,
+      "ruleType": "COMPLETENESS",
+      "instruction": "填写用水管理部门对外沟通固定人员姓名；个人申请时填写本人。",
+      "findingCodeWhenMissing": "MISSING_FIELD",
+      "sourceRefs": ["SRC_FIELD_INSTRUCTIONS", "SRC_APPLICATION_FORM"],
+      "basisRefs": ["BASIS_FIELD_CONTACT"]
+    },
+    {
+      "id": "FIELD_CONTACT_PHONE",
+      "fieldPath": "applicantProfile.contactPhone",
+      "displayName": "联系人手机号码",
+      "materialType": "APPLICATION_FORM",
+      "required": true,
+      "ruleType": "FORMAT",
+      "instruction": "填写联系人的常用手机号码。",
+      "formatHint": "PRC_MOBILE_PHONE",
+      "findingCodeWhenMissing": "MISSING_FIELD",
+      "findingCodeWhenInvalid": "INVALID_FORMAT",
+      "sourceRefs": ["SRC_FIELD_INSTRUCTIONS", "SRC_APPLICATION_FORM"],
+      "basisRefs": ["BASIS_FIELD_CONTACT_PHONE"]
+    },
+    {
+      "id": "FIELD_CO_APPLICANTS",
+      "fieldPath": "applicantProfile.coApplicants",
+      "displayName": "共同申请人",
+      "materialType": "APPLICATION_FORM",
+      "required": false,
+      "ruleType": "MVP_UNSUPPORTED",
+      "instruction": "如有共同申请人，填写单位名称、统一社会信用代码或身份证号码及对应份额。",
+      "findingCodeWhenPresent": "MULTI_APPLICANT_UNSUPPORTED",
+      "manualReview": true,
+      "sourceRefs": ["SRC_FIELD_INSTRUCTIONS", "SRC_APPLICATION_FORM"],
+      "basisRefs": ["BASIS_FIELD_CO_APPLICANTS"]
+    },
+    {
+      "id": "FIELD_PROJECT_NAME",
+      "fieldPath": "projectProfile.projectName",
+      "displayName": "项目名称",
+      "materialType": "APPLICATION_FORM",
+      "requiredWhen": "projectNature is NEW_BUILD or RENOVATION_OR_EXPANSION",
+      "ruleType": "COMPLETENESS",
+      "instruction": "填写新建、改建、扩建建设项目名称；其他情形可不填。",
+      "findingCodeWhenMissing": "MISSING_FIELD",
+      "sourceRefs": ["SRC_FIELD_INSTRUCTIONS", "SRC_APPLICATION_FORM"],
+      "basisRefs": ["BASIS_FIELD_PROJECT_NAME"]
+    },
+    {
+      "id": "FIELD_PROJECT_NATURE",
+      "fieldPath": "projectProfile.projectNature",
+      "displayName": "项目性质",
+      "materialType": "APPLICATION_FORM",
+      "required": true,
+      "ruleType": "ENUM",
+      "allowedValues": ["NEW_BUILD", "RENOVATION_OR_EXPANSION", "OTHER", "UNKNOWN"],
+      "instruction": "按照新建、改建扩建、其他进行勾选。",
+      "findingCodeWhenMissing": "MISSING_FIELD",
+      "sourceRefs": ["SRC_FIELD_INSTRUCTIONS", "SRC_APPLICATION_FORM"],
+      "basisRefs": ["BASIS_FIELD_PROJECT_NATURE"]
+    },
+    {
+      "id": "FIELD_PROJECT_OVERVIEW",
+      "fieldPath": "projectProfile.projectOverview",
+      "displayName": "项目概况",
+      "materialType": "APPLICATION_FORM",
+      "required": true,
+      "ruleType": "COMPLETENESS",
+      "instruction": "简要说明建设内容、规模、投资、地理位置、生产地点等基本情况。",
+      "findingCodeWhenMissing": "MISSING_FIELD",
+      "sourceRefs": ["SRC_FIELD_INSTRUCTIONS", "SRC_APPLICATION_FORM"],
+      "basisRefs": ["BASIS_FIELD_PROJECT_OVERVIEW"]
+    },
+    {
+      "id": "FIELD_ANNUAL_WATER_TOTAL",
+      "fieldPath": "projectProfile.annualWaterWithdrawalTotal",
+      "displayName": "运行期年取水量（合计）",
+      "materialType": "APPLICATION_FORM",
+      "required": true,
+      "ruleType": "NUMERIC_WITH_UNIT",
+      "unit": "10k_m3_per_year",
+      "instruction": "项目运行期所有取水水源的年总取水量，单位为万立方米/年。",
+      "findingCodeWhenMissing": "MISSING_FIELD",
+      "findingCodeWhenInvalid": "INVALID_FORMAT",
+      "riskCode": "WATER_AMOUNT_REVIEW_REQUIRED",
+      "manualReview": true,
+      "sourceRefs": ["SRC_FIELD_INSTRUCTIONS", "SRC_APPLICATION_FORM"],
+      "basisRefs": ["BASIS_FIELD_ANNUAL_WATER_TOTAL"]
+    },
+    {
+      "id": "FIELD_WATER_SOURCE_TYPE",
+      "fieldPath": "waterSourceProfile.sourceType",
+      "displayName": "水源类型",
+      "materialType": "APPLICATION_FORM",
+      "required": true,
+      "ruleType": "ENUM",
+      "allowedValues": ["SURFACE_WATER", "GROUNDWATER", "MINERAL_WATER", "GEOTHERMAL_WATER", "OTHER", "UNKNOWN"],
+      "instruction": "分为地表水、地下水和其他；地下水如为矿泉水或地热水需进一步勾选。",
+      "findingCodeWhenMissing": "WATER_SOURCE_INCOMPLETE",
+      "sourceRefs": ["SRC_FIELD_INSTRUCTIONS", "SRC_APPLICATION_FORM"],
+      "basisRefs": ["BASIS_FIELD_WATER_SOURCE_TYPE"]
+    },
+    {
+      "id": "FIELD_WATER_SOURCE_LOCATION",
+      "fieldPath": "waterSourceProfile.locationAdministrativeArea",
+      "displayName": "取水地点",
+      "materialType": "APPLICATION_FORM",
+      "required": true,
+      "ruleType": "COMPLETENESS",
+      "instruction": "填写取水工程（设施）取水口所在行政区，至少写至村或社区。",
+      "findingCodeWhenMissing": "WATER_SOURCE_INCOMPLETE",
+      "sourceRefs": ["SRC_FIELD_INSTRUCTIONS", "SRC_APPLICATION_FORM"],
+      "basisRefs": ["BASIS_FIELD_WATER_SOURCE_LOCATION"]
+    },
+    {
+      "id": "FIELD_INTAKE_POSITION",
+      "fieldPath": "waterSourceProfile.intakeLocationDescription",
+      "displayName": "取水口位置",
+      "materialType": "APPLICATION_FORM",
+      "required": true,
+      "ruleType": "COMPLETENESS",
+      "instruction": "地表水填写江河、湖泊、水库名称和相对位置；地下水说明水井具体位置或范围。",
+      "findingCodeWhenMissing": "WATER_SOURCE_INCOMPLETE",
+      "sourceRefs": ["SRC_FIELD_INSTRUCTIONS", "SRC_APPLICATION_FORM"],
+      "basisRefs": ["BASIS_FIELD_INTAKE_POSITION"]
+    },
+    {
+      "id": "FIELD_SOURCE_AMOUNT",
+      "fieldPath": "waterSourceProfile.annualWithdrawalAmount",
+      "displayName": "单个水源年取水量",
+      "materialType": "APPLICATION_FORM",
+      "required": true,
+      "ruleType": "NUMERIC_WITH_UNIT",
+      "unit": "10k_m3_per_year",
+      "instruction": "申请的单个水源取水量，单位为万立方米/年。",
+      "findingCodeWhenMissing": "WATER_SOURCE_INCOMPLETE",
+      "findingCodeWhenInvalid": "INVALID_FORMAT",
+      "riskCode": "WATER_AMOUNT_REVIEW_REQUIRED",
+      "manualReview": true,
+      "sourceRefs": ["SRC_FIELD_INSTRUCTIONS", "SRC_APPLICATION_FORM"],
+      "basisRefs": ["BASIS_FIELD_SOURCE_AMOUNT"]
+    },
+    {
+      "id": "FIELD_FACILITY_TYPES",
+      "fieldPath": "waterSourceProfile.facilityTypes",
+      "displayName": "取水工程（设施）类型",
+      "materialType": "APPLICATION_FORM",
+      "required": true,
+      "ruleType": "MULTI_ENUM",
+      "allowedValues": ["GATE", "DAM", "CHANNEL", "ARTIFICIAL_RIVER", "SIPHON", "PUMP", "WELL", "HYDROPOWER_STATION", "OTHER"],
+      "instruction": "按实际情况从闸、坝、渠道、人工河道、虹吸管、水泵、水井、水电站、其他中多选。",
+      "findingCodeWhenMissing": "WATER_SOURCE_INCOMPLETE",
+      "sourceRefs": ["SRC_FIELD_INSTRUCTIONS", "SRC_APPLICATION_FORM"],
+      "basisRefs": ["BASIS_FIELD_FACILITY_TYPES"]
+    },
+    {
+      "id": "FIELD_MULTI_WATER_SOURCE",
+      "fieldPath": "waterSourceProfile.additionalSources",
+      "displayName": "多个水源",
+      "materialType": "APPLICATION_FORM",
+      "required": false,
+      "ruleType": "MVP_UNSUPPORTED",
+      "instruction": "如有多个水源，根据取水量从大到小填写各水源信息。",
+      "findingCodeWhenPresent": "MULTI_WATER_SOURCE_UNSUPPORTED",
+      "manualReview": true,
+      "sourceRefs": ["SRC_FIELD_INSTRUCTIONS", "SRC_APPLICATION_FORM"],
+      "basisRefs": ["BASIS_FIELD_MULTI_WATER_SOURCE"]
+    },
+    {
+      "id": "FIELD_APPLICATION_REASON",
+      "fieldPath": "projectProfile.applicationReason",
+      "displayName": "申请事由",
+      "materialType": "APPLICATION_FORM",
+      "required": true,
+      "ruleType": "MANUAL_REVIEW",
+      "instruction": "说明申请取水缘由、取水用途、具备取水许可申请的依据、是否符合产业政策等。",
+      "findingCodeWhenMissing": "MISSING_FIELD",
+      "riskCode": "PERMIT_REQUIREMENT_REVIEW_REQUIRED",
+      "manualReview": true,
+      "sourceRefs": ["SRC_FIELD_INSTRUCTIONS", "SRC_APPLICATION_FORM"],
+      "basisRefs": ["BASIS_FIELD_APPLICATION_REASON"]
+    },
+    {
+      "id": "FIELD_START_DATE_AND_TERM",
+      "fieldPath": "projectProfile.requestedStartDate",
+      "displayName": "申请取水起始时间和期限",
+      "materialType": "APPLICATION_FORM",
+      "required": true,
+      "ruleType": "DATE_AND_TERM",
+      "instruction": "取水工程预计竣工开始取水时间填写年月日；期限按实际情况填写。",
+      "findingCodeWhenMissing": "MISSING_FIELD",
+      "findingCodeWhenInvalid": "INVALID_FORMAT",
+      "sourceRefs": ["SRC_FIELD_INSTRUCTIONS", "SRC_APPLICATION_FORM"],
+      "basisRefs": ["BASIS_FIELD_START_DATE_AND_TERM"]
+    },
+    {
+      "id": "FIELD_WATER_USE_TYPES",
+      "fieldPath": "waterSourceProfile.waterUseTypes",
+      "displayName": "取水用途",
+      "materialType": "APPLICATION_FORM",
+      "required": true,
+      "ruleType": "MULTI_ENUM",
+      "allowedValues": [
+        "TREATED_WATER_SUPPLY",
+        "RAW_WATER_SUPPLY",
+        "IN_RIVER_PRODUCTION",
+        "DOMESTIC_WATER",
+        "CONSTRUCTION_WATER",
+        "SERVICE_WATER",
+        "INDUSTRIAL_WATER",
+        "AGRICULTURAL_WATER",
+        "FORESTRY_WATER",
+        "ANIMAL_HUSBANDRY_WATER",
+        "FISHERY_WATER",
+        "ECOLOGICAL_WATER",
+        "OTHER"
+      ],
+      "instruction": "按照实际用途逐项点选；同时具有多种用途时应逐项点选。",
+      "findingCodeWhenMissing": "MISSING_FIELD",
+      "riskCode": "PERMIT_REQUIREMENT_REVIEW_REQUIRED",
+      "manualReview": true,
+      "sourceRefs": ["SRC_FIELD_INSTRUCTIONS", "SRC_APPLICATION_FORM"],
+      "basisRefs": ["BASIS_FIELD_WATER_USE_TYPES"]
+    },
+    {
+      "id": "FIELD_MEASUREMENT_METHODS",
+      "fieldPath": "waterSourceProfile.measurementMethods",
+      "displayName": "计量方式",
+      "materialType": "APPLICATION_FORM",
+      "required": true,
+      "ruleType": "MULTI_ENUM",
+      "allowedValues": [
+        "PIPE_METERING",
+        "MECHANICAL_WATER_METER",
+        "REMOTE_ELECTRONIC_WATER_METER",
+        "ELECTROMAGNETIC_FLOWMETER",
+        "ULTRASONIC_FLOWMETER",
+        "OPEN_CHANNEL_METERING",
+        "HYDRAULIC_STRUCTURE_METHOD",
+        "VELOCITY_AREA_METHOD",
+        "WEIR_FLUME",
+        "ADCP",
+        "OTHER_CONVERSION"
+      ],
+      "instruction": "包括管道计量、明渠计量和其他折算方式；选择其他时应注明具体方式。",
+      "findingCodeWhenMissing": "MISSING_FIELD",
+      "riskCode": "WATER_AMOUNT_REVIEW_REQUIRED",
+      "manualReview": true,
+      "sourceRefs": ["SRC_FIELD_INSTRUCTIONS", "SRC_APPLICATION_FORM"],
+      "basisRefs": ["BASIS_FIELD_MEASUREMENT_METHODS"]
+    },
+    {
+      "id": "FIELD_RETURN_WATER",
+      "fieldPath": "waterSourceProfile.returnWaterMethod",
+      "displayName": "退水量、退水方式和排放去向",
+      "materialType": "APPLICATION_FORM",
+      "requiredWhen": "not in-river use and has return water",
+      "ruleType": "MANUAL_REVIEW",
+      "instruction": "填写年退水量、退水方式、排放去向、受纳水体和退水地点；无退水或河道内用水可不填相应内容。",
+      "findingCodeWhenMissing": "MISSING_FIELD",
+      "manualReview": true,
+      "sourceRefs": ["SRC_FIELD_INSTRUCTIONS", "SRC_APPLICATION_FORM"],
+      "basisRefs": ["BASIS_FIELD_RETURN_WATER"]
+    }
+  ],
+  "reviewBasis": [
+    {
+      "id": "BASIS_WATER_LAW_PERMIT_REQUIREMENT",
+      "category": "PERMIT_REQUIREMENT",
+      "sourceId": "SRC_PROCESS_DOC",
+      "sourceTitle": "中华人民共和国水法第四十八条",
+      "summary": "直接从江河、湖泊或者地下取用水资源的单位和个人，应依法申请取水许可证；家庭生活和零星散养、圈养畜禽饮用等少量取水除外。",
+      "findingTypes": ["PERMIT_REQUIREMENT_REVIEW_REQUIRED"],
+      "requiresManualReview": true
+    },
+    {
+      "id": "BASIS_WITHDRAWAL_DEFINITION",
+      "category": "PERMIT_REQUIREMENT",
+      "sourceId": "SRC_PROCESS_DOC",
+      "sourceTitle": "取水许可和水资源费征收管理条例第二条",
+      "summary": "取水指利用取水工程或者设施直接从江河、湖泊或者地下取用水资源；工程设施包括闸、坝、渠道、人工河道、虹吸管、水泵、水井、水电站等。",
+      "findingTypes": ["PERMIT_REQUIREMENT_REVIEW_REQUIRED", "WATER_SOURCE_INCOMPLETE"],
+      "requiresManualReview": true
+    },
+    {
+      "id": "BASIS_NO_PERMIT_SCENARIOS",
+      "category": "NO_PERMIT_REVIEW",
+      "sourceId": "SRC_PROCESS_DOC",
+      "sourceTitle": "浙江省取水许可和水资源费征收管理办法第五条",
+      "summary": "农村集体经济组织及其成员使用本集体水塘水库、家庭生活和畜禽饮用等小规模取水、地下工程或公共安全等临时应急取水、农业抗旱和维护生态环境临时应急取水等情形可能无需办理取水许可证。",
+      "findingTypes": ["PERMIT_REQUIREMENT_REVIEW_REQUIRED"],
+      "requiresManualReview": true
+    },
+    {
+      "id": "BASIS_PUBLIC_NOTICE",
+      "category": "PUBLIC_NOTICE",
+      "sourceId": "SRC_PROCESS_DOC",
+      "sourceTitle": "浙江省取水许可和水资源费征收管理办法第八条",
+      "summary": "可能涉及第三方利益的取水许可申请，审批机关应在收到申请之日起 7 日内向社会公告，公告期限不得少于 10 日。",
+      "findingTypes": ["PUBLIC_NOTICE_REVIEW_REQUIRED"],
+      "requiresManualReview": true
+    },
+    {
+      "id": "BASIS_APPROVAL_AUTHORITY",
+      "category": "APPROVAL_AUTHORITY",
+      "sourceId": "SRC_PROCESS_DOC",
+      "sourceTitle": "浙江省取水许可和水资源费征收管理办法第六条",
+      "summary": "取水许可由取水口所在地县级水行政主管部门审批；跨行政区域取水由共同上一级审批，跨市级行政区域取水由浙江省水利厅审批。",
+      "findingTypes": ["PERMIT_REQUIREMENT_REVIEW_REQUIRED"],
+      "requiresManualReview": true
+    },
+    {
+      "id": "BASIS_WATER_ASSESSMENT_REPORT",
+      "category": "WATER_RESOURCE_ASSESSMENT",
+      "sourceId": "SRC_PROCESS_DOC",
+      "sourceTitle": "水资源论证分类",
+      "summary": "大中型水库或市级水行政主管部门直接管理水库取水、日取地下水 200 立方米及以上、水力发电总装机 1000 千瓦及以上、年取水量 50 万立方米及以上建设项目等通常对应报告书，并需不少于 5 人单数专家评审组。",
+      "findingTypes": ["WATER_RESOURCE_ASSESSMENT_REVIEW_REQUIRED", "WATER_AMOUNT_REVIEW_REQUIRED"],
+      "requiresManualReview": true
+    },
+    {
+      "id": "BASIS_WATER_ASSESSMENT_TABLE_1",
+      "category": "WATER_RESOURCE_ASSESSMENT",
+      "sourceId": "SRC_PROCESS_DOC",
+      "sourceTitle": "水资源论证分类",
+      "summary": "日取地下水 200 立方米以下、水力发电总装机 1000 千瓦以下、年取用地表水 50 万立方米以下且 5 万立方米及以上建设项目通常对应报告表 1，并需不少于 3 人单数专家评审组。",
+      "findingTypes": ["WATER_RESOURCE_ASSESSMENT_REVIEW_REQUIRED", "WATER_AMOUNT_REVIEW_REQUIRED"],
+      "requiresManualReview": true
+    },
+    {
+      "id": "BASIS_WATER_ASSESSMENT_TABLE_2",
+      "category": "WATER_RESOURCE_ASSESSMENT",
+      "sourceId": "SRC_PROCESS_DOC",
+      "sourceTitle": "水资源论证分类",
+      "summary": "年取用地表水 5 万立方米以下通常对应报告表 2。MVP 只提示人工复核，不作自动最终分类。",
+      "findingTypes": ["WATER_RESOURCE_ASSESSMENT_REVIEW_REQUIRED", "WATER_AMOUNT_REVIEW_REQUIRED"],
+      "requiresManualReview": true
+    },
+    {
+      "id": "BASIS_EXTENSION_REQUIREMENT",
+      "category": "PERMIT_EXTENSION",
+      "sourceId": "SRC_PROCESS_DOC",
+      "sourceTitle": "取水许可和水资源费征收管理条例第二十五条、取水许可管理办法第二十六条",
+      "summary": "取水许可证有效期届满需延续的，应在届满 45 日前向原审批机关申请，并提交延续取水申请书、原批准文件和取水许可证。",
+      "findingTypes": ["PERMIT_REQUIREMENT_REVIEW_REQUIRED"],
+      "requiresManualReview": true
+    },
+    {
+      "id": "BASIS_CHANGE_REAPPLY",
+      "category": "PERMIT_CHANGE",
+      "sourceId": "SRC_PROCESS_DOC",
+      "sourceTitle": "取水许可管理办法第二十八条",
+      "summary": "取水量、取水用途、取水水源、取水地点、退水地点、退水量、退水方式、主要污染物或污水处理措施发生变化时，应人工复核是否需重新提出取水申请。",
+      "findingTypes": ["PERMIT_REQUIREMENT_REVIEW_REQUIRED", "WATER_SOURCE_INCOMPLETE", "WATER_AMOUNT_REVIEW_REQUIRED"],
+      "requiresManualReview": true
+    },
+    {
+      "id": "BASIS_MATERIAL_INITIAL_LIST",
+      "category": "MATERIAL_CHECKLIST",
+      "sourceId": "SRC_PROCESS_DOC",
+      "sourceTitle": "取水许可办理需资料及流程材料清单",
+      "summary": "办理资料包括法人身份证、营业执照、申请报告、第三者利害关系说明、取水申请书、水资源论证等；MVP 固定处理申请书、营业执照和身份证三类材料。",
+      "findingTypes": ["MISSING_MATERIAL"],
+      "requiresManualReview": false
+    },
+    {
+      "id": "BASIS_FIELD_APPLICANT_IDENTITY",
+      "category": "FIELD_RULE",
+      "sourceId": "SRC_FIELD_INSTRUCTIONS",
+      "sourceTitle": "申请人填表说明",
+      "summary": "申请人名称应与注册登记信息或身份证信息一致。",
+      "findingTypes": ["MISSING_FIELD", "INCONSISTENT_IDENTITY"],
+      "requiresManualReview": true
+    },
+    {
+      "id": "BASIS_FIELD_CREDENTIAL_ID",
+      "category": "FIELD_RULE",
+      "sourceId": "SRC_FIELD_INSTRUCTIONS",
+      "sourceTitle": "统一社会信用代码（身份证号码）填表说明",
+      "summary": "法人或其他组织填写统一社会信用代码，个人填写身份证号码。",
+      "findingTypes": ["MISSING_FIELD", "INCONSISTENT_CREDENTIAL"],
+      "requiresManualReview": true
+    },
+    {
+      "id": "BASIS_FIELD_LEGAL_REPRESENTATIVE",
+      "category": "FIELD_RULE",
+      "sourceId": "SRC_FIELD_INSTRUCTIONS",
+      "sourceTitle": "法定代表人填表说明",
+      "summary": "法人或其他组织应填写法定代表人，个人申请时不填。",
+      "findingTypes": ["MISSING_FIELD", "INCONSISTENT_IDENTITY"],
+      "requiresManualReview": true
+    },
+    {
+      "id": "BASIS_FIELD_REGISTERED_ADDRESS",
+      "category": "FIELD_RULE",
+      "sourceId": "SRC_FIELD_INSTRUCTIONS",
+      "sourceTitle": "住所（住址）填表说明",
+      "summary": "单位按登记注册地址填写并应与注册登记信息一致；个人填写身份证载明住址。",
+      "findingTypes": ["MISSING_FIELD", "INCONSISTENT_CREDENTIAL"],
+      "requiresManualReview": true
+    },
+    {
+      "id": "BASIS_FIELD_BUSINESS_ADDRESS",
+      "category": "FIELD_RULE",
+      "sourceId": "SRC_FIELD_INSTRUCTIONS",
+      "sourceTitle": "生产经营场所地址填表说明",
+      "summary": "生产经营场所地址应填至具体街道、小区门牌号。",
+      "findingTypes": ["MISSING_FIELD"],
+      "requiresManualReview": false
+    },
+    {
+      "id": "BASIS_FIELD_INDUSTRY_CATEGORY",
+      "category": "FIELD_RULE",
+      "sourceId": "SRC_FIELD_INSTRUCTIONS",
+      "sourceTitle": "行业类别填表说明",
+      "summary": "行业类别按照国民经济行业分类标准 GB/T 4754-2017 的中类填写。",
+      "findingTypes": ["MISSING_FIELD", "MODEL_UNCERTAIN"],
+      "requiresManualReview": true
+    },
+    {
+      "id": "BASIS_FIELD_CONTACT",
+      "category": "FIELD_RULE",
+      "sourceId": "SRC_FIELD_INSTRUCTIONS",
+      "sourceTitle": "联系人填表说明",
+      "summary": "联系人为取用水管理部门对外沟通固定人员；个人申请时填写本人。",
+      "findingTypes": ["MISSING_FIELD"],
+      "requiresManualReview": false
+    },
+    {
+      "id": "BASIS_FIELD_CONTACT_PHONE",
+      "category": "FIELD_RULE",
+      "sourceId": "SRC_FIELD_INSTRUCTIONS",
+      "sourceTitle": "手机号码填表说明",
+      "summary": "手机号码应填写联系人常用手机号码。",
+      "findingTypes": ["MISSING_FIELD", "INVALID_FORMAT"],
+      "requiresManualReview": false
+    },
+    {
+      "id": "BASIS_FIELD_CO_APPLICANTS",
+      "category": "FIELD_RULE",
+      "sourceId": "SRC_FIELD_INSTRUCTIONS",
+      "sourceTitle": "共同申请人填表说明",
+      "summary": "如有共同申请人，需填写共同申请人名称、统一社会信用代码或身份证号码及份额。MVP 仅支持单申请人。",
+      "findingTypes": ["MULTI_APPLICANT_UNSUPPORTED"],
+      "requiresManualReview": true
+    },
+    {
+      "id": "BASIS_FIELD_PROJECT_NAME",
+      "category": "FIELD_RULE",
+      "sourceId": "SRC_FIELD_INSTRUCTIONS",
+      "sourceTitle": "项目名称填表说明",
+      "summary": "新建、改建、扩建项目填写建设项目名称；其他可不填。",
+      "findingTypes": ["MISSING_FIELD"],
+      "requiresManualReview": false
+    },
+    {
+      "id": "BASIS_FIELD_PROJECT_NATURE",
+      "category": "FIELD_RULE",
+      "sourceId": "SRC_FIELD_INSTRUCTIONS",
+      "sourceTitle": "项目性质填表说明",
+      "summary": "项目性质按照新建、改建、扩建、其他进行勾选。",
+      "findingTypes": ["MISSING_FIELD", "INVALID_FORMAT"],
+      "requiresManualReview": false
+    },
+    {
+      "id": "BASIS_FIELD_PROJECT_OVERVIEW",
+      "category": "FIELD_RULE",
+      "sourceId": "SRC_FIELD_INSTRUCTIONS",
+      "sourceTitle": "项目概况填表说明",
+      "summary": "项目概况应说明建设内容、规模、投资、地理位置和生产地点等。",
+      "findingTypes": ["MISSING_FIELD"],
+      "requiresManualReview": true
+    },
+    {
+      "id": "BASIS_FIELD_ANNUAL_WATER_TOTAL",
+      "category": "FIELD_RULE",
+      "sourceId": "SRC_FIELD_INSTRUCTIONS",
+      "sourceTitle": "运行期年取水量填表说明",
+      "summary": "运行期年取水量为所有取水水源的年总取水量，单位万立方米/年。",
+      "findingTypes": ["MISSING_FIELD", "INVALID_FORMAT", "WATER_AMOUNT_REVIEW_REQUIRED"],
+      "requiresManualReview": true
+    },
+    {
+      "id": "BASIS_FIELD_WATER_SOURCE_TYPE",
+      "category": "FIELD_RULE",
+      "sourceId": "SRC_FIELD_INSTRUCTIONS",
+      "sourceTitle": "水源类型填表说明",
+      "summary": "水源类型分为地表水、地下水和其他；地下水如为矿泉水或地热水需进一步勾选。",
+      "findingTypes": ["WATER_SOURCE_INCOMPLETE"],
+      "requiresManualReview": false
+    },
+    {
+      "id": "BASIS_FIELD_WATER_SOURCE_LOCATION",
+      "category": "FIELD_RULE",
+      "sourceId": "SRC_FIELD_INSTRUCTIONS",
+      "sourceTitle": "取水地点填表说明",
+      "summary": "取水地点填写取水工程（设施）取水口所在行政区，写至村或社区。",
+      "findingTypes": ["WATER_SOURCE_INCOMPLETE"],
+      "requiresManualReview": false
+    },
+    {
+      "id": "BASIS_FIELD_INTAKE_POSITION",
+      "category": "FIELD_RULE",
+      "sourceId": "SRC_FIELD_INSTRUCTIONS",
+      "sourceTitle": "取水口位置填表说明",
+      "summary": "地表水填写水体名称和相对位置；地下水说明水井具体位置或范围。",
+      "findingTypes": ["WATER_SOURCE_INCOMPLETE"],
+      "requiresManualReview": false
+    },
+    {
+      "id": "BASIS_FIELD_SOURCE_AMOUNT",
+      "category": "FIELD_RULE",
+      "sourceId": "SRC_FIELD_INSTRUCTIONS",
+      "sourceTitle": "取水量填表说明",
+      "summary": "单个水源取水量单位为万立方米/年。",
+      "findingTypes": ["WATER_SOURCE_INCOMPLETE", "INVALID_FORMAT", "WATER_AMOUNT_REVIEW_REQUIRED"],
+      "requiresManualReview": true
+    },
+    {
+      "id": "BASIS_FIELD_FACILITY_TYPES",
+      "category": "FIELD_RULE",
+      "sourceId": "SRC_FIELD_INSTRUCTIONS",
+      "sourceTitle": "取水工程（设施）类型填表说明",
+      "summary": "取水工程（设施）类型包括闸、坝、渠道、人工河道、虹吸管、水泵、水井、水电站及其他。",
+      "findingTypes": ["WATER_SOURCE_INCOMPLETE"],
+      "requiresManualReview": false
+    },
+    {
+      "id": "BASIS_FIELD_MULTI_WATER_SOURCE",
+      "category": "FIELD_RULE",
+      "sourceId": "SRC_FIELD_INSTRUCTIONS",
+      "sourceTitle": "多水源填表说明",
+      "summary": "多个水源应按取水量从大到小分别填写。MVP 仅支持一个水源。",
+      "findingTypes": ["MULTI_WATER_SOURCE_UNSUPPORTED"],
+      "requiresManualReview": true
+    },
+    {
+      "id": "BASIS_FIELD_APPLICATION_REASON",
+      "category": "FIELD_RULE",
+      "sourceId": "SRC_FIELD_INSTRUCTIONS",
+      "sourceTitle": "申请事由填表说明",
+      "summary": "申请事由说明取水缘由、取水用途、申请依据以及是否符合产业政策等。",
+      "findingTypes": ["MISSING_FIELD", "PERMIT_REQUIREMENT_REVIEW_REQUIRED"],
+      "requiresManualReview": true
+    },
+    {
+      "id": "BASIS_FIELD_START_DATE_AND_TERM",
+      "category": "FIELD_RULE",
+      "sourceId": "SRC_FIELD_INSTRUCTIONS",
+      "sourceTitle": "申请取水起始时间和期限填表说明",
+      "summary": "起始时间为取水工程预计竣工开始取水的日期，期限根据实际情况填写。",
+      "findingTypes": ["MISSING_FIELD", "INVALID_FORMAT"],
+      "requiresManualReview": false
+    },
+    {
+      "id": "BASIS_FIELD_WATER_USE_TYPES",
+      "category": "FIELD_RULE",
+      "sourceId": "SRC_FIELD_INSTRUCTIONS",
+      "sourceTitle": "取水用途填表说明",
+      "summary": "取水用途包括制水供水、原水供水、河道内生产用水、生活用水、工业用水、农业用水、服务业用水、生态用水等；多用途应逐项点选。",
+      "findingTypes": ["MISSING_FIELD", "PERMIT_REQUIREMENT_REVIEW_REQUIRED"],
+      "requiresManualReview": true
+    },
+    {
+      "id": "BASIS_FIELD_MEASUREMENT_METHODS",
+      "category": "FIELD_RULE",
+      "sourceId": "SRC_FIELD_INSTRUCTIONS",
+      "sourceTitle": "计量方式填表说明",
+      "summary": "计量方式包括管道计量、明渠计量和其他折算方式；其他方式应注明具体方式。",
+      "findingTypes": ["MISSING_FIELD", "WATER_AMOUNT_REVIEW_REQUIRED"],
+      "requiresManualReview": true
+    },
+    {
+      "id": "BASIS_FIELD_RETURN_WATER",
+      "category": "FIELD_RULE",
+      "sourceId": "SRC_FIELD_INSTRUCTIONS",
+      "sourceTitle": "退水信息填表说明",
+      "summary": "退水信息包括年退水量、退水方式和排放去向、受纳水体、功能目标和退水地点；无退水或特定河道内用水可不填相应内容。",
+      "findingTypes": ["MISSING_FIELD"],
+      "requiresManualReview": true
+    }
+  ],
+  "promptSnippets": [
+    {
+      "id": "PROMPT_SYSTEM_ROLE",
+      "kind": "system",
+      "text": "你是取水许可材料智能辅助审核助手。你只能根据输入材料抽取结果和知识片段生成预审问题、风险提示、依据引用和人工复核建议，不得作出最终行政许可批准或不予批准决定。",
+      "basisRefs": []
+    },
+    {
+      "id": "PROMPT_BASIS_LIMIT",
+      "kind": "constraint",
+      "text": "所有 basisRefs 必须来自本次输入的 knowledgeFragments.sourceId 或 knowledgeFragments.id；不得编造法规名称、条款号或来源 ID。",
+      "basisRefs": []
+    },
+    {
+      "id": "PROMPT_MISSING_MATERIALS",
+      "kind": "instruction",
+      "text": "对于缺失的 APPLICATION_FORM、BUSINESS_LICENSE、ID_CARD，生成 MISSING_MATERIAL 问题。申请书缺失通常为 BLOCKER；营业执照或身份证缺失通常为 WARNING，但应提示主体或身份一致性无法完成。",
+      "basisRefs": ["BASIS_MATERIAL_INITIAL_LIST"]
+    },
+    {
+      "id": "PROMPT_FIELD_COMPLETENESS",
+      "kind": "instruction",
+      "text": "根据 applicationFieldRules 检查申请书核心字段。缺失字段使用 MISSING_FIELD；格式明显异常使用 INVALID_FORMAT；主体、证照或身份证信息不一致使用 INCONSISTENT_IDENTITY 或 INCONSISTENT_CREDENTIAL。",
+      "basisRefs": ["BASIS_FIELD_APPLICANT_IDENTITY", "BASIS_FIELD_CREDENTIAL_ID"]
+    },
+    {
+      "id": "PROMPT_MANUAL_REVIEW",
+      "kind": "instruction",
+      "text": "水资源论证分类、审批权限、是否涉及第三方利益、公示要求、是否无需办理取水许可、取水量合理性、产业政策符合性等只能作为人工复核提示，不得自动给出最终合规结论。",
+      "basisRefs": [
+        "BASIS_NO_PERMIT_SCENARIOS",
+        "BASIS_PUBLIC_NOTICE",
+        "BASIS_APPROVAL_AUTHORITY",
+        "BASIS_WATER_ASSESSMENT_REPORT",
+        "BASIS_WATER_ASSESSMENT_TABLE_1",
+        "BASIS_WATER_ASSESSMENT_TABLE_2"
+      ]
+    },
+    {
+      "id": "PROMPT_OUTPUT_TONE",
+      "kind": "style",
+      "text": "输出使用中性审核辅助措辞，例如“需要人工复核”“建议补充核对”，避免“合格”“不合格”“批准”“驳回”等最终行政决定表述。",
+      "basisRefs": []
+    },
+    {
+      "id": "PROMPT_DISCLOSURE",
+      "kind": "disclaimer",
+      "text": "AI 审核结果仅作为辅助建议，最终判断由人工审批人员完成。",
+      "basisRefs": []
+    }
+  ],
+  "manualReviewRules": [
+    {
+      "id": "MR_NO_PERMIT_SCENARIO",
+      "findingCode": "PERMIT_REQUIREMENT_REVIEW_REQUIRED",
+      "trigger": "申请事由、水源类型、取水用途或取水量可能落入无需办理取水许可证情形。",
+      "basisRefs": ["BASIS_NO_PERMIT_SCENARIOS"],
+      "reason": "是否无需办理取水许可需要结合事实、地方要求和人工判断。"
+    },
+    {
+      "id": "MR_PUBLIC_NOTICE",
+      "findingCode": "PUBLIC_NOTICE_REVIEW_REQUIRED",
+      "trigger": "材料显示可能涉及第三方利益、跨区域影响、争议或第三者利害关系说明。",
+      "basisRefs": ["BASIS_PUBLIC_NOTICE"],
+      "reason": "是否需要公告及公告范围应由审批人员结合具体影响判断。"
+    },
+    {
+      "id": "MR_APPROVAL_AUTHORITY",
+      "findingCode": "PERMIT_REQUIREMENT_REVIEW_REQUIRED",
+      "trigger": "取水口所在地、用水对象所在地或退水影响涉及跨行政区域。",
+      "basisRefs": ["BASIS_APPROVAL_AUTHORITY"],
+      "reason": "审批权限涉及地域关系和争议影响，MVP 不作自动归属判定。"
+    },
+    {
+      "id": "MR_WATER_RESOURCE_ASSESSMENT",
+      "findingCode": "WATER_RESOURCE_ASSESSMENT_REVIEW_REQUIRED",
+      "trigger": "年取水量、地下水日取水量、水力发电装机、水库类别等信息触发水资源论证分类阈值或缺失。",
+      "basisRefs": [
+        "BASIS_WATER_ASSESSMENT_REPORT",
+        "BASIS_WATER_ASSESSMENT_TABLE_1",
+        "BASIS_WATER_ASSESSMENT_TABLE_2"
+      ],
+      "reason": "论证类别和专家评审要求需要结合项目类型、地方口径和完整材料人工确认。"
+    },
+    {
+      "id": "MR_MULTI_APPLICANT",
+      "findingCode": "MULTI_APPLICANT_UNSUPPORTED",
+      "trigger": "申请书出现共同申请人信息。",
+      "basisRefs": ["BASIS_FIELD_CO_APPLICANTS"],
+      "reason": "MVP 合同仅支持单申请人，需人工处理共同申请份额和主体关系。"
+    },
+    {
+      "id": "MR_MULTI_WATER_SOURCE",
+      "findingCode": "MULTI_WATER_SOURCE_UNSUPPORTED",
+      "trigger": "申请书出现多个水源。",
+      "basisRefs": ["BASIS_FIELD_MULTI_WATER_SOURCE"],
+      "reason": "MVP 合同仅支持一个水源；多水源需人工确认取水量排序和分项信息。"
+    },
+    {
+      "id": "MR_CHANGE_OR_EXTENSION",
+      "findingCode": "PERMIT_REQUIREMENT_REVIEW_REQUIRED",
+      "trigger": "材料显示取水许可延续、取水量/用途/水源/地点/退水事项发生变化。",
+      "basisRefs": ["BASIS_EXTENSION_REQUIREMENT", "BASIS_CHANGE_REAPPLY"],
+      "reason": "延续或变更事项涉及原许可、时间节点和重新申请要求，需人工复核。"
+    },
+    {
+      "id": "MR_LOW_CONFIDENCE",
+      "findingCode": "OCR_LOW_CONFIDENCE",
+      "trigger": "关键字段 OCR 或抽取置信度低，或证照字段无法稳定识别。",
+      "basisRefs": [],
+      "reason": "低置信度字段不得用于自动结论，应提示人工查看原件。"
+    }
+  ],
+  "citationFormat": {
+    "knowledgeFragmentRequiredFields": ["id", "sourceId", "sourceTitle", "summary"],
+    "basisRefRule": "issues[].basisRefs and riskHints[].basisRefs may only cite reviewBasis[].id or promptSnippets[].id supplied in the request.",
+    "displayFormat": "【{sourceTitle} · {id}】{summary}"
+  },
+  "workerConsumption": {
+    "recommendedInputKey": "knowledgeFragments",
+    "fragmentSelection": [
+      "Always include materialChecklist entries for all fixed MVP slots.",
+      "Include applicationFieldRules relevant to extracted or missing fields.",
+      "Include reviewBasis entries relevant to triggered manualReviewRules.",
+      "Include promptSnippets for role, basis limit, manual review, output tone and disclosure."
+    ],
+    "privacy": [
+      "Do not place raw ID-card numbers or full business-license OCR text into prompts when short field summaries are enough.",
+      "Do not expose storage object keys or signed URLs in applicant or reviewer output.",
+      "Applicant-visible messages must use materialChecklist.missingFinding.messageForApplicant or sanitized field hints."
+    ]
+  }
+}
