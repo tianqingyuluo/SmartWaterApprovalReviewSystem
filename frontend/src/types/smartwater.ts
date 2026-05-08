@@ -22,6 +22,15 @@ export const MATERIAL_SLOTS: MaterialType[] = ['APPLICATION_FORM', 'BUSINESS_LIC
 
 export const ACCEPTED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'pdf']
 
+/** MaterialType → multipart form field name expected by Java backend */
+export const MATERIAL_FORM_FIELDS: Record<MaterialType, string> = {
+  APPLICATION_FORM: 'applicationForm',
+  BUSINESS_LICENSE: 'businessLicense',
+  ID_CARD: 'idCard',
+}
+
+// ── Shared sub-DTOs ──
+
 export interface MaterialSlot {
   materialType: MaterialType
   originalFileName: string | null
@@ -45,40 +54,77 @@ export interface ResultSummary {
   infoCount: number
 }
 
-export interface ApplicantResult {
-  missingMaterials: MaterialType[]
-  fieldIssues: Finding[]
-  suggestions: string[]
-}
-
-export interface ReviewerResult {
-  extractedFields: Record<string, string>
-  fieldConfidence: Record<string, number>
-  materialSummaries: Record<string, string>
-  findings: Finding[]
-  draftOpinion: string
-  riskHints: string[]
-  manualReviewNotice: string
-  failureCategory: string | null
-  failureReason: string | null
-}
-
-export interface ReviewTask {
-  taskId: string
-  sessionId: string
-  status: ProcessingStatus
-  submittedAt: string
-  updatedAt: string
-  materialSlots: MaterialSlot[]
-  resultSummary: ResultSummary | null
-  applicantResult: ApplicantResult | null
-  reviewerResult: ReviewerResult | null
-}
+// ── Submit ──
 
 export interface SubmitResponse {
   taskId: string
   sessionId: string
 }
+
+// ── Backend DTOs (match actual endpoint response shapes) ──
+
+/** GET /task/{taskId}/status */
+export interface TaskStatusResponse {
+  taskId: string
+  status: ProcessingStatus
+  submittedAt: string
+  updatedAt: string
+  materials: MaterialSlot[]
+  message?: string
+}
+
+/** GET /task/{taskId}/result/applicant */
+export interface ApplicantResultResponse {
+  taskId: string
+  status: ProcessingStatus
+  summary: ResultSummary
+  issues: Finding[]
+  missingMaterials: MaterialType[]
+}
+
+/** GET /task/{taskId}/result/reviewer */
+export interface ReviewerResultResponse {
+  taskId: string
+  status: ProcessingStatus
+  summary: ResultSummary
+  issues: Finding[]
+  riskHints: string[]
+  draftOpinion: string
+  missingMaterials: MaterialType[]
+  extractedFields: Record<string, string>
+  fieldConfidence?: Record<string, number>
+  materialSummaries?: Record<string, string>
+  manualReviewNotice?: string
+  modelMetadata?: Record<string, unknown>
+  failureCategory?: string | null
+  failureReason?: string | null
+}
+
+// ── View models (transformed from backend DTOs for page consumption) ──
+
+export interface ApplicantResultView {
+  status: ProcessingStatus
+  missingMaterials: MaterialType[]
+  fieldIssues: Finding[]
+  suggestions: string[]
+}
+
+export interface ReviewerResultView {
+  status: ProcessingStatus
+  materials: MaterialSlot[]
+  summary: ResultSummary | null
+  extractedFields: Record<string, string>
+  fieldConfidence: Record<string, number> | null
+  materialSummaries: Record<string, string>
+  findings: Finding[]
+  riskHints: string[]
+  draftOpinion: string
+  manualReviewNotice: string
+  failureCategory: string | null
+  failureReason: string | null
+}
+
+// ── Status labels ──
 
 export const STATUS_LABELS_APPLICANT: Record<ProcessingStatus, string> = {
   SUBMITTED: '已提交',

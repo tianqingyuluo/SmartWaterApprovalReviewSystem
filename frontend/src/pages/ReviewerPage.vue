@@ -22,46 +22,46 @@
       <p v-if="lookupError" class="lookup-error">{{ lookupError }}</p>
     </header>
 
-    <StatusBanner v-if="task" :status="task.status" :resultSummary="task.resultSummary" />
+    <StatusBanner v-if="task" :status="task.status" :resultSummary="task.summary" />
 
     <div v-if="task && (task.status === 'COMPLETED' || task.status === 'PARTIAL_SUCCESS')" class="result-body">
-      <MaterialSlotSummary :slots="task.materialSlots" />
+      <MaterialSlotSummary :slots="task.materials" />
 
       <FieldExtraction
-        v-if="task.reviewerResult?.extractedFields"
-        :fields="task.reviewerResult.extractedFields"
-        :confidence="task.reviewerResult.fieldConfidence"
+        v-if="Object.keys(task.extractedFields).length"
+        :fields="task.extractedFields"
+        :confidence="task.fieldConfidence"
       />
 
       <FindingList
-        v-if="task.reviewerResult?.findings?.length"
-        :findings="task.reviewerResult.findings"
+        v-if="task.findings?.length"
+        :findings="task.findings"
       />
 
       <MaterialSummary
-        v-if="task.reviewerResult?.materialSummaries"
-        :summaries="task.reviewerResult.materialSummaries"
+        v-if="Object.keys(task.materialSummaries).length"
+        :summaries="task.materialSummaries"
       />
 
       <RiskHints
-        v-if="task.reviewerResult?.riskHints?.length"
-        :hints="task.reviewerResult.riskHints"
+        v-if="task.riskHints?.length"
+        :hints="task.riskHints"
       />
 
       <DraftOpinion
-        v-if="task.reviewerResult?.draftOpinion"
-        :opinion="task.reviewerResult.draftOpinion"
+        v-if="task.draftOpinion"
+        :opinion="task.draftOpinion"
       />
 
       <ManualReviewNotice
-        v-if="task.reviewerResult?.manualReviewNotice"
-        :notice="task.reviewerResult.manualReviewNotice"
+        v-if="task.manualReviewNotice"
+        :notice="task.manualReviewNotice"
       />
     </div>
 
     <div v-if="task && task.status === 'FAILED'" class="failure-block">
       <h3>处理失败</h3>
-      <p v-if="task.reviewerResult?.failureReason">{{ task.reviewerResult.failureReason }}</p>
+      <p v-if="task.failureReason">{{ task.failureReason }}</p>
       <p>请检查材料文件是否可读，或重新提交新的任务。</p>
     </div>
 
@@ -74,8 +74,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { getTask } from '@/api/task'
-import type { ReviewTask } from '@/types'
+import { getTaskStatus, getReviewerResult, toReviewerResultView } from '@/api/task'
+import type { ReviewerResultView } from '@/types'
 import StatusBanner from '@/components/business/StatusBanner.vue'
 import MaterialSlotSummary from '@/components/business/MaterialSlotSummary.vue'
 import FieldExtraction from '@/components/business/FieldExtraction.vue'
@@ -89,7 +89,7 @@ const route = useRoute()
 
 const inputTaskId = ref((route.query.taskId as string) || '')
 const inputSessionId = ref((route.query.sessionId as string) || '')
-const task = ref<ReviewTask | null>(null)
+const task = ref<ReviewerResultView | null>(null)
 const loading = ref(false)
 const lookupError = ref('')
 
@@ -102,8 +102,11 @@ async function lookup() {
   lookupError.value = ''
   loading.value = true
   try {
-    const res = await getTask(inputTaskId.value, inputSessionId.value)
-    task.value = res.data.data
+    const [statusRes, resultRes] = await Promise.all([
+      getTaskStatus(inputTaskId.value, inputSessionId.value),
+      getReviewerResult(inputTaskId.value, inputSessionId.value),
+    ])
+    task.value = toReviewerResultView(statusRes.data.data, resultRes.data.data)
   } catch (e) {
     lookupError.value = e instanceof Error ? e.message : '查询失败'
     task.value = null

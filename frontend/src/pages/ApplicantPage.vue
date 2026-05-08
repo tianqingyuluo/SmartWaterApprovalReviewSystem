@@ -59,12 +59,7 @@
           <dt>会话 ID</dt>
           <dd><code>{{ result.sessionId }}</code></dd>
         </dl>
-        <p class="result-note">
-          请保存以上 ID，用于查看审核结果。
-          <router-link :to="`/review?taskId=${result.taskId}&sessionId=${result.sessionId}`">
-            查看审核结果
-          </router-link>
-        </p>
+        <p class="result-note">请保存以上 ID，用于后续查询审核结果。</p>
         <button class="btn-new" @click="resetForm">提交新的材料</button>
       </div>
     </div>
@@ -77,18 +72,18 @@
     <div v-if="showApplicantResult && taskData" class="applicant-result">
       <h2>预检查结果</h2>
 
-      <div v-if="taskData.applicantResult?.missingMaterials?.length" class="app-result-card missing">
+      <div v-if="taskData.missingMaterials?.length" class="app-result-card missing">
         <h3>缺失材料</h3>
         <ul>
-          <li v-for="m in taskData.applicantResult.missingMaterials" :key="m">
+          <li v-for="m in taskData.missingMaterials" :key="m">
             {{ MATERIAL_LABELS[m as MaterialType] || m }}
           </li>
         </ul>
       </div>
 
-      <div v-if="taskData.applicantResult?.fieldIssues?.length" class="app-result-card issues">
+      <div v-if="taskData.fieldIssues?.length" class="app-result-card issues">
         <h3>字段问题</h3>
-        <div v-for="(issue, idx) in taskData.applicantResult.fieldIssues" :key="idx" class="issue-item">
+        <div v-for="(issue, idx) in taskData.fieldIssues" :key="idx" class="issue-item">
           <span class="issue-severity" :class="'sev-' + issue.severity.toLowerCase()">
             {{ severityLabel(issue.severity) }}
           </span>
@@ -96,17 +91,14 @@
         </div>
       </div>
 
-      <div v-if="taskData.applicantResult?.suggestions?.length" class="app-result-card suggestions">
+      <div v-if="taskData.suggestions?.length" class="app-result-card suggestions">
         <h3>建议</h3>
         <ul>
-          <li v-for="(s, idx) in taskData.applicantResult.suggestions" :key="idx">{{ s }}</li>
+          <li v-for="(s, idx) in taskData.suggestions" :key="idx">{{ s }}</li>
         </ul>
       </div>
 
       <div class="app-result-actions">
-        <button class="btn-view" @click="goToReview">
-          查看完整审核结果
-        </button>
         <button class="btn-new" @click="resetForm">提交新的材料</button>
       </div>
     </div>
@@ -117,19 +109,22 @@
 
 <script setup lang="ts">
 import { ref, computed, reactive } from 'vue'
-import { useRouter } from 'vue-router'
-import { submitTask, getTask } from '@/api/task'
+import {
+  submitTask,
+  getTaskStatus,
+  getApplicantResult,
+  toApplicantResultView,
+} from '@/api/task'
 import { usePolling } from '@/composables/usePolling'
-import type { ReviewTask, SubmitResponse, MaterialType, Severity } from '@/types'
+import type { SubmitResponse, MaterialType, Severity, TaskStatusResponse, ApplicantResultView } from '@/types'
 import {
   MATERIAL_SLOTS,
   MATERIAL_LABELS,
   ACCEPTED_EXTENSIONS,
+  MATERIAL_FORM_FIELDS,
 } from '@/types'
 import type { ProcessingStatus } from '@/types'
 import StatusBadge from '@/components/common/StatusBadge.vue'
-
-const router = useRouter()
 
 interface SlotState {
   type: string
@@ -151,7 +146,7 @@ const taskId = ref('')
 const sessionId = ref('')
 const isPolling = ref(false)
 const taskStatus = ref<ProcessingStatus>('SUBMITTED')
-const taskData = ref<ReviewTask | null>(null)
+const taskData = ref<ApplicantResultView | null>(null)
 
 const showApplicantResult = computed(() =>
   taskData.value !== null &&
@@ -199,6 +194,17 @@ function clearSlot(type: string) {
   if (input) input.value = ''
 }
 
+const TERMINAL_STATUSES: ProcessingStatus[] = ['COMPLETED', 'PARTIAL_SUCCESS', 'FAILED']
+
+async function fetchApplicantResult() {
+  try {
+    const res = await getApplicantResult(taskId.value, sessionId.value)
+    taskData.value = toApplicantResultView(res.data.data)
+  } catch {
+    // result fetch failure is non-blocking; polling already updated status
+  }
+}
+
 async function handleSubmit() {
   submitError.value = ''
 
@@ -213,7 +219,7 @@ async function handleSubmit() {
     const formData = new FormData()
     slots.forEach((s) => {
       if (s.file) {
-        formData.append(s.type, s.file)
+        formData.append(MATERIAL_FORM_FIELDS[s.type as MaterialType], s.file)
       }
     })
 
@@ -225,13 +231,16 @@ async function handleSubmit() {
     isPolling.value = true
 
     const { start } = usePolling(
-      () => getTask(data.taskId, data.sessionId).then((r) => r.data.data),
+      () => getTaskStatus(data.taskId, data.sessionId).then((r) => r.data.data),
       3000,
-      (task: ReviewTask) =>
-        task.status === 'COMPLETED' || task.status === 'PARTIAL_SUCCESS' || task.status === 'FAILED',
-      (task: ReviewTask) => {
-        taskStatus.value = task.status
-        taskData.value = task
+      (statusResp: TaskStatusResponse) => TERMINAL_STATUSES.includes(statusResp.status),
+      (statusResp: TaskStatusResponse) => {
+        taskStatus.value = statusResp.status
+        if (TERMINAL_STATUSES.includes(statusResp.status)) {
+          if (statusResp.status !== 'FAILED') {
+            fetchApplicantResult()
+          }
+        }
       },
     )
     start()
@@ -253,12 +262,9 @@ function resetForm() {
   taskId.value = ''
   sessionId.value = ''
   isPolling.value = false
+  taskStatus.value = 'SUBMITTED'
   taskData.value = null
   submitError.value = ''
-}
-
-function goToReview() {
-  router.push(`/review?taskId=${taskId.value}&sessionId=${sessionId.value}`)
 }
 </script>
 
@@ -456,10 +462,6 @@ function goToReview() {
   margin-bottom: 16px;
 }
 
-.result-note a {
-  color: #1890ff;
-}
-
 .btn-new {
   border: 1px solid #d9d9d9;
   background: #fff;
@@ -471,16 +473,6 @@ function goToReview() {
 .polling-section {
   margin-top: 24px;
   text-align: center;
-}
-
-.btn-view {
-  margin-top: 12px;
-  padding: 8px 24px;
-  background: #1890ff;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
 }
 
 .polling-hint {
