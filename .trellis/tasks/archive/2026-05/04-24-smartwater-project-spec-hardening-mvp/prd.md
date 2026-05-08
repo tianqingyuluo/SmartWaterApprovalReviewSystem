@@ -31,6 +31,11 @@
 * 父任务 PRD。
 * 各 MVP 子任务的最终 PRD、实现和质量检查结果。
 * `.trellis/spec/backend/`、`.trellis/spec/frontend/`、`.trellis/spec/guides/` 现有内容。
+* `docs/readable/dev-log/2026-05.md` 中已记录的 PR #5、PR #6、PR #7 合并结果与后续事项。
+* 当前真实代码目录：
+  * Java：`java-services/water-approval/src/main/java/com/tianqingyuluo/waterapproval/{common,config,controller,dto,entity,mapper,service,storage}`
+  * Frontend：`frontend/src/{api,components/{common,business},composables,pages,router,types,utils}`
+  * Python Worker：`python-services/smart-water-approval-review-system-py/src/{adapters,models,services}`
 
 ## Outputs
 
@@ -54,11 +59,13 @@
 * 项目必须维护面向人阅读的文档树 `docs/readable/**`，其中模块文档统一放在 `docs/readable/modules/<module>/`。
 * 任务完成/finish 阶段必须注入文档维护检查，让 AI 主动更新项目开发日志和相关项目文档，或明确说明无需更新。
 * `docs/readable/**` 下团队维护的项目文档必须使用中文，技术标识符、命令、API 路径、枚举值、文件路径和引用原文除外。
+* 将 backend/frontend index 中仍为模板或 `Partial` 的条目，按当前已落地实现重新分类为 `Active`、`Partial` 或保留占位，并写明原因。
+* 对已合并的 Java 服务目录、错误模型、数据库边界、日志规则，以及前端双页目录、组件分层、类型与 API 适配方式，补充“实际约定”和“禁止事项”，而不是继续保留示例模板。
 
 ## Acceptance Criteria
 
-* [ ] 后端 spec 反映 Java 服务的真实目录、API、错误、数据库和日志约定。（待 Java MVP 实现稳定后继续固化）
-* [ ] 前端 spec 反映双页演示应用的真实目录、组件、状态和类型约定。（已固化可见性/状态/type 契约；目录和组件待前端实现稳定后补齐）
+* [x] 后端 spec 反映 Java 服务的真实目录、API、错误、数据库和日志约定。
+* [x] 前端 spec 反映双页演示应用的真实目录、组件、状态和类型约定。
 * [x] 增补跨服务任务状态、结果 schema、Worker 边界和 AI adapter 约定。
 * [x] 增补对象存储、密钥配置和异步处理注意事项。
 * [x] 明确材料类型扩展策略和 Word/Docx 完整版支持要求。
@@ -68,11 +75,13 @@
 * [x] 在共享 session context 与 before-dev 流程中注入短任务分支纪律。
 * [x] 增补 `docs/readable/**` 项目文档组织和 finish 阶段文档维护规范。
 * [x] 明确 `docs/readable/**` 项目文档维护语言为中文。
+* [x] `docs/readable/dev-log/2026-05.md` 补记本次规范固化的完成结论，或明确无需补记的理由。
 
 ## Hardening Notes
 
-* 本轮只固化已确认的跨服务契约、AI adapter、材料扩展、文件处理和前端可见性边界。
-* Java 真实目录、数据库表、API 路由、前端组件目录等仍依赖后续实现任务，暂不写成强制规范。
+* 先前已固化跨服务契约、AI adapter、材料扩展、文件处理和前端可见性边界。
+* 随着 Java MVP、Worker MVP、法规知识包和前端 PR #7 均已落地并合并，Java 目录/API/错误/数据库/日志与前端目录/组件/API 适配现在应继续实化，不再继续停留在模板状态。
+* 如某部分仍无法实化，必须写出“为什么现在不能定”为项目规范，而不是简单保留模板。
 * 新增 spec 已接入 backend/frontend index 的 Pre-Development Checklist，后续 before-dev 可自动提示读取。
 
 ## Dependencies
@@ -85,3 +94,4 @@
 * `.trellis/spec/` 不再只是模板，包含 SmartWater 项目真实可执行约定。
 * 后续任务可通过 `trellis-before-dev` 和 context 注入自动获得关键规范。
 * 没有把尚未决策的事项写成强制规范。
+* `smartwater-project-spec-hardening-mvp` 可从 `planning` 进入执行并在本轮完成收尾，不再因为“等待前端/后端稳定”而挂起。

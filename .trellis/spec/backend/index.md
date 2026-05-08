@@ -1,12 +1,12 @@
 # Backend Development Guidelines
 
-> Best practices for backend development in this project.
+> SmartWater Java backend、Python Worker 与跨服务后端边界的项目规范入口。
 
 ---
 
 ## Overview
 
-This directory contains guidelines for backend development. Fill in each file with your project's specific conventions.
+This directory contains SmartWater backend conventions derived from the current MVP implementation. Prefer the concrete rules here over generic Spring/MyBatis/Python habits.
 
 ---
 
@@ -14,30 +14,21 @@ This directory contains guidelines for backend development. Fill in each file wi
 
 | Guide | Description | Status |
 |-------|-------------|--------|
-| [Directory Structure](./directory-structure.md) | Module organization and file layout | Partial |
-| [Database Guidelines](./database-guidelines.md) | ORM patterns, queries, migrations | Partial |
-| [Error Handling](./error-handling.md) | Error types, handling strategies | Partial |
+| [Directory Structure](./directory-structure.md) | Actual Java service / Python Worker layout, package boundaries, storage abstraction | Active |
+| [Database Guidelines](./database-guidelines.md) | review_task/material_slot/review_result schema, MyBatis-Plus usage, schema sync rules | Active |
+| [Error Handling](./error-handling.md) | `R<T>` contract, worker token failure, status transition errors, binary download boundary | Active |
 | [Quality Guidelines](./quality-guidelines.md) | Code standards, test/CI gates, forbidden patterns | Active |
-| [Logging Guidelines](./logging-guidelines.md) | Structured logging, log levels | Partial |
+| [Logging Guidelines](./logging-guidelines.md) | Task, storage, token and adapter logging guardrails | Active |
 | [SmartWater MVP Contracts](./smartwater-mvp-contracts.md) | Cross-service domain enums, task states, material storage, visibility boundaries | Active |
 | [Review Reasoning Adapter](./review-reasoning-adapter.md) | Qwen/DeepSeek adapter, schema output, retries, redacted logging | Active |
 
 ---
 
-## How to Fill These Guidelines
+## Usage Notes
 
-For each guideline file:
-
-1. Document your project's **actual conventions** (not ideals)
-2. Include **code examples** from your codebase
-3. List **forbidden patterns** and why
-4. Add **common mistakes** your team has made
-
-The goal is to help AI assistants and new team members understand how YOUR project works.
-
----
-
-**Language**: All documentation should be written in **English**.
+- Treat these files as executable project contracts, not style suggestions.
+- When Java API shape, Worker writeback schema, storage boundary, or database schema changes, update the relevant spec in the same task.
+- `docs/readable/**` human-facing project docs are maintained in Chinese; `.trellis/spec/**` may stay bilingual where existing content already mixes English headings with Chinese rules.
 
 
 ## Pre-Development Checklist
