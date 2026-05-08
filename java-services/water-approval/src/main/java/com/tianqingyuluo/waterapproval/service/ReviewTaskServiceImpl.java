@@ -208,6 +208,7 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
                 response.setIssues(parseReviewerIssues(content.get("issues")));
                 response.setRiskHints(parseRiskHints(content.get("riskHints")));
                 response.setDraftOpinion((String) content.getOrDefault("draftOpinion", ""));
+                response.setManualReviewNotice((String) content.getOrDefault("manualReviewNotice", ""));
                 response.setMissingMaterials(parseMissingMaterialsFromContent(content));
                 response.setExtractedFields(content.get("extractedFields"));
                 Object modelMeta = content.get("modelMetadata");
@@ -225,6 +226,7 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
             response.setIssues(new ArrayList<>());
             response.setRiskHints(new ArrayList<>());
             response.setDraftOpinion("");
+            response.setManualReviewNotice("");
             response.setMissingMaterials(new ArrayList<>());
         }
 
