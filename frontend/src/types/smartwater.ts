@@ -114,6 +114,7 @@ export interface ReviewerResultResponse {
   issues: ReviewerIssueDto[]
   riskHints: RiskHintDto[]
   draftOpinion: string
+  manualReviewNotice?: string | null
   missingMaterials: MaterialType[]
   extractedFields: unknown
   modelMetadata?: string | null

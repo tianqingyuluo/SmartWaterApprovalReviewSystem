@@ -52,6 +52,7 @@ describe('task API adapters', () => {
       summary: '审核辅助结果已生成',
       missingMaterials: [],
       draftOpinion: '建议人工复核后继续办理。',
+      manualReviewNotice: '请人工复核证照一致性。',
       extractedFields: {
         applicantName: '某公司',
         annualWaterUse: 1200,
@@ -93,5 +94,6 @@ describe('task API adapters', () => {
       basis: 'water-permit:mvp:process',
     })
     expect(view.riskHints[0]).toContain('取水量字段与材料描述需要复核')
+    expect(view.manualReviewNotice).toBe('请人工复核证照一致性。')
   })
 })

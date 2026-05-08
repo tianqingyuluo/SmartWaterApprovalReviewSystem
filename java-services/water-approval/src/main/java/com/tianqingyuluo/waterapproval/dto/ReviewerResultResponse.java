@@ -12,6 +12,7 @@ public class ReviewerResultResponse {
     private List<IssueItem> issues;
     private List<RiskHint> riskHints;
     private String draftOpinion;
+    private String manualReviewNotice;
     private List<String> missingMaterials;
     private Object extractedFields;
     private String modelMetadata;

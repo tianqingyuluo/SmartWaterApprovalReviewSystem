@@ -165,11 +165,13 @@ class ReviewTaskControllerTest {
         ReviewerResultResponse resp = new ReviewerResultResponse();
         resp.setTaskId("task-1");
         resp.setStatus("COMPLETED");
+        resp.setManualReviewNotice("请人工复核证照一致性");
         when(reviewTaskService.getReviewerResult("task-1", "session-1")).thenReturn(resp);
 
         mockMvc.perform(get("/task/task-1/result/reviewer")
                         .param("sessionId", "session-1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200));
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.manualReviewNotice").value("请人工复核证照一致性"));
     }
 }

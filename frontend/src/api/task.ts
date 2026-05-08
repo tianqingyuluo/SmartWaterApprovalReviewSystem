@@ -65,7 +65,7 @@ export function toReviewerResultView(
     findings: resultDto.issues.map(toReviewerFinding),
     riskHints: resultDto.riskHints.map(formatRiskHint),
     draftOpinion: resultDto.draftOpinion,
-    manualReviewNotice: '',
+    manualReviewNotice: resultDto.manualReviewNotice ?? '',
     failureCategory: resultDto.status === 'FAILED' ? 'SYSTEM_ERROR' : null,
     failureReason: resultDto.status === 'FAILED' ? resultDto.summary : null,
   }
