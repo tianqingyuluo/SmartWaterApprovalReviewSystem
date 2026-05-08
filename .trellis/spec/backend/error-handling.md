@@ -1,12 +1,12 @@
 # 错误处理规范
 
-> Java + Python 的异常和错误处理策略。
+> SmartWater Java 服务与 Python Worker 的实际错误契约。
 
 ---
 
-## Java 错误处理
+## Java 错误模型
 
-### 统一响应格式
+当前 Java 服务统一使用 `R<T>` 作为 JSON 响应包裹：
 
 ```java
 @Data
@@ -14,99 +14,146 @@ public class R<T> {
     private int code;
     private String message;
     private T data;
-
-    public static <T> R<T> ok(T data) {
-        R<T> r = new R<>();
-        r.setCode(200);
-        r.setMessage("success");
-        r.setData(data);
-        return r;
-    }
-
-    public static <T> R<T> fail(int code, String message) {
-        R<T> r = new R<>();
-        r.setCode(code);
-        r.setMessage(message);
-        return r;
-    }
 }
 ```
 
-### 自定义业务异常
+业务错误使用 `BusinessException`：
 
 ```java
 @Getter
 public class BusinessException extends RuntimeException {
     private final int code;
-
-    public BusinessException(int code, String message) {
-        super(message);
-        this.code = code;
-    }
 }
 ```
 
-### 全局异常处理
+全局异常处理入口是 `GlobalExceptionHandler`：
 
-```java
-@RestControllerAdvice
-public class GlobalExceptionHandler {
+- `BusinessException`：保留业务 code 返回
+- `MethodArgumentNotValidException`：返回 `400`
+- 其他异常：记录 `ERROR` 日志并返回 `500`
 
-    @ExceptionHandler(BusinessException.class)
-    public R<?> handleBusiness(BusinessException e) {
-        return R.fail(e.getCode(), e.getMessage());
-    }
+### 当前约定
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public R<?> handleValidation(MethodArgumentNotValidException e) {
-        String message = e.getBindingResult().getFieldErrors().stream()
-            .map(FieldError::getDefaultMessage)
-            .collect(Collectors.joining("; "));
-        return R.fail(400, message);
-    }
-
-    @ExceptionHandler(Exception.class)
-    public R<?> handleException(Exception e) {
-        log.error("未知异常", e);
-        return R.fail(500, "服务器内部错误");
-    }
-}
-```
-
-### 使用规则
-
-- 业务错误抛 `BusinessException`，由全局处理器统一捕获
-- Controller 层不写 try-catch，除非有特殊资源清理需求
-- Service 层只捕获能处理的异常，其余向上抛
-- **禁止**吞掉异常（空 catch 块）
+- HTTP 状态通常仍是 `200`，业务成败由 `R.code` 判断。
+- 只有材料下载这类二进制接口走 HTTP 语义，不包 `R<T>`。
+- Worker 调用 Java JSON API 时，必须同时判断：
+  - `raise_for_status()` 成功
+  - JSON 中 `code == 200`
 
 ---
 
-## Python 错误处理
+## Worker 鉴权错误
 
-### FastAPI 异常处理
+带 `@WorkerApi` 注解的端点必须经过 `WorkerTokenInterceptor`：
 
-```python
-from fastapi import HTTPException
+- 缺少服务端配置 token：抛 `BusinessException(403, ...)`
+- 请求头 `X-Worker-Token` 缺失或错误：抛 `BusinessException(403, ...)`
 
-class BusinessError(Exception):
-    def __init__(self, code: int, message: str):
-        self.code = code
-        self.message = message
+当前受保护路径由 `MybatisPlusConfig#addInterceptors` 注册：
 
-@app.exception_handler(BusinessError)
-async def business_error_handler(request, exc: BusinessError):
-    return JSONResponse(
-        status_code=200,
-        content={"code": exc.code, "message": exc.message, "data": None}
-    )
+- `/task/**`
+- `/material/**`
+
+是否真正受保护，取决于 controller 或方法上是否打了 `@WorkerApi`。
+
+---
+
+## 状态流转错误
+
+`ProcessingStatus.validateTransition` 是当前唯一权威状态流转校验点：
+
+- 当前状态非法：`400`
+- 目标状态非法：`400`
+- 流转不允许：`409`
+- 相同状态重复写入：允许直接返回，不报错
+
+这部分 contract 变更必须同步更新：
+
+- Java 单测
+- Worker 处理逻辑
+- 前端状态展示文案
+- `.trellis/spec/backend/smartwater-mvp-contracts.md`
+
+---
+
+## Scenario: JSON API Error Contract
+
+### 1. Scope / Trigger
+
+- Trigger: 新增/修改 Java API、Worker 回写、结果查询、状态流转、下载接口或 session/token 校验时。
+
+### 2. Signatures
+
+- JSON API response:
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {}
+}
 ```
 
-### 使用规则
+- Binary response:
+  - `GET /material/download?key=...`
 
-- AI 服务调用失败时返回明确的错误信息，不返回原始堆栈
-- 外部服务调用（OCR、向量数据库等）必须有超时和重试机制
-- LangChain Agent 执行异常需记录完整上下文日志
-- Python Worker 调用 Java 后端统一 `R<T>` 接口时，必须先执行 `raise_for_status()`，再解析 JSON 并要求 `code == 200` 才算成功
-- 当 Java 后端返回 HTTP 200 但业务 `code != 200`（例如 403、404、409）时，Worker 必须按失败处理，进入现有重试、降级或失败路径，不能当作成功
-- 二进制下载接口（例如 `/material/download`）不走 `R<T>` 包装时，可以只按 HTTP 状态码判断成功与否
+### 3. Contracts
+
+| Interface type | Success contract | Failure contract |
+|---|---|---|
+| Java JSON API | HTTP 200 and `code == 200` | HTTP 200 with business `code != 200`, or HTTP 4xx/5xx if framework-level failure |
+| Material download | HTTP 200 with stream body | HTTP 4xx/5xx |
+| Worker internal processing | bounded retry, then map to terminal task status | never silently swallow final task outcome |
+
+### 4. Validation & Error Matrix
+
+| Condition | Expected result |
+|---|---|
+| `sessionId` 与 `taskId` 不匹配 | 返回业务失败，不泄露他人任务结果。 |
+| Worker token 未配置 | Worker API 返回 `403` 业务错误。 |
+| Worker token 错误 | Worker API 返回 `403` 业务错误。 |
+| 状态流转非法 | 返回 `409` 业务错误。 |
+| 结果 JSON 解析失败 | 记录错误并返回 `500` 业务错误。 |
+| 文件上传扩展名非法 | 返回 `400` 业务错误。 |
+
+### 5. Good/Base/Bad Cases
+
+- Good: `getReviewerResult` 解析失败时抛 `BusinessException` 或进入全局 `500`，而不是返回半结构化脏数据。
+- Base: 重复写入相同状态允许幂等通过。
+- Bad: controller 自己 `try/catch` 后吞掉错误，再返回一个“看似成功”的 `R.ok()`。
+
+### 6. Tests Required
+
+- Worker token：拦截器测试覆盖未配置、缺失、错误、正确四类。
+- 状态流转：`400/409` 业务码必须有断言。
+- 结果映射：解析失败、缺字段默认值、`manualReviewNotice` 等字段透传要有断言。
+- 下载接口：至少覆盖鉴权边界和内容类型解析。
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```python
+resp = client.get(url)
+data = resp.json()
+return data["data"]
+```
+
+#### Correct
+
+```python
+resp = client.get(url)
+resp.raise_for_status()
+payload = resp.json()
+if payload["code"] != 200:
+    raise RuntimeError(payload["message"])
+return payload["data"]
+```
+
+---
+
+## 禁止事项
+
+- 不要把业务错误编码塞进 `message`，却让 `code` 永远是 `200`。
+- 不要让 Worker 把 HTTP 200 但业务 `code != 200` 的响应当成功。
+- 不要让最终失败既不回写 `PARTIAL_SUCCESS`，也不回写 `FAILED`。

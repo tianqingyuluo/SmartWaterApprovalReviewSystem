@@ -1,44 +1,41 @@
 # Frontend Development Guidelines
 
-> Best practices for frontend development in this project.
+> SmartWater MVP 前端双页应用的项目规范入口。
 
 ---
 
-## Overview
+## 概述
 
-This directory contains guidelines for frontend development. Fill in each file with your project's specific conventions.
+当前前端是一个 Vue 3 + Vite + TypeScript 的双页应用：
+
+- `ApplicantPage.vue` 负责申请人材料提交、轮询状态和预检查结果展示
+- `ReviewerPage.vue` 负责审批人员结果查询与完整结果展示
+
+本目录记录的不是通用 Vue 模板，而是当前 MVP 的真实目录、状态管理和类型约定。
 
 ---
 
 ## Guidelines Index
 
 | Guide | Description | Status |
-|-------|-------------|--------|
-| [Directory Structure](./directory-structure.md) | Module organization and file layout | Partial |
-| [Component Guidelines](./component-guidelines.md) | Component patterns, props, composition | Partial |
-| [Hook Guidelines](./hook-guidelines.md) | Custom hooks, data fetching patterns | Partial |
-| [State Management](./state-management.md) | Local state, global state, server state | Partial |
-| [Quality Guidelines](./quality-guidelines.md) | Code standards, forbidden patterns | Partial |
-| [Type Safety](./type-safety.md) | Type patterns, validation | Partial |
+|---|---|---|
+| [Directory Structure](./directory-structure.md) | Current `src/` layout, page/component/api/type organization | Active |
+| [Component Guidelines](./component-guidelines.md) | Page orchestration vs presentational components, shared primitives | Active |
+| [Hook Guidelines](./hook-guidelines.md) | `usePolling` and other composables | Active |
+| [State Management](./state-management.md) | Page-local refs/reactive state, future Pinia boundary | Active |
+| [Quality Guidelines](./quality-guidelines.md) | Build/test gates, forbidden patterns, contract regression tests | Active |
+| [Type Safety](./type-safety.md) | Canonical SmartWater DTOs, view models, and union types | Active |
 | [SmartWater MVP Visibility](./smartwater-mvp-visibility.md) | Dual-page MVP, applicant/reviewer visibility, status display, canonical enums | Active |
 
 ---
 
-## How to Fill These Guidelines
+## Usage Notes
 
-For each guideline file:
-
-1. Document your project's **actual conventions** (not ideals)
-2. Include **code examples** from your codebase
-3. List **forbidden patterns** and why
-4. Add **common mistakes** your team has made
-
-The goal is to help AI assistants and new team members understand how YOUR project works.
+- Update the relevant file when backend DTOs, task status labels, polling behavior, or component boundaries change.
+- `src/api/task.ts` is the contract adapter layer; pages should consume view models, not raw backend DTOs.
+- Keep human-facing project docs in `docs/readable/**` in Chinese; this spec may still use English filenames and code identifiers.
 
 ---
-
-**Language**: All documentation should be written in **English**.
-
 
 ## Pre-Development Checklist
 
@@ -48,8 +45,8 @@ Before frontend work, read:
 - [Type Safety](./type-safety.md)
 - [State Management](./state-management.md)
 - [Component Guidelines](./component-guidelines.md)
+- [Quality Guidelines](./quality-guidelines.md)
 
-If the frontend change touches API DTOs or task status, also read:
+If the change touches backend DTOs, status transitions or worker-facing result shape, also read:
 
 - [Backend SmartWater MVP Contracts](../backend/smartwater-mvp-contracts.md)
-

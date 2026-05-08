@@ -35,9 +35,10 @@ public class ApprovalController {
 
 ### Service 层规范
 
-- 接口定义在 `service/功能/` 下，实现在 `impl/` 下
-- 事务注解 `@Transactional` 加在 Service 实现方法上
-- 一个 Service 方法只做一件事
+- 当前 MVP 的 service 接口和实现都在 `service/` 包下，没有再拆 `impl/` 子包
+- `ReviewTaskServiceImpl` 负责任务提交、状态流转、结果投影和 storage 边界协调
+- 事务注解 `@Transactional` 只加在写入型 Service 方法上
+- 一个 Service 方法只做一件事；如果方法同时读写状态和投影结果，说明边界还应该继续收敛
 
 ---
 

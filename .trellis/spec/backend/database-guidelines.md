@@ -1,116 +1,136 @@
 # 数据库规范
 
-> MySQL + MyBatis-Plus 的使用规范。
+> SmartWater MVP 当前 MySQL/H2/MyBatis-Plus 的真实持久化约定。
 
 ---
 
-## 概述
+## 当前数据库边界
 
-- 数据库：MySQL 8.x
+- 生产/本地运行数据库：MySQL
+- 测试数据库：H2（test profile）
 - ORM：MyBatis-Plus
-- 连接池：HikariCP（Spring Boot 默认）
+- 分页插件：`PaginationInnerInterceptor(DbType.MYSQL)`
+
+当前权威建表脚本：
+
+- [schema.sql](/home/tianqingyuluo/code/水利开发/SmartWaterApprovalReviewSystem/java-services/water-approval/src/main/resources/db/schema.sql:1)
+
+初始化入口：
+
+- `src/main/resources/db/init.sql`
+- `src/main/resources/db/init-db.sh`
+- `src/main/resources/db/init-db.bat`
 
 ---
 
-## 表命名规范
+## 当前表模型
 
-| 规则 | 示例 |
-|------|------|
-| 全小写，下划线分隔 | `approval_record` |
-| 业务前缀分组 | `sys_user`、`approval_record`、`review_result` |
-| 关联表用双方名拼接 | `user_role` |
-| 禁止使用 MySQL 保留字 | 避免 `order`、`group` 等 |
+MVP 当前只有三张核心表：
 
-## 字段规范
+| 表 | 实体 | 用途 |
+|---|---|---|
+| `review_task` | `ReviewTask` | 任务主表，保存 `taskId/sessionId/status/knowledgePackVersion` |
+| `material_slot` | `MaterialSlot` | 固定三槽位材料上传记录 |
+| `review_result` | `ReviewResult` | `APPLICANT` / `REVIEWER` 两类结果 JSON |
 
-| 规则 | 说明 |
-|------|------|
-| 全小写蛇形命名 | `created_at`、`file_name` |
-| 主键统一用 `id`，类型 `BIGINT` | MyBatis-Plus 雪花算法生成 |
-| 每张表必须有 `created_at`、`updated_at` | `DATETIME` 类型 |
-| 逻辑删除字段 `deleted` | `TINYINT(1)`，0=未删除，1=已删除 |
-| 布尔字段用 `is_` 前缀 | `is_enabled` |
+### 实体约定
+
+- 主键 `id`：`BIGINT` + MyBatis-Plus `ASSIGN_ID`
+- 逻辑删除字段：`deleted`
+- 时间字段统一用 `LocalDateTime`
+- `taskId`、`sessionId` 是外部 contract 主键，不向前端暴露数据库 `id`
 
 ---
 
-## MyBatis-Plus 使用规范
+## 查询与写入规则
 
-### Entity 示例
+- 简单查询使用 `BaseMapper` + `LambdaQueryWrapper`
+- 当前项目没有 mapper XML；未出现复杂联表查询前，不引入 XML
+- controller 不直接访问 mapper
+- 业务写入统一在 `ReviewTaskServiceImpl` 中完成
 
-```java
-@Data
-@TableName("approval_record")
-public class ApprovalRecord {
-    @TableId(type = IdType.ASSIGN_ID)
-    private Long id;
-
-    private String title;
-    private Integer status;
-
-    @TableLogic
-    private Integer deleted;
-
-    @TableField(fill = FieldFill.INSERT)
-    private LocalDateTime createdAt;
-
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    private LocalDateTime updatedAt;
-}
-```
-
-### Mapper 示例
+### 当前真实查询模式
 
 ```java
-@Mapper
-public interface ApprovalRecordMapper extends BaseMapper<ApprovalRecord> {
-    // 简单 CRUD 直接继承 BaseMapper，无需手写
-    // 复杂查询写在 XML 中
-}
+resultMapper.selectOne(
+    new LambdaQueryWrapper<ReviewResult>()
+        .eq(ReviewResult::getTaskId, taskId)
+        .eq(ReviewResult::getResultType, "REVIEWER")
+);
 ```
 
-### Service 示例
+### 当前真实约束
 
-```java
-public interface ApprovalService extends IService<ApprovalRecord> {
-    void submitApproval(ApprovalSubmitDTO dto);
-}
-
-@Service
-public class ApprovalServiceImpl extends ServiceImpl<ApprovalRecordMapper, ApprovalRecord>
-        implements ApprovalService {
-    @Override
-    public void submitApproval(ApprovalSubmitDTO dto) {
-        // 业务逻辑
-    }
-}
-```
+- `review_task.task_id`、`review_task.session_id` 唯一
+- `material_slot (task_id, material_type)` 唯一，保证每类材料只有一个槽位
+- `review_result (task_id, result_type)` 唯一，保证申请人/审批人员结果各一份
 
 ---
 
-## 查询规范
+## Scenario: Schema And Entity Synchronization
 
-| 场景 | 方式 |
-|------|------|
-| 简单单表 CRUD | `BaseMapper` / `IService` 内置方法 |
-| 条件查询 | `LambdaQueryWrapper` |
-| 多表联查 | XML 映射文件 |
-| 分页查询 | `Page<T>` + MyBatis-Plus 分页插件 |
+### 1. Scope / Trigger
 
-### LambdaQueryWrapper 示例
+- Trigger: 新增实体字段、schema 变更、知识包版本写入、材料类型扩展、状态字段调整时。
+
+### 2. Signatures
+
+- 权威 schema：`src/main/resources/db/schema.sql`
+- 对应实体：
+  - `ReviewTask`
+  - `MaterialSlot`
+  - `ReviewResult`
+
+### 3. Contracts
+
+| Layer | Contract |
+|---|---|
+| schema | 列名使用 snake_case，字段约束先体现在 schema.sql |
+| entity | 字段名使用 camelCase，与 schema 通过驼峰映射对应 |
+| service | 只通过实体/mapper 读写，不拼原始 SQL |
+| test | H2 schema 与主 schema 保持必要同步，确保关键字段不会“只在 MySQL 存在” |
+
+### 4. Validation & Error Matrix
+
+| Condition | Expected handling |
+|---|---|
+| 新增实体字段但未更新 `schema.sql` | 视为未完成，必须补齐 schema 和验证。 |
+| 新增 schema 字段但 service/test 不断言 | 视为 contract 不完整，至少补一个 focused test。 |
+| 为简单单表查询引入 XML | 默认不接受，除非出现无法用 wrapper 表达的复杂查询。 |
+| 未来扩展材料类型时直接把固定槽位逻辑删掉 | 不接受；MVP contract 仍以固定三槽位为前提。 |
+
+### 5. Good/Base/Bad Cases
+
+- Good: `knowledge_pack_version` 增加后，`ReviewTask`、`schema.sql`、service 测试同步更新。
+- Base: 继续把 reviewer/applicant 结果 JSON 保存在 `review_result.content` 中。
+- Bad: 只改 entity，不改建表脚本或 H2 测试 schema。
+
+### 6. Tests Required
+
+- schema/entity 相关变更：至少一个 service 或 controller 测试覆盖新字段读写。
+- 唯一约束相关逻辑：要么有显式测试，要么在 PR 说明里记录人工验证命令。
+- 测试 profile 必须继续脱离真实 MySQL。
+
+### 7. Wrong vs Correct
+
+#### Wrong
 
 ```java
-List<ApprovalRecord> list = lambdaQuery()
-    .eq(ApprovalRecord::getStatus, 1)
-    .like(StringUtils.isNotBlank(keyword), ApprovalRecord::getTitle, keyword)
-    .orderByDesc(ApprovalRecord::getCreatedAt)
-    .list();
+private String knowledgePackVersion;
 ```
+
+只改实体，不改 `schema.sql` 和测试。
+
+#### Correct
+
+- `ReviewTask` 增加字段
+- `schema.sql` 增加列
+- `writeResultShouldPersistKnowledgePackVersion` 断言字段已落库
 
 ---
 
 ## 禁止事项
 
-- **禁止**在 Controller 层直接操作 Mapper
-- **禁止**使用字符串拼接 SQL，防止注入
-- **禁止**使用 `select *`，XML 中必须明确字段列表
-- **禁止**在循环中执行数据库查询（N+1 问题）
+- 不要把数据库 `id` 当作外部 API 标识。
+- 不要在循环里逐条查 `material_slot` 或 `review_result` 造成隐式 N+1。
+- 不要把 `schema.sql` 和测试 schema 漂移成两套不同 contract。
