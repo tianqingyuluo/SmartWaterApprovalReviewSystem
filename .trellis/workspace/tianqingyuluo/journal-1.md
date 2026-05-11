@@ -175,3 +175,39 @@ Kept planning state for smartwater-architecture-roadmap. Confirmed MVP as a dual
 ### Next Steps
 
 - None - task complete
+
+
+## Session 6: Wrap up OCR model selection fix
+
+**Date**: 2026-05-11
+**Task**: Wrap up OCR model selection fix
+**Branch**: `mvp/smartwater`
+
+### Summary
+
+Switched Worker OCR from glm-4v chat completions to the official GLM OCR layout_parsing API, added regression coverage and docs/spec updates, tracked the Trellis task context and upgraded Trellis workflow/session handling, and checked in the Worker uv lockfile plus typing/test cleanup.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `3c95685` | (see git log) |
+| `444248f` | (see git log) |
+| `219000f` | (see git log) |
+| `610f4fb` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
