@@ -1,12 +1,10 @@
 import json
-import sys
 import unittest
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-
 from knowledge_pack import load_knowledge_pack, normalize_knowledge_fragments
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 class KnowledgePackTests(unittest.TestCase):

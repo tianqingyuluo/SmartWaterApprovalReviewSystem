@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 
 class KnowledgePackError(ValueError):
@@ -34,11 +34,15 @@ def load_knowledge_pack(path: str | Path | None = None) -> dict[str, Any]:
 
     pack_path = Path(path) if path is not None else _default_pack_path()
     try:
-        data = json.loads(pack_path.read_text(encoding="utf-8"))
+        raw_data = json.loads(pack_path.read_text(encoding="utf-8"))
     except FileNotFoundError as exc:
         raise KnowledgePackError(f"Knowledge pack not found: {pack_path}") from exc
     except json.JSONDecodeError as exc:
         raise KnowledgePackError(f"Knowledge pack is not valid JSON: {pack_path}") from exc
+
+    if not isinstance(raw_data, dict):
+        raise KnowledgePackError(f"Knowledge pack root must be a JSON object: {pack_path}")
+    data = cast(dict[str, Any], raw_data)
 
     missing = [section for section in REQUIRED_SECTIONS if section not in data]
     if missing:

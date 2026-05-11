@@ -2,17 +2,20 @@ import json
 import logging
 import re
 import time
+from typing import Any
+
 from openai import OpenAI
-from src.config import config
+
 from src.adapters import ReviewAdapter
+from src.config import config
 from src.models import (
     ExtractedField,
-    ReviewResult,
+    FindingType,
     Issue,
-    RiskHint,
     MaterialCompleteness,
     ModelMetadata,
-    FindingType,
+    ReviewResult,
+    RiskHint,
 )
 
 logger = logging.getLogger(__name__)
@@ -44,8 +47,13 @@ _REVIEW_MODE = "ASSISTIVE_REVIEW"
 _OUTPUT_LANGUAGE = "zh-CN"
 
 _SCHEMA_REQUIRED_TOP = {
-    "summary", "issues", "risk_hints", "draft_opinion",
-    "material_completeness", "basis_refs", "manual_review_notice"
+    "summary",
+    "issues",
+    "risk_hints",
+    "draft_opinion",
+    "material_completeness",
+    "basis_refs",
+    "manual_review_notice",
 }
 
 _SCHEMA_REQUIRED_ISSUE = {"code", "severity", "message"}
@@ -96,7 +104,15 @@ _REVIEW_JSON_SCHEMA = {
         "basis_refs": {"type": "array", "items": {"type": "string"}},
         "manual_review_notice": {"type": "string"},
     },
-    "required": ["summary", "issues", "risk_hints", "draft_opinion", "material_completeness", "basis_refs", "manual_review_notice"],
+    "required": [
+        "summary",
+        "issues",
+        "risk_hints",
+        "draft_opinion",
+        "material_completeness",
+        "basis_refs",
+        "manual_review_notice",
+    ],
 }
 
 
@@ -116,12 +132,13 @@ class ReviewReasoningAdapter(ReviewAdapter):
             extracted_fields, material_types, missing_materials, knowledge_fragments
         )
 
-        payload = {
+        messages: list[dict[str, str]] = [
+            {"role": "system", "content": _SYSTEM_PROMPT},
+            {"role": "user", "content": user_prompt},
+        ]
+        payload: dict[str, Any] = {
             "model": config.REVIEW_LLM_MODEL,
-            "messages": [
-                {"role": "system", "content": _SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt},
-            ],
+            "messages": messages,
             "max_tokens": 4000,
             "temperature": 0.1,
         }
@@ -138,16 +155,22 @@ class ReviewReasoningAdapter(ReviewAdapter):
         else:
             payload["response_format"] = {"type": "json_object"}
 
-        classification = None
+        classification: str | None = None
         repair_attempted = False
 
         for attempt in range(config.WORKER_MAX_RETRIES):
             try:
-                logger.info("Review attempt %d/%d for task %s session %s", attempt + 1, config.WORKER_MAX_RETRIES, task_id, session_id[:8] + "..." if len(session_id) > 8 else session_id)
+                logger.info(
+                    "Review attempt %d/%d for task %s session %s",
+                    attempt + 1,
+                    config.WORKER_MAX_RETRIES,
+                    task_id,
+                    session_id[:8] + "..." if len(session_id) > 8 else session_id,
+                )
                 start_time = time.time()
                 resp = client.chat.completions.create(**payload)
                 elapsed = time.time() - start_time
-                content = resp.choices[0].message.content
+                content = resp.choices[0].message.content or ""
                 finish = resp.choices[0].finish_reason
 
                 parsed, failure = self._parse_and_validate(content, task_id, allowed_basis_refs)
@@ -166,19 +189,18 @@ class ReviewReasoningAdapter(ReviewAdapter):
                     )
                     return parsed
 
-                classification = failure
+                failure_type = failure or "SCHEMA_MISMATCH"
+                classification = failure_type
                 logger.warning(
                     "Review validation failed for task %s: %s latency=%.1fs attempt=%d",
-                    task_id, failure, elapsed, attempt + 1,
+                    task_id, failure_type, elapsed, attempt + 1,
                 )
 
                 if repair_attempted or attempt >= config.WORKER_MAX_RETRIES - 1:
-                    return self._schema_mismatch_result(task_id, failure or "SCHEMA_MISMATCH")
+                    return self._schema_mismatch_result(task_id, failure_type)
 
                 repair_attempted = True
-                payload["messages"].append(
-                    {"role": "user", "content": _repair_prompt(failure)}
-                )
+                messages.append({"role": "user", "content": _repair_prompt(failure_type)})
 
             except Exception as e:
                 elapsed = time.time() - start_time
@@ -246,7 +268,7 @@ class ReviewReasoningAdapter(ReviewAdapter):
         content: str,
         task_id: str,
         allowed_basis_refs: set[str] | None = None,
-    ) -> tuple:
+    ) -> tuple[ReviewResult | None, str | None]:
         if not content or not content.strip():
             logger.warning("Empty content from review for task %s", task_id)
             return None, "INVALID_JSON"

@@ -4,18 +4,18 @@ import signal
 import time
 
 from knowledge_pack import KnowledgePackError, load_knowledge_pack, normalize_knowledge_fragments
+from src.adapters.review_adapter import ReviewReasoningAdapter
 from src.config import config
 from src.models import (
-    MaterialSlot,
     ExtractedField,
-    ReviewResult,
-    ProcessingResult,
     Issue,
     MaterialCompleteness,
+    MaterialSlot,
+    ProcessingResult,
+    ReviewResult,
 )
 from src.services.field_extractor import FieldExtractor
 from src.services.result_writer import ResultWriter
-from src.adapters.review_adapter import ReviewReasoningAdapter
 
 logger = logging.getLogger(__name__)
 

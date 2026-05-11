@@ -1,17 +1,18 @@
 import logging
-import io
+
 import httpx
-from src.config import config
+
 from src.adapters.ocr_adapter import GlmOcrAdapter
+from src.config import config
 from src.models import ExtractedField, MaterialSlot
 
 logger = logging.getLogger(__name__)
 
 
 class FieldExtractor:
-    def __init__(self):
-        self.ocr = GlmOcrAdapter()
-        self._headers = {}
+    def __init__(self) -> None:
+        self.ocr: GlmOcrAdapter = GlmOcrAdapter()
+        self._headers: dict[str, str] = {}
         token = getattr(config, "WORKER_TOKEN", None)
         if token:
             self._headers["X-Worker-Token"] = token

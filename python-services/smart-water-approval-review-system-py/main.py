@@ -1,4 +1,5 @@
 import logging
+
 from src.config import config
 from src.services.worker import SmartWaterWorker
 
