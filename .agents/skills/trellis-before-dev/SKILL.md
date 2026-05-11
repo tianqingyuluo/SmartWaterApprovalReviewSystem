@@ -7,21 +7,10 @@ Read the relevant development guidelines before starting your task.
 
 Execute these steps:
 
-0. **Check task branch discipline**:
-   - Confirm a Trellis task is active.
-   - Confirm Git is on a short task branch (`task/<task-name>`), not `main`, `mvp/smartwater`, or another integration branch.
-   - If you are still on an integration branch, switch before implementing:
-     ```bash
-     git switch -c task/<task-name>
-     python3 ./.trellis/scripts/task.py set-branch <task-dir> task/<task-name>
-     ```
-     On Windows, use `python` instead of `python3`.
-
 1. **Discover packages and their spec layers**:
    ```bash
    python3 ./.trellis/scripts/get_context.py --mode packages
    ```
-   On Windows, use `python` instead of `python3`.
 
 2. **Identify which specs apply** to your task based on:
    - Which package you're modifying (e.g., `cli/`, `docs-site/`)
@@ -35,12 +24,7 @@ Execute these steps:
 
 4. **Read the specific guideline files** listed in the Pre-Development Checklist that are relevant to your task. The index is NOT the goal — it points you to the actual guideline files (e.g., `error-handling.md`, `conventions.md`, `mock-strategies.md`). Read those files to understand the coding standards and patterns.
 
-5. **Always read team workflow and shared guides**:
-   ```bash
-   cat .trellis/spec/team-collaboration.md
-   ```
-   This contains Trellis task assignment, short task branch, PR review, and integration branch discipline.
-
+5. **Always read shared guides**:
    ```bash
    cat .trellis/spec/guides/index.md
    ```

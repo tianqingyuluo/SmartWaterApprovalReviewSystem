@@ -14,7 +14,6 @@ Provides:
 from __future__ import annotations
 
 import json
-import re
 from pathlib import Path
 
 from .config import get_git_packages
@@ -30,15 +29,11 @@ from .paths import (
     count_lines,
     get_active_journal_file,
     get_current_task,
+    get_current_task_source,
     get_developer,
     get_repo_root,
     get_tasks_dir,
 )
-from .types import TaskInfo
-
-
-INTEGRATION_BRANCHES = {"main", "mvp/smartwater", "develop/smartwater-mvp"}
-SHORT_TASK_BRANCH_PREFIX = "task/"
 
 
 # =============================================================================
@@ -112,59 +107,6 @@ def _append_package_git_context(lines: list[str], package_git_info: list[dict]) 
         else:
             lines.append("(no commits)")
         lines.append("")
-
-
-def _suggest_short_task_branch(current_task: str | None, task: TaskInfo | None) -> str:
-    """Return the expected short task branch name for the active task."""
-    if task:
-        task_name = task.name or task.dir_name
-    elif current_task:
-        task_name = Path(current_task).name
-    else:
-        task_name = "<task-name>"
-
-    slug = re.sub(r"[^A-Za-z0-9._-]+", "-", task_name).strip("-").lower()
-    return f"{SHORT_TASK_BRANCH_PREFIX}{slug or '<task-name>'}"
-
-
-def _append_branch_discipline_context(
-    lines: list[str],
-    branch: str,
-    current_task: str | None,
-    task: TaskInfo | None,
-) -> None:
-    """Append branch workflow guardrails to injected session context."""
-    expected_branch = task.branch if task and task.branch else _suggest_short_task_branch(current_task, task)
-
-    lines.append("## BRANCH DISCIPLINE")
-    lines.append(
-        "Rule: before implementation, work on a short task branch; do not code directly on main or the MVP integration branch."
-    )
-    lines.append("Spec: .trellis/spec/team-collaboration.md")
-
-    if not current_task:
-        lines.append("[!] No current Trellis task is active. Start a task before implementation.")
-        lines.append(
-            f"Command: python3 ./{DIR_WORKFLOW}/{DIR_SCRIPTS}/task.py start <task-dir> (Windows: use python)"
-        )
-    elif branch in INTEGRATION_BRANCHES:
-        lines.append(f"[!] Current branch '{branch}' is an integration branch.")
-        lines.append(f"Switch first: git switch -c {expected_branch}")
-        lines.append(
-            f"Then record it: python3 ./{DIR_WORKFLOW}/{DIR_SCRIPTS}/task.py set-branch {current_task} {expected_branch} (Windows: use python)"
-        )
-    elif not branch.startswith(SHORT_TASK_BRANCH_PREFIX):
-        lines.append(
-            f"[!] Current branch '{branch}' does not follow the short task branch convention '{SHORT_TASK_BRANCH_PREFIX}<task-name>'."
-        )
-        lines.append(f"Expected shape: {expected_branch}")
-    elif task and task.branch and branch != task.branch:
-        lines.append(f"[!] Active task records branch '{task.branch}', but Git is on '{branch}'.")
-        lines.append("Switch to the recorded branch or update task metadata before continuing.")
-    else:
-        lines.append(f"OK: current branch '{branch}' follows the short task branch convention.")
-
-    lines.append("")
 
 
 # =============================================================================
@@ -336,14 +278,16 @@ def get_context_text(repo_root: Path | None = None) -> str:
     # Current task
     lines.append("## CURRENT TASK")
     current_task = get_current_task(repo_root)
-    current_task_info = None
     if current_task:
         current_task_dir = repo_root / current_task
+        source_type, context_key, _ = get_current_task_source(repo_root)
         lines.append(f"Path: {current_task}")
+        lines.append(
+            f"Source: {source_type}" + (f":{context_key}" if context_key else "")
+        )
 
         ct = load_task(current_task_dir)
         if ct:
-            current_task_info = ct
             lines.append(f"Name: {ct.name}")
             lines.append(f"Status: {ct.status}")
             lines.append(f"Created: {ct.raw.get('createdAt', 'unknown')}")
@@ -358,8 +302,6 @@ def get_context_text(repo_root: Path | None = None) -> str:
     else:
         lines.append("(none)")
     lines.append("")
-
-    _append_branch_discipline_context(lines, branch, current_task, current_task_info)
 
     # Active tasks
     lines.append("## ACTIVE TASKS")
@@ -492,12 +434,15 @@ def get_context_record_json(repo_root: Path | None = None) -> dict:
     current_task_info = None
     current_task = get_current_task(repo_root)
     if current_task:
+        source_type, context_key, _ = get_current_task_source(repo_root)
         ct = load_task(repo_root / current_task)
         if ct:
             current_task_info = {
                 "path": current_task,
                 "name": ct.name,
                 "status": ct.status,
+                "source": source_type,
+                "contextKey": context_key,
             }
 
     # Package git repos
@@ -601,19 +546,19 @@ def get_context_text_record(repo_root: Path | None = None) -> str:
     # CURRENT TASK
     lines.append("## CURRENT TASK")
     current_task = get_current_task(repo_root)
-    current_task_info = None
     if current_task:
+        source_type, context_key, _ = get_current_task_source(repo_root)
         lines.append(f"Path: {current_task}")
+        lines.append(
+            f"Source: {source_type}" + (f":{context_key}" if context_key else "")
+        )
         ct = load_task(repo_root / current_task)
         if ct:
-            current_task_info = ct
             lines.append(f"Name: {ct.name}")
             lines.append(f"Status: {ct.status}")
     else:
         lines.append("(none)")
     lines.append("")
-
-    _append_branch_discipline_context(lines, branch, current_task, current_task_info)
 
     lines.append("========================================")
 
