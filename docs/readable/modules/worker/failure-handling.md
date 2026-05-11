@@ -32,6 +32,8 @@ Python Worker 调用以下 JSON 接口时，必须同时校验 HTTP 状态码和
 - 下载成功：按返回的文件字节继续 OCR 和字段抽取。
 - 下载失败：记录错误日志，并为对应材料生成 `download_error` 抽取结果，避免整个任务无结果结束。
 
+更细的 OCR 适配器行为见 [Worker 适配器文档](./adapters.md)。
+
 ## 重试与降级
 
 - `update_status()` 和 `write_results()` 使用有界重试，失败后返回 `False`，由上层 Worker 决定是否继续降级或写入失败状态。

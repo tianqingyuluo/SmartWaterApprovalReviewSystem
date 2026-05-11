@@ -13,7 +13,11 @@ dependencies = [
 
 [project.optional-dependencies]
 dashscope = ["dashscope>=1.21.0"]
-dev = ["ruff>=0.8.0", "mypy>=1.13.0"]
+dev = [
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+    "pytest>=9.0.3",
+]
 
 [tool.ruff]
 line-length = 120

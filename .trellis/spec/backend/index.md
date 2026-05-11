@@ -19,6 +19,7 @@ This directory contains SmartWater backend conventions derived from the current 
 | [Error Handling](./error-handling.md) | `R<T>` contract, worker token failure, status transition errors, binary download boundary | Active |
 | [Quality Guidelines](./quality-guidelines.md) | Code standards, test/CI gates, forbidden patterns | Active |
 | [Logging Guidelines](./logging-guidelines.md) | Task, storage, token and adapter logging guardrails | Active |
+| [OCR Adapter](./ocr-adapter.md) | GLM OCR layout_parsing contract, `ExtractedField[]` mapping, OCR failure handling | Active |
 | [SmartWater MVP Contracts](./smartwater-mvp-contracts.md) | Cross-service domain enums, task states, material storage, visibility boundaries | Active |
 | [Review Reasoning Adapter](./review-reasoning-adapter.md) | Qwen/DeepSeek adapter, schema output, retries, redacted logging | Active |
 
@@ -37,6 +38,7 @@ Before backend, Python Worker, or cross-service work, read:
 
 - [SmartWater MVP Contracts](./smartwater-mvp-contracts.md)
 - [Quality Guidelines](./quality-guidelines.md)
+- [OCR Adapter](./ocr-adapter.md) when touching OCR extraction or GLM OCR integration
 - [Review Reasoning Adapter](./review-reasoning-adapter.md) when touching AI review reasoning or Worker integration
 - [Error Handling](./error-handling.md)
 - [Logging Guidelines](./logging-guidelines.md)

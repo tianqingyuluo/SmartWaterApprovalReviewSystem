@@ -141,7 +141,9 @@ cp .env.example .env
 ```bash
 BACKEND_API_BASE=http://localhost:8080/api
 
+OCR_PROVIDER=glm
 OCR_GLM_API_KEY=your-glm-api-key
+OCR_GLM_BASE_URL=https://open.bigmodel.cn/api/paas/v4
 
 REVIEW_LLM_API_KEY=your-dashscope-or-deepseek-key
 REVIEW_LLM_PROVIDER=dashscope
@@ -198,7 +200,7 @@ Worker启动
        │
        ├─ 逐材料处理:
        │   ├─ GET /api/material/download  ← 下载文件
-       │   └─ GLM OCR 抽取字段
+       │   └─ GLM OCR layout_parsing 识别版面文本
        │
        ├─ 审核推理:
        │   └─ Qwen/DeepSeek → 生成 ReviewResult
@@ -214,5 +216,7 @@ Worker启动
 ## 四、知识包契约
 
 Worker 启动时加载 `knowledge_pack/water_permit_mvp.json`，并把其中的 `reviewBasis[]` 和 `promptSnippets[]` 归一化为审核推理 adapter 使用的 `knowledgeFragments`。模型输出中的 `basisRefs` 只能引用本次传给 adapter 的 fragment ID，例如 `BASIS_MATERIAL_INITIAL_LIST` 或 `PROMPT_BASIS_LIMIT`，不能编造法规名称、条款号或来源 ID。
+
+GLM OCR 适配器会调用 `POST {OCR_GLM_BASE_URL}/layout_parsing`，请求体使用顶层 `model: "glm-ocr"` 和 `file`。Worker 使用官方 GLM OCR 版面解析接口，不再走旧版多模态聊天字段抽取路径。
 
 Worker 回写结果时必须携带 `knowledgePackVersion`，Java 后端将该值保存到 `review_task.knowledge_pack_version`，用于后续追溯本次审核使用的知识包版本。
