@@ -211,3 +211,42 @@ Switched Worker OCR from glm-4v chat completions to the official GLM OCR layout_
 ### Next Steps
 
 - None - task complete
+
+
+## Session 7: 前端 Tailwind 样式体系重构
+
+**Date**: 2026-05-13
+**Task**: 前端 Tailwind 样式体系重构
+**Branch**: `mvp/smartwater`
+
+### Summary
+
+接入 TailwindCSS/PostCSS，迁移三页审核流程与核心组件样式，沉淀前端样式规范并通过 frontend test/build。
+
+### Main Changes
+
+- 接入 TailwindCSS 3、PostCSS 和 Autoprefixer，并提交 `frontend/package-lock.json` 依赖锁定。
+- 新增 `frontend/tailwind.config.js`，沉淀 SmartWater 后台管理界面的颜色、阴影、圆角、字体和动画 token。
+- 将申请列表、新建申请、AI 初审结果三页，以及核心通用/业务组件迁移为 Tailwind utility class 与少量 `sw-*` 共享 class。
+- 收敛 `frontend/src/style.css`，保留 Tailwind 入口、基础全局规则和少量共享组件样式。
+- 新增 `.trellis/spec/frontend/styling-guidelines.md`，并在 `docs/readable/dev-log/2026-05.md` 记录本次样式体系重构。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e1723d8` | (see git log) |
+
+### Testing
+
+- [OK] `cd frontend && npm run test` 通过，2 files / 8 tests。
+- [OK] `cd frontend && npm run build` 通过。
+- [OK] `git diff --check` 通过。
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
