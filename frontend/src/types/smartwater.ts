@@ -149,6 +149,8 @@ export interface ReviewerResultResponse {
   manualReviewNotice?: string | null
   missingMaterials: MaterialType[]
   extractedFields: unknown
+  failureCategory?: FailureCategory
+  failureReason?: string | null
   modelMetadata?: string | null
 }
 

@@ -36,8 +36,9 @@ public class ReviewTaskController {
     public R<TaskListResponse> getTaskList(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
+        page = Math.max(page, 1);
+        size = Math.min(Math.max(size, 1), 100);
         log.info("查询任务列表: page={}, size={}", page, size);
-        size = Math.min(size, 100);
         TaskListResponse response = reviewTaskService.getTaskList(page, size);
         return R.ok(response);
     }

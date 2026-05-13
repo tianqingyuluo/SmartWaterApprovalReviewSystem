@@ -1,213 +1,237 @@
 <template>
-  <div class="new-application-page">
-    <header class="page-header">
-      <h1>取水许可智能审核 — 材料提交</h1>
-      <p class="page-desc">请按材料类型上传文件。部分材料缺失时仍可提交，系统将提示缺失项。</p>
-    </header>
+  <div class="sw-page new-application-page">
+    <h1 class="sw-page-title">新水务申请</h1>
 
-    <form class="upload-form" @submit.prevent="handleSubmit">
-      <div
-        v-for="slot in slots"
-        :key="slot.type"
-        class="upload-slot"
-      >
-        <div class="slot-header">
-          <label class="slot-label">{{ slot.label }}</label>
-          <span class="slot-required">(建议上传)</span>
+    <form class="application-form" @submit.prevent="handleSubmit">
+      <PageCard title="申请信息" subtitle="以下业务字段仅用于当前页面记录和展示，现有后端提交接口只接收三类材料附件。">
+        <div class="form-grid">
+          <label class="form-field">
+            <span>申请类型 <small>页面记录</small></span>
+            <select v-model="form.applicationType" class="sw-select">
+              <option value="新水务申请">新水务申请</option>
+              <option value="用水变更申请">用水变更申请</option>
+              <option value="报装申请">报装申请</option>
+            </select>
+          </label>
+          <label class="form-field">
+            <span>申请人 <small>页面记录</small></span>
+            <input v-model="form.applicantName" class="sw-input" placeholder="请输入申请人" />
+          </label>
+          <label class="form-field">
+            <span>联系电话 <small>页面记录</small></span>
+            <input v-model="form.phone" class="sw-input" placeholder="请输入联系电话" />
+          </label>
+          <label class="form-field">
+            <span>申请单位 <small>页面记录</small></span>
+            <input v-model="form.organization" class="sw-input" placeholder="请输入申请单位" />
+          </label>
+          <label class="form-field">
+            <span>所属部门</span>
+            <input v-model="form.department" class="sw-input" placeholder="请输入所属部门" />
+          </label>
+          <label class="form-field">
+            <span>职务</span>
+            <input v-model="form.position" class="sw-input" placeholder="请输入职务" />
+          </label>
+          <label class="form-field">
+            <span>用水项目名称 <small>页面记录</small></span>
+            <input v-model="form.projectName" class="sw-input" placeholder="请输入用水项目名称" />
+          </label>
+          <label class="form-field">
+            <span>用水地址 <small>页面记录</small></span>
+            <input v-model="form.address" class="sw-input" placeholder="请输入用水地址" />
+          </label>
+          <label class="form-field">
+            <span>用水用途 <small>页面记录</small></span>
+            <select v-model="form.waterPurpose" class="sw-select">
+              <option value="">请选择用水用途</option>
+              <option value="生产用水">生产用水</option>
+              <option value="生活用水">生活用水</option>
+              <option value="农业灌溉">农业灌溉</option>
+              <option value="工程建设">工程建设</option>
+            </select>
+          </label>
+          <label class="form-field">
+            <span>计划用水量（m³/日） <small>页面记录</small></span>
+            <input v-model="form.dailyWaterUse" class="sw-input" placeholder="请输入计划用水量" />
+          </label>
+          <label class="form-field">
+            <span>计划用水时间</span>
+            <input v-model="form.waterPeriod" class="sw-input" placeholder="例如：2026-06-01 至 2027-05-31" />
+          </label>
+          <label class="form-field">
+            <span>备注</span>
+            <input v-model="form.remark" class="sw-input" placeholder="请输入备注信息（选填）" />
+          </label>
         </div>
+      </PageCard>
 
-        <div class="slot-body">
-          <div v-if="slot.file" class="file-preview">
-            <span class="file-name">{{ slot.file.name }}</span>
-            <span class="file-size">{{ formatSize(slot.file.size) }}</span>
-            <button type="button" class="btn-clear" @click="clearSlot(slot.type)">移除</button>
-          </div>
-          <div v-else class="file-upload-box">
-            <input
-              :id="'file-' + slot.type"
-              type="file"
-              :accept="acceptAttr"
-              class="file-input"
-              @change="(e) => onFileChange(e, slot.type)"
-            />
-            <label :for="'file-' + slot.type" class="file-label">
-              <span class="upload-icon">+</span>
-              <span>点击上传</span>
-            </label>
-          </div>
+      <PageCard title="上传附件" subtitle="MVP 固定材料槽位：取水许可申请书、营业执照、身份证。允许缺失材料提交，但会产生部分结果或缺失材料提示。">
+        <div class="support-line">
+          <span>支持格式：jpg / jpeg / png / pdf</span>
+          <span>每类材料最多上传 1 个文件</span>
         </div>
+        <div class="upload-grid">
+          <FileUploadSlot
+            v-for="slot in slots"
+            :key="slot.type"
+            :material-type="slot.type"
+            :label="slot.label"
+            :file="slot.file"
+            :error="slot.error"
+            :accept="acceptAttr"
+            @change="(event) => onFileChange(event, slot.type)"
+            @clear="clearSlot(slot.type)"
+          />
+        </div>
+      </PageCard>
 
-        <p class="slot-hint">支持 jpg、jpeg、png、pdf 格式。完整版后续支持 Word 文件。</p>
-        <p v-if="slot.error" class="slot-error">{{ slot.error }}</p>
+      <div v-if="submitError" class="sw-alert sw-alert-danger">{{ submitError }}</div>
+
+      <div v-if="result" class="submit-result">
+        <PageCard compact>
+          <div class="result-grid">
+            <div>
+              <strong>提交成功</strong>
+              <p>后端已创建审核任务，请保存任务 ID 和会话 ID。MVP 无账号模式下，结果页需要这两个标识访问。</p>
+            </div>
+            <dl>
+              <dt>任务 ID</dt>
+              <dd><code>{{ result.taskId }}</code></dd>
+              <dt>会话 ID</dt>
+              <dd><code>{{ result.sessionId }}</code></dd>
+              <dt>当前状态</dt>
+              <dd><StatusTag :status="taskStatus" /></dd>
+            </dl>
+            <div class="result-actions">
+              <router-link class="sw-btn sw-btn-primary" :to="`/review?taskId=${result.taskId}&sessionId=${result.sessionId}`">
+                查看 AI 初审结果
+              </router-link>
+              <button type="button" class="sw-btn sw-btn-ghost" @click="resetForm">继续新建</button>
+            </div>
+          </div>
+        </PageCard>
+      </div>
+
+      <div v-if="isPolling && !isTerminalStatus" class="sw-alert sw-alert-info polling-line">
+        <span class="sw-spinner"></span>
+        <span>AI 初审处理中，完成后可进入结果页查看材料状态、问题清单和审核意见草稿。</span>
+      </div>
+
+      <div v-if="showApplicantResult && taskData" class="sw-alert sw-alert-warning">
+        预检查已生成：缺失材料 {{ taskData.missingMaterials.length }} 项，字段问题 {{ taskData.fieldIssues.length }} 项。完整问题清单请进入 AI 初审结果页查看。
+      </div>
+
+      <div v-if="taskStatus === 'FAILED'" class="sw-alert sw-alert-danger">
+        当前任务暂无法生成结果，请检查材料文件是否可读，或重新提交新的任务。
       </div>
 
       <div class="form-actions">
-        <button type="submit" class="btn-submit" :disabled="submitting">
-          {{ submitting ? '提交中...' : '提交材料' }}
+        <button type="submit" class="sw-btn sw-btn-primary" :disabled="submitting">
+          {{ submitting ? '提交中...' : '提交申请' }}
         </button>
+        <button type="button" class="sw-btn sw-btn-ghost" @click="resetForm">重置</button>
       </div>
     </form>
 
-    <p v-if="submitError" class="submit-error">{{ submitError }}</p>
-
-    <div v-if="result" class="result-section">
-      <div class="result-card">
-        <h2>提交成功</h2>
-        <dl>
-          <dt>任务 ID</dt>
-          <dd><code>{{ result.taskId }}</code></dd>
-          <dt>会话 ID</dt>
-          <dd><code>{{ result.sessionId }}</code></dd>
-        </dl>
-        <p class="result-note">请保存以上 ID，用于后续查询审核结果。</p>
-        <div class="result-actions">
-          <router-link
-            :to="`/review?taskId=${result.taskId}&sessionId=${result.sessionId}`"
-            class="btn-primary"
-          >
-            前往结果页
-          </router-link>
-          <button class="btn-new" @click="resetForm">提交新的材料</button>
-        </div>
-      </div>
-    </div>
-
-    <div v-if="isPolling && !isTerminalStatus" class="polling-section">
-      <StatusTag :status="taskStatus" />
-      <p class="polling-hint">审核处理中，请稍候...</p>
-    </div>
-
-    <div v-if="showApplicantResult && taskData" class="applicant-result">
-      <h2>预检查结果</h2>
-
-      <div v-if="taskData.missingMaterials?.length" class="app-result-card missing">
-        <h3>缺失材料</h3>
-        <ul>
-          <li v-for="m in taskData.missingMaterials" :key="m">
-            {{ MATERIAL_LABELS[m as MaterialType] || m }}
-          </li>
-        </ul>
-      </div>
-
-      <div v-if="taskData.fieldIssues?.length" class="app-result-card issues">
-        <h3>字段问题</h3>
-        <div v-for="(issue, idx) in taskData.fieldIssues" :key="idx" class="issue-item">
-          <span class="issue-severity" :class="'sev-' + issue.severity.toLowerCase()">
-            {{ severityLabel(issue.severity) }}
-          </span>
-          {{ issue.description }}
-        </div>
-      </div>
-
-      <div v-if="taskData.suggestions?.length" class="app-result-card suggestions">
-        <h3>建议</h3>
-        <ul>
-          <li v-for="(s, idx) in taskData.suggestions" :key="idx">{{ s }}</li>
-        </ul>
-      </div>
-
-      <div class="app-result-actions">
-        <router-link
-          :to="`/review?taskId=${taskId}&sessionId=${sessionId}`"
-          class="btn-primary"
-        >
-          查看完整结果
-        </router-link>
-        <button class="btn-new" @click="resetForm">提交新的材料</button>
-      </div>
-    </div>
-
-    <div v-if="taskStatus === 'FAILED'" class="applicant-result">
-      <h2>预检查结果</h2>
-      <div class="app-result-card issues">
-        <h3>暂无法生成结果</h3>
-        <p>请检查材料文件是否可读，或重新提交新的任务。</p>
-      </div>
-      <div class="app-result-actions">
-        <button class="btn-new" @click="resetForm">提交新的材料</button>
-      </div>
-    </div>
-
-    <p class="disclaimer">本系统提供 AI 辅助审核建议，最终审核结果以审批机关决定为准。</p>
+    <p class="disclaimer">AI 仅提供审核辅助建议，最终审核结论以审批机关决定为准。</p>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, reactive } from 'vue'
-import {
-  submitTask,
-  getTaskStatus,
-  getApplicantResult,
-  toApplicantResultView,
-} from '@/api/task'
+import { computed, reactive, ref } from 'vue'
+import { getApplicantResult, getTaskStatus, submitTask, toApplicantResultView } from '@/api/task'
 import { usePolling } from '@/composables/usePolling'
-import type { SubmitResponse, MaterialType, Severity, TaskStatusResponse, ApplicantResultView } from '@/types'
-import {
-  MATERIAL_SLOTS,
-  MATERIAL_LABELS,
-  ACCEPTED_EXTENSIONS,
-  MATERIAL_FORM_FIELDS,
-} from '@/types'
-import type { ProcessingStatus } from '@/types'
+import type { ApplicantResultView, MaterialType, ProcessingStatus, SubmitResponse, TaskStatusResponse } from '@/types'
+import { ACCEPTED_EXTENSIONS, MATERIAL_FORM_FIELDS, MATERIAL_LABELS, MATERIAL_SLOTS } from '@/types'
+import PageCard from '@/components/common/PageCard.vue'
 import StatusTag from '@/components/common/StatusTag.vue'
+import FileUploadSlot from '@/components/business/FileUploadSlot.vue'
 
 interface SlotState {
-  type: string
+  type: MaterialType
   label: string
   file: File | null
   error: string
 }
 
+interface LocalApplicationForm {
+  applicationType: string
+  applicantName: string
+  phone: string
+  organization: string
+  department: string
+  position: string
+  projectName: string
+  address: string
+  waterPurpose: string
+  dailyWaterUse: string
+  waterPeriod: string
+  remark: string
+}
+
+const form = reactive<LocalApplicationForm>({
+  applicationType: '新水务申请',
+  applicantName: '',
+  phone: '',
+  organization: '',
+  department: '',
+  position: '',
+  projectName: '',
+  address: '',
+  waterPurpose: '',
+  dailyWaterUse: '',
+  waterPeriod: '',
+  remark: '',
+})
+
 const slots = reactive<SlotState[]>(
-  MATERIAL_SLOTS.map((t) => ({ type: t, label: MATERIAL_LABELS[t], file: null, error: '' })),
+  MATERIAL_SLOTS.map((type) => ({ type, label: MATERIAL_LABELS[type], file: null, error: '' })),
 )
 
-const acceptAttr = ACCEPTED_EXTENSIONS.map((e) => `.${e}`).join(',')
+const acceptAttr = ACCEPTED_EXTENSIONS.map((extension) => `.${extension}`).join(',')
+const TERMINAL_STATUSES: ProcessingStatus[] = ['COMPLETED', 'PARTIAL_SUCCESS', 'FAILED']
 
 const submitting = ref(false)
 const submitError = ref('')
 const result = ref<SubmitResponse | null>(null)
 const taskId = ref('')
 const sessionId = ref('')
-const isPolling = ref(false)
 const taskStatus = ref<ProcessingStatus>('SUBMITTED')
 const taskData = ref<ApplicantResultView | null>(null)
-
-const TERMINAL_STATUSES: ProcessingStatus[] = ['COMPLETED', 'PARTIAL_SUCCESS', 'FAILED']
-
-const showApplicantResult = computed(() =>
-  taskData.value !== null &&
-  (taskStatus.value === 'COMPLETED' || taskStatus.value === 'PARTIAL_SUCCESS'),
+const polling = usePolling(
+  () => getTaskStatus(taskId.value, sessionId.value).then((response) => response.data.data),
+  3000,
+  (statusResp: TaskStatusResponse) => TERMINAL_STATUSES.includes(statusResp.status),
+  (statusResp: TaskStatusResponse) => {
+    taskStatus.value = statusResp.status
+    if (TERMINAL_STATUSES.includes(statusResp.status) && statusResp.status !== 'FAILED') {
+      fetchApplicantResult()
+    }
+  },
 )
 
 const isTerminalStatus = computed(() => TERMINAL_STATUSES.includes(taskStatus.value))
+const showApplicantResult = computed(() =>
+  taskData.value !== null && (taskStatus.value === 'COMPLETED' || taskStatus.value === 'PARTIAL_SUCCESS'),
+)
 
-function severityLabel(severity: Severity): string {
-  if (severity === 'BLOCKER') return '阻断'
-  if (severity === 'WARNING') return '警告'
-  return '提示'
-}
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
-
-function onFileChange(event: Event, type: string) {
+function onFileChange(event: Event, type: MaterialType) {
   const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  const slot = slots.find((s) => s.type === type)!
-  slot.error = ''
+  const file = input.files?.[0] ?? null
+  const slot = slots.find((candidate) => candidate.type === type)
+  if (!slot) return
 
+  slot.error = ''
   if (!file) {
     slot.file = null
     return
   }
 
-  const ext = file.name.split('.').pop()?.toLowerCase() || ''
-  if (!ACCEPTED_EXTENSIONS.includes(ext)) {
-    slot.error = '不支持的文件格式，请上传 jpg、jpeg、png 或 pdf 文件'
+  const extension = file.name.split('.').pop()?.toLowerCase() || ''
+  if (!ACCEPTED_EXTENSIONS.includes(extension)) {
+    slot.error = '不支持的文件格式，请上传 jpg、jpeg、png 或 pdf 文件。'
+    slot.file = null
     input.value = ''
     return
   }
@@ -215,11 +239,13 @@ function onFileChange(event: Event, type: string) {
   slot.file = file
 }
 
-function clearSlot(type: string) {
-  const slot = slots.find((s) => s.type === type)!
+function clearSlot(type: MaterialType) {
+  const slot = slots.find((candidate) => candidate.type === type)
+  if (!slot) return
+
   slot.file = null
   slot.error = ''
-  const input = document.getElementById(`file-${type}`) as HTMLInputElement
+  const input = document.getElementById(`file-${type}`) as HTMLInputElement | null
   if (input) input.value = ''
 }
 
@@ -228,19 +254,19 @@ async function fetchApplicantResult() {
     const res = await getApplicantResult(taskId.value, sessionId.value)
     taskData.value = toApplicantResultView(res.data.data)
   } catch {
-    // result fetch failure is non-blocking; polling already updated status
+    taskData.value = null
   }
 }
 
 async function handleSubmit() {
   submitError.value = ''
-
   submitting.value = true
+
   try {
     const formData = new FormData()
-    slots.forEach((s) => {
-      if (s.file) {
-        formData.append(MATERIAL_FORM_FIELDS[s.type as MaterialType], s.file)
+    slots.forEach((slot) => {
+      if (slot.file) {
+        formData.append(MATERIAL_FORM_FIELDS[slot.type], slot.file)
       }
     })
 
@@ -249,384 +275,181 @@ async function handleSubmit() {
     result.value = data
     taskId.value = data.taskId
     sessionId.value = data.sessionId
-    isPolling.value = true
-
-    const { start } = usePolling(
-      () => getTaskStatus(data.taskId, data.sessionId).then((r) => r.data.data),
-      3000,
-      (statusResp: TaskStatusResponse) => TERMINAL_STATUSES.includes(statusResp.status),
-      (statusResp: TaskStatusResponse) => {
-        taskStatus.value = statusResp.status
-        if (TERMINAL_STATUSES.includes(statusResp.status)) {
-          if (statusResp.status !== 'FAILED') {
-            fetchApplicantResult()
-          }
-        }
-      },
-    )
-    start()
-  } catch (e) {
-    submitError.value = e instanceof Error ? e.message : '提交失败，请重试'
+    taskStatus.value = data.status ?? 'SUBMITTED'
+    polling.start()
+  } catch (error) {
+    submitError.value = error instanceof Error ? error.message : '提交失败，请重试。'
   } finally {
     submitting.value = false
   }
 }
 
 function resetForm() {
-  slots.forEach((s) => {
-    s.file = null
-    s.error = ''
-    const input = document.getElementById(`file-${s.type}`) as HTMLInputElement
-    if (input) input.value = ''
-  })
+  form.applicationType = '新水务申请'
+  form.applicantName = ''
+  form.phone = ''
+  form.organization = ''
+  form.department = ''
+  form.position = ''
+  form.projectName = ''
+  form.address = ''
+  form.waterPurpose = ''
+  form.dailyWaterUse = ''
+  form.waterPeriod = ''
+  form.remark = ''
+
+  slots.forEach((slot) => clearSlot(slot.type))
+  polling.stop()
   result.value = null
   taskId.value = ''
   sessionId.value = ''
-  isPolling.value = false
   taskStatus.value = 'SUBMITTED'
   taskData.value = null
   submitError.value = ''
 }
+
+const isPolling = polling.isPolling
 </script>
 
 <style scoped>
 .new-application-page {
-  max-width: 680px;
-  margin: 0 auto;
+  max-width: 1480px;
 }
 
-.page-header {
-  text-align: center;
-  margin-bottom: 32px;
+.application-form {
+  display: grid;
+  gap: 14px;
 }
 
-.page-header h1 {
-  font-size: 24px;
-  margin-bottom: 8px;
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px 34px;
 }
 
-.page-desc {
-  color: #666;
-  font-size: 14px;
+.form-field {
+  display: grid;
+  gap: 8px;
 }
 
-.upload-slot {
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 16px;
-}
-
-.slot-header {
+.form-field span {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 12px;
+  color: #26364f;
+  font-weight: 800;
 }
 
-.slot-label {
+.form-field small {
+  border-radius: 999px;
+  background: #f3f8ff;
+  color: var(--sw-muted);
+  padding: 2px 7px;
+  font-size: 12px;
   font-weight: 600;
-  font-size: 16px;
 }
 
-.slot-required {
-  font-size: 12px;
-  color: #999;
-}
-
-.file-upload-box {
-  text-align: center;
-}
-
-.file-input {
-  position: absolute;
-  width: 0;
-  height: 0;
-  opacity: 0;
-}
-
-.file-label {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 24px 48px;
-  border: 2px dashed #ccc;
-  border-radius: 8px;
-  cursor: pointer;
-  color: #666;
-  transition: border-color 0.2s;
-}
-
-.file-label:hover {
-  border-color: #1890ff;
-}
-
-.upload-icon {
-  font-size: 28px;
-}
-
-.file-preview {
+.support-line {
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
   gap: 12px;
-  padding: 8px 12px;
-  background: #f5f5f5;
-  border-radius: 4px;
-}
-
-.file-name {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.file-size {
-  color: #999;
-  font-size: 12px;
-}
-
-.btn-clear {
-  border: none;
-  background: none;
-  color: #ff4d4f;
-  cursor: pointer;
+  margin: -4px 0 16px;
+  color: var(--sw-muted);
   font-size: 13px;
 }
 
-.slot-hint {
+.support-line span {
+  border-radius: 999px;
+  background: #f3f8ff;
+  padding: 6px 10px;
+}
+
+.upload-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.submit-result {
+  border-radius: var(--sw-radius);
+}
+
+.result-grid {
+  display: grid;
+  grid-template-columns: 1fr minmax(280px, 0.7fr) auto;
+  align-items: center;
+  gap: 20px;
+}
+
+.result-grid strong {
+  color: #087443;
+  font-size: 17px;
+}
+
+.result-grid p {
   margin-top: 8px;
-  font-size: 12px;
-  color: #999;
+  color: var(--sw-muted);
+  line-height: 1.7;
 }
 
-.slot-error {
-  margin-top: 4px;
-  font-size: 13px;
-  color: #ff4d4f;
+.result-grid dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 12px;
+  margin: 0;
+}
+
+.result-grid dt {
+  color: var(--sw-muted);
+}
+
+.result-grid dd {
+  margin: 0;
+}
+
+.result-actions,
+.form-actions {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
 }
 
 .form-actions {
-  text-align: center;
-  margin-top: 24px;
+  padding: 12px 0 0;
 }
 
-.btn-submit {
-  padding: 12px 48px;
-  font-size: 16px;
-  background: #1890ff;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.btn-submit:hover {
-  background: #40a9ff;
-}
-
-.btn-submit:disabled {
-  background: #91d5ff;
-  cursor: not-allowed;
-}
-
-.submit-error {
-  text-align: center;
-  color: #ff4d4f;
-  margin-top: 16px;
-}
-
-.result-section {
-  margin-top: 32px;
-}
-
-.result-card {
-  background: #f6ffed;
-  border: 1px solid #b7eb8f;
-  border-radius: 8px;
-  padding: 24px;
-}
-
-.result-card h2 {
-  font-size: 18px;
-  color: #52c41a;
-  margin-bottom: 16px;
-}
-
-.result-card dl {
-  margin-bottom: 16px;
-}
-
-.result-card dt {
-  font-size: 13px;
-  color: #666;
-}
-
-.result-card dd {
-  margin-left: 0;
-  margin-bottom: 8px;
-}
-
-.result-card code {
-  background: #e6f7ff;
-  padding: 2px 8px;
-  border-radius: 3px;
-  font-size: 13px;
-}
-
-.result-note {
-  font-size: 14px;
-  color: #333;
-  margin-bottom: 16px;
-}
-
-.result-actions {
+.polling-line {
   display: flex;
-  gap: 12px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.btn-primary {
-  display: inline-flex;
   align-items: center;
-  padding: 8px 20px;
-  background: #1890ff;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  font-size: 14px;
-  cursor: pointer;
-  text-decoration: none;
-  transition: background 0.2s;
-}
-
-.btn-primary:hover {
-  background: #40a9ff;
-}
-
-.btn-new {
-  border: 1px solid #d9d9d9;
-  background: #fff;
-  padding: 8px 16px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-.polling-section {
-  margin-top: 24px;
-  text-align: center;
-}
-
-.polling-hint {
-  margin-top: 8px;
-  font-size: 14px;
-  color: #666;
-}
-
-.applicant-result {
-  margin-top: 32px;
-}
-
-.applicant-result h2 {
-  font-size: 18px;
-  margin-bottom: 16px;
-}
-
-.app-result-card {
-  padding: 16px;
-  border-radius: 8px;
-  margin-bottom: 12px;
-}
-
-.app-result-card h3 {
-  font-size: 15px;
-  margin-bottom: 8px;
-}
-
-.app-result-card.missing {
-  background: #fff7e6;
-  border: 1px solid #ffd591;
-}
-
-.app-result-card.missing h3 {
-  color: #fa8c16;
-}
-
-.app-result-card.issues {
-  background: #fff2f0;
-  border: 1px solid #ffccc7;
-}
-
-.app-result-card.issues h3 {
-  color: #ff4d4f;
-}
-
-.app-result-card.suggestions {
-  background: #e6f7ff;
-  border: 1px solid #91d5ff;
-}
-
-.app-result-card.suggestions h3 {
-  color: #1890ff;
-}
-
-.app-result-card ul {
-  list-style: disc;
-  padding-left: 20px;
-}
-
-.app-result-card li {
-  font-size: 14px;
-  margin-bottom: 4px;
-}
-
-.issue-item {
-  font-size: 14px;
-  margin-bottom: 6px;
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-}
-
-.issue-severity {
-  flex-shrink: 0;
-  padding: 0 6px;
-  border-radius: 3px;
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.sev-blocker {
-  background: #ff4d4f;
-  color: #fff;
-}
-
-.sev-warning {
-  background: #fa8c16;
-  color: #fff;
-}
-
-.sev-info {
-  background: #ddd;
-  color: #666;
-}
-
-.app-result-actions {
-  margin-top: 20px;
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .disclaimer {
-  margin-top: 48px;
-  text-align: center;
+  margin-top: 20px;
+  color: var(--sw-faint);
   font-size: 12px;
-  color: #bbb;
+  text-align: center;
+}
+
+@media (max-width: 1080px) {
+  .form-grid,
+  .result-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .result-actions {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 760px) {
+  .form-grid,
+  .result-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .result-actions,
+  .form-actions {
+    flex-direction: column;
+  }
 }
 </style>

@@ -24,6 +24,7 @@ vue-tsc -b && vite build
 ## 真实规则
 
 - 页面和 API 适配要分开：页面调用 `api/task.ts`，adapter 在同文件内把 DTO 变成 view model
+- `utils/request.ts` 必须把 Java `R<T>` 响应中 `code !== 200` 的业务失败转成 rejected Promise；页面不能把 HTTP 200 但业务失败的响应当成功数据读取
 - `components/` 不能直接发 HTTP 请求
 - `api/task.spec.ts` 是当前最重要的 contract 回归文件
 - 任何 DTO、status 或 field mapping 变化都要补测试
@@ -38,6 +39,7 @@ vue-tsc -b && vite build
 | adapter / DTO mapping | `api/task.spec.ts` 断言映射字段 |
 | 页面 / 组件改动 | `npm run build` 通过 |
 | contract 变更 | 至少一个字段或状态回归断言 |
+| Java `R<T>` 业务错误处理 | `utils/request.spec.ts` 或等价测试断言 `code != 200` 会 reject |
 
 ---
 
@@ -47,6 +49,7 @@ vue-tsc -b && vite build
 |---|---|
 | 在 `components/` 里直接写 HTTP 请求 | 破坏分层 |
 | 在页面里直接复制后端 DTO 结构 | 视图层会被 API 细节污染 |
+| 忽略 Java `R.code` 只看 HTTP 状态 | 后端业务失败通常仍是 HTTP 200，会导致页面误读 `data` |
 | 重复定义状态标签/材料标签 | 容易漂移 |
 | 使用 `any` 或 `// @ts-ignore` 绕过类型 | 丢失 contract 保证 |
 | 提交时保留调试 `console.log` | 污染生产代码 |

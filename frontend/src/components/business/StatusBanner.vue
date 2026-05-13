@@ -24,11 +24,17 @@ import { STATUS_LABELS_REVIEWER } from '@/types'
 interface Props {
   status: ProcessingStatus
   resultSummary: ResultSummary | null
+  requiresManualReview?: boolean
 }
 
 const props = defineProps<Props>()
 
-const label = computed(() => STATUS_LABELS_REVIEWER[props.status])
+const label = computed(() => {
+  if (props.status === 'COMPLETED' && props.requiresManualReview) {
+    return '审核辅助结果已生成，需人工复核'
+  }
+  return STATUS_LABELS_REVIEWER[props.status]
+})
 
 const bannerClass = computed(() => {
   switch (props.status) {

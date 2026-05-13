@@ -1,183 +1,161 @@
 <template>
-  <div class="application-list-page">
-    <!-- 页面标题栏 -->
-    <div class="page-header-bar">
-      <h1 class="page-title">取水许可申请列表</h1>
-      <router-link to="/apply" class="btn-primary">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="12" y1="5" x2="12" y2="19"/>
-          <line x1="5" y1="12" x2="19" y2="12"/>
-        </svg>
-        新建申请
-      </router-link>
+  <div class="sw-page application-list-page">
+    <div class="list-heading">
+      <div>
+        <h1 class="sw-page-title">申请列表</h1>
+        <p>演示环境最近申请列表。MVP 暂无账号权限，使用任务 ID 和会话 ID 进入结果页。</p>
+      </div>
+      <router-link to="/apply" class="sw-btn sw-btn-primary">新建申请</router-link>
     </div>
 
-    <!-- 筛选区 -->
-    <div class="filter-bar">
-      <div class="filter-group">
-        <input
-          v-model="filterKeyword"
-          type="text"
-          class="filter-input"
-          placeholder="请输入申请编号"
-          @keyup.enter="handleSearch"
-        />
+    <PageCard compact class="filter-card">
+      <div class="filter-grid">
+        <label class="filter-field wide">
+          <span>任务 ID</span>
+          <input
+            v-model="filterKeyword"
+            class="sw-input"
+            type="text"
+            placeholder="搜索任务 ID"
+            @keyup.enter="handleSearch"
+          />
+        </label>
+        <label class="filter-field">
+          <span>状态</span>
+          <select v-model="filterStatus" class="sw-select">
+            <option value="">请选择状态</option>
+            <option v-for="status in STATUS_OPTIONS" :key="status" :value="status">
+              {{ STATUS_LABELS_APPLICANT[status] }}
+            </option>
+          </select>
+        </label>
+        <label class="filter-field date-pair">
+          <span>提交日期</span>
+          <div class="date-inputs">
+            <input v-model="filterStartDate" class="sw-input" type="date" />
+            <b>→</b>
+            <input v-model="filterEndDate" class="sw-input" type="date" />
+          </div>
+        </label>
+        <div class="filter-actions">
+          <button type="button" class="sw-btn sw-btn-ghost" @click="handleReset">重置</button>
+          <button type="button" class="sw-btn sw-btn-primary" @click="handleSearch">查询</button>
+        </div>
       </div>
-      <div class="filter-group date-range">
-        <input v-model="filterStartDate" type="date" class="filter-input date-input"/>
-        <span class="date-separator">~</span>
-        <input v-model="filterEndDate" type="date" class="filter-input date-input"/>
+    </PageCard>
+
+    <PageCard compact class="table-card">
+      <div v-if="errorMessage" class="sw-alert sw-alert-danger list-alert">
+        {{ errorMessage }}
       </div>
-      <div class="filter-group">
-        <select v-model="filterStatus" class="filter-select">
-          <option value="">选择状态</option>
-          <option v-for="s in STATUS_OPTIONS" :key="s" :value="s">
-            {{ STATUS_LABELS_APPLICANT[s] }}
-          </option>
+
+      <div class="table-scroll">
+        <table class="application-table">
+          <thead>
+            <tr>
+              <th>任务 ID</th>
+              <th>状态</th>
+              <th>提交时间</th>
+              <th>更新时间</th>
+              <th>知识包版本</th>
+              <th>材料提交情况</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="loading">
+              <td colspan="7">
+                <div class="table-loading">
+                  <span class="sw-spinner"></span>
+                  <span>正在加载申请列表</span>
+                </div>
+              </td>
+            </tr>
+            <tr v-else-if="filteredItems.length === 0">
+              <td colspan="7">
+                <EmptyState
+                  title="暂无申请记录"
+                  description="当前列表只展示真实后端列表 API 返回的数据。"
+                >
+                  <router-link to="/apply" class="sw-btn sw-btn-primary">新建申请</router-link>
+                </EmptyState>
+              </td>
+            </tr>
+<template v-else>
+              <tr v-for="item in paginatedItems" :key="item.taskId">
+              <td class="task-id">{{ item.taskId }}</td>
+              <td><StatusTag :status="item.status" /></td>
+              <td>{{ formatDateTime(item.submittedAt) }}</td>
+              <td>{{ formatDateTime(item.updatedAt) }}</td>
+              <td>{{ item.knowledgePackVersion || '未返回' }}</td>
+              <td><TaskMaterialSummary :slots="item.materials" /></td>
+              <td>
+                <router-link
+                  class="detail-link"
+                  :to="`/review?taskId=${item.taskId}&sessionId=${item.sessionId}`"
+                >
+                  进入详情
+                </router-link>
+              </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+
+      <div v-if="filteredItems.length > 0" class="pagination-bar">
+        <span>共 {{ filteredItems.length }} 条</span>
+        <div class="pager">
+          <button type="button" :disabled="currentPage === 1" @click="currentPage -= 1">‹</button>
+          <button
+            v-for="page in visiblePages"
+            :key="page"
+            type="button"
+            :class="{ active: page === currentPage }"
+            @click="currentPage = page"
+          >
+            {{ page }}
+          </button>
+          <button type="button" :disabled="currentPage === totalPages" @click="currentPage += 1">›</button>
+        </div>
+        <select v-model="pageSize" class="sw-select page-size-select">
+          <option :value="10">10 条/页</option>
+          <option :value="20">20 条/页</option>
+          <option :value="50">50 条/页</option>
         </select>
       </div>
-      <button class="btn-primary" @click="handleSearch">
-        查询
-      </button>
-      <button class="btn-default" @click="handleReset">
-        重置
-      </button>
-    </div>
-
-    <!-- 表格区 -->
-    <div class="table-wrapper">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>申请编号</th>
-            <th>提交时间</th>
-            <th>状态</th>
-            <th>材料情况</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-if="loading">
-            <td colspan="5" class="loading-cell">
-              <div class="loading-spinner"></div>
-              加载中...
-            </td>
-          </tr>
-          <tr v-else-if="filteredItems.length === 0">
-            <td colspan="5" class="empty-cell">
-              <div class="empty-state">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d9d9d9" stroke-width="1.5">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                  <polyline points="14 2 14 8 20 8"/>
-                  <line x1="16" y1="13" x2="8" y2="13"/>
-                  <line x1="16" y1="17" x2="8" y2="17"/>
-                </svg>
-                <p>暂无申请记录</p>
-                <router-link to="/apply" class="link-primary">点击新建申请开始</router-link>
-              </div>
-            </td>
-          </tr>
-          <tr
-            v-for="item in paginatedItems"
-            :key="item.taskId"
-            class="data-row"
-          >
-            <td class="task-id">{{ item.taskId }}</td>
-            <td>{{ formatDateTime(item.submittedAt) }}</td>
-            <td>
-              <StatusTag :status="item.status" />
-            </td>
-            <td>
-              <div class="material-dots">
-                <span
-                  v-for="slot in item.materials"
-                  :key="slot.materialType"
-                  class="material-dot"
-                  :class="{ uploaded: slot.uploaded }"
-                  :title="MATERIAL_LABELS[slot.materialType] + (slot.uploaded ? '（已上传）' : '（未上传）')"
-                >
-                  {{ MATERIAL_LABELS[slot.materialType]?.charAt(0) }}
-                </span>
-              </div>
-            </td>
-            <td>
-              <router-link
-                :to="`/review?taskId=${item.taskId}&sessionId=${item.sessionId}`"
-                class="link-action"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                  <circle cx="12" cy="12" r="3"/>
-                </svg>
-                查看
-              </router-link>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- 分页 -->
-    <div v-if="filteredItems.length > 0" class="pagination-bar">
-      <span class="total-text">共 {{ filteredItems.length }} 条</span>
-      <div class="page-controls">
-        <button
-          class="page-btn"
-          :disabled="currentPage === 1"
-          @click="currentPage--"
-        >
-          &lt;
-        </button>
-        <button
-          v-for="page in visiblePages"
-          :key="page"
-          class="page-btn"
-          :class="{ active: page === currentPage }"
-          @click="currentPage = page"
-        >
-          {{ page }}
-        </button>
-        <button
-          class="page-btn"
-          :disabled="currentPage === totalPages"
-          @click="currentPage++"
-        >
-          &gt;
-        </button>
-      </div>
-      <select v-model="pageSize" class="page-size-select">
-        <option :value="10">10条/页</option>
-        <option :value="20">20条/页</option>
-        <option :value="50">50条/页</option>
-      </select>
-    </div>
+    </PageCard>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { getTaskList } from '@/api/task'
-import type { TaskListItem, ProcessingStatus } from '@/types'
-import { STATUS_LABELS_APPLICANT, MATERIAL_LABELS } from '@/types'
+import type { ProcessingStatus, TaskListItem } from '@/types'
+import { STATUS_LABELS_APPLICANT } from '@/types'
+import PageCard from '@/components/common/PageCard.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
 import StatusTag from '@/components/common/StatusTag.vue'
+import TaskMaterialSummary from '@/components/business/TaskMaterialSummary.vue'
 
 const STATUS_OPTIONS: ProcessingStatus[] = ['SUBMITTED', 'QUEUED', 'PROCESSING', 'PARTIAL_SUCCESS', 'COMPLETED', 'FAILED']
 
 const loading = ref(false)
+const errorMessage = ref('')
 const items = ref<TaskListItem[]>([])
 const filterKeyword = ref('')
 const filterStartDate = ref('')
 const filterEndDate = ref('')
-const filterStatus = ref('')
+const filterStatus = ref<ProcessingStatus | ''>('')
 const currentPage = ref(1)
 const pageSize = ref(10)
 
 const filteredItems = computed(() => {
   let result = items.value
 
-  if (filterKeyword.value) {
-    const kw = filterKeyword.value.toLowerCase()
-    result = result.filter((item) => item.taskId.toLowerCase().includes(kw))
+  const keyword = filterKeyword.value.trim().toLowerCase()
+  if (keyword) {
+    result = result.filter((item) => item.taskId.toLowerCase().includes(keyword))
   }
 
   if (filterStatus.value) {
@@ -202,39 +180,41 @@ const totalPages = computed(() => Math.max(1, Math.ceil(filteredItems.value.leng
 
 const paginatedItems = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value
-  const end = start + pageSize.value
-  return filteredItems.value.slice(start, end)
+  return filteredItems.value.slice(start, start + pageSize.value)
 })
 
 const visiblePages = computed(() => {
   const pages: number[] = []
   const maxVisible = 5
   let start = Math.max(1, currentPage.value - Math.floor(maxVisible / 2))
-  let end = Math.min(totalPages.value, start + maxVisible - 1)
+  const end = Math.min(totalPages.value, start + maxVisible - 1)
 
   if (end - start + 1 < maxVisible) {
     start = Math.max(1, end - maxVisible + 1)
   }
 
-  for (let i = start; i <= end; i++) {
-    pages.push(i)
+  for (let page = start; page <= end; page += 1) {
+    pages.push(page)
   }
+
   return pages
 })
 
-watch(pageSize, () => {
+watch([pageSize, filterKeyword, filterStatus, filterStartDate, filterEndDate], () => {
   currentPage.value = 1
 })
 
-function formatDateTime(dt: string): string {
-  const d = new Date(dt)
+function formatDateTime(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return value || '未返回'
+  }
   const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
 function handleSearch() {
   currentPage.value = 1
-  fetchList()
 }
 
 function handleReset() {
@@ -243,16 +223,17 @@ function handleReset() {
   filterEndDate.value = ''
   filterStatus.value = ''
   currentPage.value = 1
-  fetchList()
 }
 
 async function fetchList() {
   loading.value = true
+  errorMessage.value = ''
   try {
     const res = await getTaskList(1, 100)
     items.value = res.data.data.items
-  } catch (e) {
-    console.error('获取申请列表失败', e)
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '申请列表加载失败，请稍后重试。'
+    items.value = []
   } finally {
     loading.value = false
   }
@@ -263,291 +244,197 @@ onMounted(fetchList)
 
 <style scoped>
 .application-list-page {
-  max-width: 1200px;
+  max-width: 1480px;
 }
 
-.page-header-bar {
+.list-heading {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 20px;
+  gap: 20px;
 }
 
-.page-title {
-  font-size: 20px;
-  font-weight: 600;
-  color: #333;
-  margin: 0;
+.list-heading p {
+  margin-top: -12px;
+  margin-bottom: 22px;
+  color: var(--sw-muted);
+  line-height: 1.7;
 }
 
-.btn-primary {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 20px;
-  background: #1890ff;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  font-size: 14px;
-  cursor: pointer;
-  text-decoration: none;
-  transition: background 0.2s;
+.filter-card {
+  margin-bottom: 14px;
 }
 
-.btn-primary:hover {
-  background: #40a9ff;
+.filter-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.1fr) minmax(170px, 0.8fr) minmax(360px, 1.35fr) auto;
+  align-items: end;
+  gap: 16px;
 }
 
-.btn-default {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 20px;
-  background: #fff;
-  color: #666;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
+.filter-field {
+  display: grid;
+  gap: 8px;
 }
 
-.btn-default:hover {
-  border-color: #1890ff;
-  color: #1890ff;
+.filter-field span {
+  color: #26364f;
+  font-weight: 800;
 }
 
-.filter-bar {
+.date-inputs,
+.filter-actions {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
 }
 
-.filter-group {
-  display: flex;
-  align-items: center;
+.date-inputs b {
+  color: #a4b0c2;
 }
 
-.filter-input {
-  padding: 8px 12px;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
-  font-size: 14px;
-  width: 200px;
-  transition: border-color 0.2s;
-}
-
-.filter-input:focus {
-  outline: none;
-  border-color: #1890ff;
-}
-
-.filter-input::placeholder {
-  color: #bbb;
-}
-
-.date-input {
-  width: 130px;
-}
-
-.date-separator {
-  margin: 0 8px;
-  color: #999;
-}
-
-.filter-select {
-  padding: 8px 12px;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
-  font-size: 14px;
-  width: 130px;
-  background: #fff;
-  cursor: pointer;
-}
-
-.table-wrapper {
-  background: #fff;
-  border-radius: 8px;
-  border: 1px solid #e8e8e8;
+.table-card {
   overflow: hidden;
 }
 
-.data-table {
+.list-alert {
+  margin-bottom: 14px;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.application-table {
   width: 100%;
+  min-width: 1040px;
   border-collapse: collapse;
   font-size: 14px;
 }
 
-.data-table thead {
-  background: #fafafa;
+.application-table thead {
+  background: #f4f8fd;
 }
 
-.data-table th {
-  padding: 14px 16px;
+.application-table th,
+.application-table td {
+  border-bottom: 1px solid #edf2f7;
+  padding: 15px 14px;
   text-align: left;
-  font-weight: 500;
-  color: #666;
-  border-bottom: 1px solid #e8e8e8;
+  vertical-align: middle;
+}
+
+.application-table th {
+  color: #2f3f56;
+  font-weight: 800;
   white-space: nowrap;
 }
 
-.data-table td {
-  padding: 14px 16px;
-  border-bottom: 1px solid #f0f0f0;
-  color: #333;
+.application-table td {
+  color: #334155;
 }
 
-.data-row:hover {
-  background: #f5f7fa;
+.application-table tbody tr:not(:first-child):hover,
+.application-table tbody tr:hover {
+  background: #fbfdff;
 }
 
 .task-id {
-  font-family: monospace;
+  color: #14213a;
+  font-family: "SFMono-Regular", Consolas, monospace;
   font-size: 13px;
+  font-weight: 700;
 }
 
-.material-dots {
-  display: flex;
-  gap: 6px;
+.detail-link {
+  color: var(--sw-primary);
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
 }
 
-.material-dot {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: #f5f5f5;
-  color: #bbb;
-  font-size: 11px;
+.detail-link:hover {
+  color: var(--sw-primary-strong);
+}
+
+.table-loading {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid #e0e0e0;
-  cursor: help;
+  gap: 10px;
+  padding: 48px 0;
+  color: var(--sw-muted);
 }
 
-.material-dot.uploaded {
-  background: #f6ffed;
-  color: #52c41a;
-  border-color: #b7eb8f;
-}
-
-.link-action {
-  display: inline-flex;
+.pagination-bar {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
   align-items: center;
-  gap: 4px;
-  color: #1890ff;
-  text-decoration: none;
-  font-size: 13px;
-  cursor: pointer;
+  gap: 18px;
+  padding-top: 20px;
+  color: var(--sw-muted);
 }
 
-.link-action:hover {
-  color: #40a9ff;
-}
-
-.link-primary {
-  color: #1890ff;
-  text-decoration: none;
-}
-
-.link-primary:hover {
-  color: #40a9ff;
-}
-
-.loading-cell,
-.empty-cell {
-  text-align: center;
-  padding: 60px 16px;
-  color: #999;
-}
-
-.loading-spinner {
-  width: 24px;
-  height: 24px;
-  border: 2px solid #f0f0f0;
-  border-top-color: #1890ff;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin: 0 auto 12px;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.empty-state {
+.pager {
   display: flex;
-  flex-direction: column;
   align-items: center;
   gap: 8px;
 }
 
-.empty-state p {
-  margin: 0;
-  color: #999;
-}
-
-.pagination-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 20px;
-  padding: 0 8px;
-}
-
-.total-text {
-  font-size: 14px;
-  color: #666;
-}
-
-.page-controls {
-  display: flex;
-  gap: 4px;
-}
-
-.page-btn {
-  min-width: 32px;
-  height: 32px;
-  padding: 0 8px;
-  border: 1px solid #d9d9d9;
+.pager button {
+  min-width: 34px;
+  height: 34px;
+  border: 1px solid var(--sw-line);
+  border-radius: 7px;
   background: #fff;
-  border-radius: 4px;
-  font-size: 14px;
-  color: #666;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  color: #334155;
+  font-weight: 700;
 }
 
-.page-btn:hover:not(:disabled) {
-  border-color: #1890ff;
-  color: #1890ff;
+.pager button.active {
+  border-color: var(--sw-primary);
+  color: var(--sw-primary);
+  box-shadow: 0 6px 16px rgba(22, 119, 255, 0.13);
 }
 
-.page-btn.active {
-  background: #1890ff;
-  border-color: #1890ff;
-  color: #fff;
-}
-
-.page-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.pager button:disabled {
+  color: #c5cfdc;
 }
 
 .page-size-select {
-  padding: 6px 10px;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
-  font-size: 14px;
-  background: #fff;
-  cursor: pointer;
+  width: 116px;
+}
+
+@media (max-width: 1180px) {
+  .filter-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .date-pair,
+  .filter-actions {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 760px) {
+  .list-heading {
+    display: block;
+  }
+
+  .filter-grid,
+  .pagination-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .date-pair,
+  .filter-actions {
+    grid-column: auto;
+  }
+
+  .date-inputs,
+  .filter-actions,
+  .pager {
+    flex-wrap: wrap;
+  }
 }
 </style>

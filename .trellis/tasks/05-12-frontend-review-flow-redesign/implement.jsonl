@@ -1,0 +1,15 @@
+{"file": ".trellis/spec/frontend/index.md", "reason": "Frontend spec index and required pre-development checklist"}
+{"file": ".trellis/spec/frontend/smartwater-mvp-visibility.md", "reason": "Current applicant/reviewer visibility contract and status labels"}
+{"file": ".trellis/spec/frontend/type-safety.md", "reason": "Canonical frontend DTO and view-model typing rules"}
+{"file": ".trellis/spec/frontend/component-guidelines.md", "reason": "Component/page/API adapter responsibility boundaries"}
+{"file": ".trellis/spec/frontend/state-management.md", "reason": "Page-local state and future Pinia boundary"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "Frontend tests/build gates and adapter regression requirements"}
+{"file": ".trellis/spec/backend/smartwater-mvp-contracts.md", "reason": "Cross-service statuses, material/result DTOs, and visibility boundaries"}
+{"file": ".trellis/spec/backend/database-guidelines.md", "reason": "Backend list API reads review_task/material_slot data without schema drift"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Backend API errors and access boundaries for list/status/result endpoints"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Java test and quality expectations for new list API"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Task spans frontend API adapters, backend contract semantics, and Worker result states"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Refactor should reuse existing page/component/API patterns where appropriate"}
+{"file": "docs/UI设计/AI初审结果.png", "reason": "AI 初审结果页 UI 设计稿，要求左侧材料区和右侧 AI 分析面板布局对齐"}
+{"file": "docs/UI设计/申请列表.png", "reason": "申请列表页 UI 设计稿，要求筛选栏、表格、分页和后台管理布局对齐"}
+{"file": "docs/UI设计/申请.png", "reason": "新水务申请页 UI 设计稿，要求表单、上传区和底部操作布局对齐"}

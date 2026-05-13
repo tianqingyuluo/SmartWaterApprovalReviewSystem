@@ -2,7 +2,9 @@ package com.tianqingyuluo.waterapproval.service;
 
 import com.tianqingyuluo.waterapproval.dto.ResultWriteRequest;
 import com.tianqingyuluo.waterapproval.dto.TaskListResponse;
+import com.tianqingyuluo.waterapproval.entity.MaterialSlot;
 import com.tianqingyuluo.waterapproval.entity.ReviewTask;
+import com.tianqingyuluo.waterapproval.mapper.MaterialSlotMapper;
 import com.tianqingyuluo.waterapproval.mapper.ReviewTaskMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +26,9 @@ class ReviewTaskServiceImplTest {
 
     @Autowired
     private ReviewTaskMapper taskMapper;
+
+    @Autowired
+    private MaterialSlotMapper materialSlotMapper;
 
     @Test
     void writeResultShouldPersistKnowledgePackVersion() {
@@ -125,5 +130,44 @@ class ReviewTaskServiceImplTest {
         // Verify total count is consistent across pages
         TaskListResponse page3 = reviewTaskService.getTaskList(3, 2);
         assertEquals(page1.getTotal(), page3.getTotal());
+    }
+
+    @Test
+    void getTaskListShouldNormalizePageAndSizeAndReturnFixedMaterialSlots() {
+        ReviewTask task = new ReviewTask();
+        task.setTaskId("task-list-materials-" + System.currentTimeMillis());
+        task.setSessionId("session-list-materials");
+        task.setStatus("SUBMITTED");
+        task.setSubmittedAt(LocalDateTime.now());
+        task.setCreatedAt(LocalDateTime.now());
+        task.setUpdatedAt(LocalDateTime.now());
+        taskMapper.insert(task);
+
+        MaterialSlot applicationForm = new MaterialSlot();
+        applicationForm.setMaterialId("mat-list-application-" + System.currentTimeMillis());
+        applicationForm.setTaskId(task.getTaskId());
+        applicationForm.setMaterialType("APPLICATION_FORM");
+        applicationForm.setOriginalFileName("application.pdf");
+        applicationForm.setCreatedAt(LocalDateTime.now());
+        applicationForm.setUpdatedAt(LocalDateTime.now());
+        materialSlotMapper.insert(applicationForm);
+
+        TaskListResponse response = reviewTaskService.getTaskList(0, 0);
+
+        TaskListResponse.TaskListItem item = response.getItems().stream()
+                .filter(candidate -> candidate.getTaskId().equals(task.getTaskId()))
+                .findFirst()
+                .orElseThrow();
+
+        assertEquals(1, response.getPage());
+        assertEquals(1, response.getSize());
+        assertEquals(3, item.getMaterials().size());
+        assertEquals("APPLICATION_FORM", item.getMaterials().get(0).getMaterialType());
+        assertEquals("application.pdf", item.getMaterials().get(0).getOriginalFileName());
+        assertEquals(Boolean.TRUE, item.getMaterials().get(0).getUploaded());
+        assertEquals("BUSINESS_LICENSE", item.getMaterials().get(1).getMaterialType());
+        assertEquals(Boolean.FALSE, item.getMaterials().get(1).getUploaded());
+        assertEquals("ID_CARD", item.getMaterials().get(2).getMaterialType());
+        assertEquals(Boolean.FALSE, item.getMaterials().get(2).getUploaded());
     }
 }

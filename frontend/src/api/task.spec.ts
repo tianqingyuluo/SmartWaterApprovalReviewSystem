@@ -161,6 +161,41 @@ describe('task API adapters', () => {
     expect(view.findings[0].severity).toBe('BLOCKER')
   })
 
+  it('marks completed model failure issue as requiring manual review', () => {
+    const statusDto: TaskStatusResponse = {
+      taskId: 'task-1',
+      status: 'COMPLETED',
+      submittedAt: '2026-05-08T10:00:00',
+      updatedAt: '2026-05-08T10:01:00',
+      materials: [],
+    }
+    const resultDto: ReviewerResultResponse = {
+      taskId: 'task-1',
+      status: 'COMPLETED',
+      summary: 'AI审核输出格式校验失败',
+      missingMaterials: [],
+      draftOpinion: '',
+      manualReviewNotice: 'AI审核输出格式校验失败，请人工审核所有材料。',
+      extractedFields: {},
+      issues: [
+        {
+          code: 'SCHEMA_MISMATCH',
+          severity: 'BLOCKER',
+          message: '审核推理输出格式不符合预期，需要人工复核。',
+          applicantVisible: false,
+        },
+      ],
+      riskHints: [],
+    }
+
+    const view = toReviewerResultView(statusDto, resultDto)
+
+    expect(view.status).toBe('COMPLETED')
+    expect(view.failureCategory).toBe('SCHEMA_MISMATCH')
+    expect(view.failureReason).toBe('AI审核输出格式校验失败')
+    expect(view.requiresManualReview).toBe(true)
+  })
+
   it('marks normal COMPLETED without manual review requirement', () => {
     const statusDto: TaskStatusResponse = {
       taskId: 'task-1',
@@ -192,6 +227,35 @@ describe('task API adapters', () => {
 
     expect(view.status).toBe('COMPLETED')
     expect(view.failureCategory).toBeNull()
+    expect(view.requiresManualReview).toBe(false)
+  })
+
+  it('maps non-terminal reviewer placeholder result without manual review noise', () => {
+    const statusDto: TaskStatusResponse = {
+      taskId: 'task-1',
+      status: 'PROCESSING',
+      submittedAt: '2026-05-08T10:00:00',
+      updatedAt: '2026-05-08T10:01:00',
+      materials: [],
+    }
+    const resultDto: ReviewerResultResponse = {
+      taskId: 'task-1',
+      status: 'PROCESSING',
+      summary: '审核结果处理中，请稍后查询',
+      missingMaterials: [],
+      draftOpinion: '',
+      manualReviewNotice: '',
+      extractedFields: undefined,
+      issues: [],
+      riskHints: [],
+    }
+
+    const view = toReviewerResultView(statusDto, resultDto)
+
+    expect(view.status).toBe('PROCESSING')
+    expect(view.extractedFields).toEqual({})
+    expect(view.findings).toEqual([])
+    expect(view.riskHints).toEqual([])
     expect(view.requiresManualReview).toBe(false)
   })
 })

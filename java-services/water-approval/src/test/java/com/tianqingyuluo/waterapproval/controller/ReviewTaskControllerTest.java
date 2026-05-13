@@ -220,4 +220,21 @@ class ReviewTaskControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
     }
+
+    @Test
+    void getTaskListShouldNormalizePageAndSizeLowerBounds() throws Exception {
+        TaskListResponse response = new TaskListResponse();
+        response.setTotal(0);
+        response.setPage(1);
+        response.setSize(1);
+        when(reviewTaskService.getTaskList(1, 1)).thenReturn(response);
+
+        mockMvc.perform(get("/task/list")
+                        .param("page", "0")
+                        .param("size", "0"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.page").value(1))
+                .andExpect(jsonPath("$.data.size").value(1));
+    }
 }

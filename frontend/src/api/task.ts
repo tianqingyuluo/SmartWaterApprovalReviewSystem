@@ -84,24 +84,50 @@ export function toReviewerResultView(
 }
 
 function extractFailureInfo(resultDto: ReviewerResultResponse): { failureCategory: FailureCategory; failureReason: string | null } {
-  if (resultDto.status !== 'FAILED') {
-    return { failureCategory: null, failureReason: null }
+  if (resultDto.failureCategory) {
+    return {
+      failureCategory: resultDto.failureCategory,
+      failureReason: resultDto.failureReason || resultDto.summary || null,
+    }
   }
 
-  // Try to infer from modelMetadata if available
+  const issueCategory = resultDto.issues
+    .map((issue) => toFailureCategory(issue.code))
+    .find((category): category is NonNullable<FailureCategory> => category !== null)
+  if (issueCategory) {
+    return { failureCategory: issueCategory, failureReason: resultDto.summary || null }
+  }
+
   const meta = resultDto.modelMetadata
   if (meta) {
-    const knownCategories: FailureCategory[] = [
-      'SYSTEM_ERROR', 'AUTH_ERROR', 'RATE_LIMIT', 'TIMEOUT',
-      'UPSTREAM_5XX', 'INVALID_JSON', 'SCHEMA_MISMATCH', 'CONTENT_FILTERED',
-    ]
-    const matched = knownCategories.find((c) => c && meta.includes(c))
+    const matched = FAILURE_CATEGORIES.find((category) => meta.includes(category))
     if (matched) {
       return { failureCategory: matched, failureReason: resultDto.summary || null }
     }
   }
 
+  if (resultDto.status !== 'FAILED') {
+    return { failureCategory: null, failureReason: null }
+  }
+
   return { failureCategory: 'SYSTEM_ERROR', failureReason: resultDto.summary || null }
+}
+
+const FAILURE_CATEGORIES: NonNullable<FailureCategory>[] = [
+  'SYSTEM_ERROR',
+  'AUTH_ERROR',
+  'RATE_LIMIT',
+  'TIMEOUT',
+  'UPSTREAM_5XX',
+  'INVALID_JSON',
+  'SCHEMA_MISMATCH',
+  'CONTENT_FILTERED',
+]
+
+function toFailureCategory(code: string): FailureCategory {
+  return FAILURE_CATEGORIES.includes(code as NonNullable<FailureCategory>)
+    ? code as NonNullable<FailureCategory>
+    : null
 }
 
 function toApplicantFinding(issue: ApplicantIssueDto): Finding {

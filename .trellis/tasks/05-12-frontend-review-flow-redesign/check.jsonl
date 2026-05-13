@@ -1,0 +1,12 @@
+{"file": ".trellis/spec/frontend/index.md", "reason": "Verify frontend work followed required specs"}
+{"file": ".trellis/spec/frontend/smartwater-mvp-visibility.md", "reason": "Verify status and audience visibility semantics are correct"}
+{"file": ".trellis/spec/frontend/type-safety.md", "reason": "Verify DTO/view-model typing and no unsafe shortcuts"}
+{"file": ".trellis/spec/frontend/component-guidelines.md", "reason": "Verify component boundaries and no HTTP in presentational components"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "Verify test/build gates and adapter regression coverage"}
+{"file": ".trellis/spec/backend/smartwater-mvp-contracts.md", "reason": "Verify frontend still matches backend/Worker contract"}
+{"file": ".trellis/spec/backend/database-guidelines.md", "reason": "Verify list API reads DB state without unintended status mutation"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Verify list API error/access behavior is consistent"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Verify Java tests cover new backend API behavior"}
+{"file": "docs/UI设计/申请.png", "reason": "检查新水务申请页是否按设计稿布局实现且未展示伪功能"}
+{"file": "docs/UI设计/申请列表.png", "reason": "检查申请列表页是否按设计稿布局实现且未展示伪功能"}
+{"file": "docs/UI设计/AI初审结果.png", "reason": "检查 AI 初审结果页是否按设计稿布局实现且未展示伪功能"}

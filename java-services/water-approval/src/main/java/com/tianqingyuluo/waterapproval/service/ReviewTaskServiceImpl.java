@@ -1,6 +1,7 @@
 package com.tianqingyuluo.waterapproval.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tianqingyuluo.waterapproval.common.BusinessException;
@@ -339,15 +340,26 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
 
     @Override
     public TaskListResponse getTaskList(int page, int size) {
-        int offset = (page - 1) * size;
+        int safePage = Math.max(page, 1);
+        int safeSize = Math.min(Math.max(size, 1), 100);
 
-        List<ReviewTask> tasks = taskMapper.selectList(
-                new LambdaQueryWrapper<ReviewTask>()
-                        .orderByDesc(ReviewTask::getSubmittedAt)
-                        .last("LIMIT " + size + " OFFSET " + offset)
+        Page<ReviewTask> taskPage = taskMapper.selectPage(
+                new Page<>(safePage, safeSize),
+                new LambdaQueryWrapper<ReviewTask>().orderByDesc(ReviewTask::getSubmittedAt)
         );
+        List<ReviewTask> tasks = taskPage.getRecords();
+        long total = taskPage.getTotal();
 
-        long total = taskMapper.selectCount(new LambdaQueryWrapper<ReviewTask>());
+        List<String> taskIds = tasks.stream().map(ReviewTask::getTaskId).toList();
+        List<MaterialSlot> slots = taskIds.isEmpty()
+                ? List.of()
+                : materialSlotMapper.selectList(
+                        new LambdaQueryWrapper<MaterialSlot>().in(MaterialSlot::getTaskId, taskIds)
+                );
+        Map<String, List<MaterialSlot>> slotsByTaskId = new HashMap<>();
+        for (MaterialSlot slot : slots) {
+            slotsByTaskId.computeIfAbsent(slot.getTaskId(), ignored -> new ArrayList<>()).add(slot);
+        }
 
         List<TaskListResponse.TaskListItem> items = new ArrayList<>();
         for (ReviewTask task : tasks) {
@@ -359,16 +371,14 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
             item.setUpdatedAt(task.getUpdatedAt());
             item.setKnowledgePackVersion(task.getKnowledgePackVersion());
 
-            List<MaterialSlot> slots = materialSlotMapper.selectList(
-                    new LambdaQueryWrapper<MaterialSlot>().eq(MaterialSlot::getTaskId, task.getTaskId())
-            );
+            List<MaterialSlot> taskSlots = slotsByTaskId.getOrDefault(task.getTaskId(), List.of());
 
             List<TaskListResponse.MaterialStatus> materialStatuses = new ArrayList<>();
             for (String type : MATERIAL_TYPES) {
                 TaskListResponse.MaterialStatus status = new TaskListResponse.MaterialStatus();
                 status.setMaterialType(type);
 
-                Optional<MaterialSlot> slot = slots.stream()
+                Optional<MaterialSlot> slot = taskSlots.stream()
                         .filter(s -> s.getMaterialType().equals(type))
                         .findFirst();
 
@@ -389,10 +399,10 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
         TaskListResponse response = new TaskListResponse();
         response.setItems(items);
         response.setTotal(total);
-        response.setPage(page);
-        response.setSize(size);
+        response.setPage(safePage);
+        response.setSize(safeSize);
 
-        log.info("Task list queried: page={}, size={}, total={}, returned={}", page, size, total, items.size());
+        log.info("Task list queried: page={}, size={}, total={}, returned={}", safePage, safeSize, total, items.size());
         return response;
     }
 
