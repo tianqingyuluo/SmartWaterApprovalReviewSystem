@@ -1,13 +1,17 @@
 <template>
-  <div class="material-summary" :class="variant">
+  <div class="flex flex-wrap gap-[7px]" :class="variant === 'stacked' ? 'grid gap-[10px]' : ''">
     <span
       v-for="slot in normalizedSlots"
       :key="slot.materialType"
-      class="material-chip"
-      :class="{ uploaded: slot.uploaded }"
+      class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-bold"
+      :class="
+        slot.uploaded
+          ? 'border-[#bbf0d4] bg-[#eefcf5] text-[#087443]'
+          : 'border-[#ffe1a6] bg-[#fff8e8] text-[#9a6700]'
+      "
       :title="chipTitle(slot)"
     >
-      <span class="chip-dot" aria-hidden="true"></span>
+      <span class="h-[7px] w-[7px] rounded-full bg-current" aria-hidden="true"></span>
       <span>{{ MATERIAL_LABELS[slot.materialType] }}</span>
     </span>
   </div>
@@ -42,43 +46,3 @@ function chipTitle(slot: MaterialSlot) {
   return `${MATERIAL_LABELS[slot.materialType]}：${slot.uploaded ? slot.originalFileName || '已上传' : '未上传'}`
 }
 </script>
-
-<style scoped>
-.material-summary {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-}
-
-.material-summary.stacked {
-  display: grid;
-  gap: 10px;
-}
-
-.material-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  border: 1px solid #ffe1a6;
-  border-radius: 999px;
-  background: #fff8e8;
-  color: #9a6700;
-  padding: 4px 10px;
-  font-size: 12px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.material-chip.uploaded {
-  border-color: #bbf0d4;
-  background: #eefcf5;
-  color: #087443;
-}
-
-.chip-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: currentColor;
-}
-</style>

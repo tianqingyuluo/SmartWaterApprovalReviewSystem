@@ -1,5 +1,5 @@
 <template>
-  <span class="status-tag" :style="tagStyle">{{ label }}</span>
+  <span class="inline-block whitespace-nowrap rounded-xl border px-2.5 py-0.5 text-xs font-medium" :style="tagStyle">{{ label }}</span>
 </template>
 
 <script setup lang="ts">
@@ -24,15 +24,3 @@ const tagStyle = computed(() => {
   }
 })
 </script>
-
-<style scoped>
-.status-tag {
-  display: inline-block;
-  padding: 2px 10px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 500;
-  border: 1px solid;
-  white-space: nowrap;
-}
-</style>

@@ -23,6 +23,7 @@
 | [Component Guidelines](./component-guidelines.md) | Page orchestration vs presentational components, shared primitives | Active |
 | [Hook Guidelines](./hook-guidelines.md) | `usePolling` and other composables | Active |
 | [State Management](./state-management.md) | Page-local refs/reactive state, future Pinia boundary | Active |
+| [Styling Guidelines](./styling-guidelines.md) | TailwindCSS tokens, global CSS boundary, utility-class migration rules | Active |
 | [Quality Guidelines](./quality-guidelines.md) | Build/test gates, forbidden patterns, contract regression tests | Active |
 | [Type Safety](./type-safety.md) | Canonical SmartWater DTOs, view models, and union types | Active |
 | [SmartWater MVP Visibility](./smartwater-mvp-visibility.md) | Dual-page MVP, applicant/reviewer visibility, status display, canonical enums | Active |
@@ -45,6 +46,7 @@ Before frontend work, read:
 - [Type Safety](./type-safety.md)
 - [State Management](./state-management.md)
 - [Component Guidelines](./component-guidelines.md)
+- [Styling Guidelines](./styling-guidelines.md)
 - [Quality Guidelines](./quality-guidelines.md)
 
 If the change touches backend DTOs, status transitions or worker-facing result shape, also read:

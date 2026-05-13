@@ -1,17 +1,19 @@
 <template>
-  <div class="sw-page application-list-page">
-    <div class="list-heading">
+  <div class="sw-page max-w-[1480px]">
+    <div class="flex items-start justify-between gap-5 max-md:block">
       <div>
         <h1 class="sw-page-title">申请列表</h1>
-        <p>演示环境最近申请列表。MVP 暂无账号权限，使用任务 ID 和会话 ID 进入结果页。</p>
+        <p class="mb-[22px] mt-[-12px] leading-[1.7] text-sw-muted">
+          演示环境最近申请列表。MVP 暂无账号权限，使用任务 ID 和会话 ID 进入结果页。
+        </p>
       </div>
       <router-link to="/apply" class="sw-btn sw-btn-primary">新建申请</router-link>
     </div>
 
-    <PageCard compact class="filter-card">
-      <div class="filter-grid">
-        <label class="filter-field wide">
-          <span>任务 ID</span>
+    <PageCard compact class="mb-[14px]">
+      <div class="grid items-end gap-4 max-[1180px]:grid-cols-2 max-md:grid-cols-1 [grid-template-columns:minmax(220px,1.1fr)_minmax(170px,0.8fr)_minmax(360px,1.35fr)_auto]">
+        <label class="grid gap-2">
+          <span class="font-extrabold text-[#26364f]">任务 ID</span>
           <input
             v-model="filterKeyword"
             class="sw-input"
@@ -20,8 +22,8 @@
             @keyup.enter="handleSearch"
           />
         </label>
-        <label class="filter-field">
-          <span>状态</span>
+        <label class="grid gap-2">
+          <span class="font-extrabold text-[#26364f]">状态</span>
           <select v-model="filterStatus" class="sw-select">
             <option value="">请选择状态</option>
             <option v-for="status in STATUS_OPTIONS" :key="status" :value="status">
@@ -29,43 +31,43 @@
             </option>
           </select>
         </label>
-        <label class="filter-field date-pair">
-          <span>提交日期</span>
-          <div class="date-inputs">
+        <label class="grid gap-2 max-[1180px]:col-span-2 max-md:col-auto">
+          <span class="font-extrabold text-[#26364f]">提交日期</span>
+          <div class="flex items-center gap-3 max-md:flex-wrap">
             <input v-model="filterStartDate" class="sw-input" type="date" />
-            <b>→</b>
+            <b class="text-[#a4b0c2]">→</b>
             <input v-model="filterEndDate" class="sw-input" type="date" />
           </div>
         </label>
-        <div class="filter-actions">
+        <div class="flex items-center gap-3 max-[1180px]:col-span-2 max-md:col-auto max-md:flex-wrap">
           <button type="button" class="sw-btn sw-btn-ghost" @click="handleReset">重置</button>
           <button type="button" class="sw-btn sw-btn-primary" @click="handleSearch">查询</button>
         </div>
       </div>
     </PageCard>
 
-    <PageCard compact class="table-card">
-      <div v-if="errorMessage" class="sw-alert sw-alert-danger list-alert">
+    <PageCard compact class="overflow-hidden">
+      <div v-if="errorMessage" class="sw-alert sw-alert-danger mb-[14px]">
         {{ errorMessage }}
       </div>
 
-      <div class="table-scroll">
-        <table class="application-table">
-          <thead>
+      <div class="overflow-x-auto">
+        <table class="min-w-[1040px] w-full border-collapse text-sm">
+          <thead class="bg-[#f4f8fd]">
             <tr>
-              <th>任务 ID</th>
-              <th>状态</th>
-              <th>提交时间</th>
-              <th>更新时间</th>
-              <th>知识包版本</th>
-              <th>材料提交情况</th>
-              <th>操作</th>
+              <th class="whitespace-nowrap border-b border-[#edf2f7] px-[14px] py-[15px] text-left font-extrabold text-[#2f3f56]">任务 ID</th>
+              <th class="whitespace-nowrap border-b border-[#edf2f7] px-[14px] py-[15px] text-left font-extrabold text-[#2f3f56]">状态</th>
+              <th class="whitespace-nowrap border-b border-[#edf2f7] px-[14px] py-[15px] text-left font-extrabold text-[#2f3f56]">提交时间</th>
+              <th class="whitespace-nowrap border-b border-[#edf2f7] px-[14px] py-[15px] text-left font-extrabold text-[#2f3f56]">更新时间</th>
+              <th class="whitespace-nowrap border-b border-[#edf2f7] px-[14px] py-[15px] text-left font-extrabold text-[#2f3f56]">知识包版本</th>
+              <th class="whitespace-nowrap border-b border-[#edf2f7] px-[14px] py-[15px] text-left font-extrabold text-[#2f3f56]">材料提交情况</th>
+              <th class="whitespace-nowrap border-b border-[#edf2f7] px-[14px] py-[15px] text-left font-extrabold text-[#2f3f56]">操作</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="loading">
               <td colspan="7">
-                <div class="table-loading">
+                <div class="flex items-center justify-center gap-2.5 py-12 text-sw-muted">
                   <span class="sw-spinner"></span>
                   <span>正在加载申请列表</span>
                 </div>
@@ -81,44 +83,70 @@
                 </EmptyState>
               </td>
             </tr>
-<template v-else>
-              <tr v-for="item in paginatedItems" :key="item.taskId">
-              <td class="task-id">{{ item.taskId }}</td>
-              <td><StatusTag :status="item.status" /></td>
-              <td>{{ formatDateTime(item.submittedAt) }}</td>
-              <td>{{ formatDateTime(item.updatedAt) }}</td>
-              <td>{{ item.knowledgePackVersion || '未返回' }}</td>
-              <td><TaskMaterialSummary :slots="item.materials" /></td>
-              <td>
-                <router-link
-                  class="detail-link"
-                  :to="`/review?taskId=${item.taskId}&sessionId=${item.sessionId}`"
-                >
-                  进入详情
-                </router-link>
-              </td>
+            <template v-else>
+              <tr
+                v-for="item in paginatedItems"
+                :key="item.taskId"
+                class="border-b border-[#edf2f7] align-middle text-slate-700 hover:bg-[#fbfdff]"
+              >
+                <td class="px-[14px] py-[15px] font-mono text-[13px] font-bold text-[#14213a]">{{ item.taskId }}</td>
+                <td class="px-[14px] py-[15px]"><StatusTag :status="item.status" /></td>
+                <td class="px-[14px] py-[15px]">{{ formatDateTime(item.submittedAt) }}</td>
+                <td class="px-[14px] py-[15px]">{{ formatDateTime(item.updatedAt) }}</td>
+                <td class="px-[14px] py-[15px]">{{ item.knowledgePackVersion || '未返回' }}</td>
+                <td class="px-[14px] py-[15px]"><TaskMaterialSummary :slots="item.materials" /></td>
+                <td class="px-[14px] py-[15px]">
+                  <router-link
+                    class="whitespace-nowrap font-extrabold text-sw-primary no-underline hover:text-sw-primary-strong"
+                    :to="`/review?taskId=${item.taskId}&sessionId=${item.sessionId}`"
+                  >
+                    进入详情
+                  </router-link>
+                </td>
               </tr>
             </template>
           </tbody>
         </table>
       </div>
 
-      <div v-if="filteredItems.length > 0" class="pagination-bar">
+      <div
+        v-if="filteredItems.length > 0"
+        class="grid items-center gap-[18px] pt-5 text-sw-muted max-md:grid-cols-1 [grid-template-columns:1fr_auto_auto]"
+      >
         <span>共 {{ filteredItems.length }} 条</span>
-        <div class="pager">
-          <button type="button" :disabled="currentPage === 1" @click="currentPage -= 1">‹</button>
+        <div class="flex items-center gap-2 max-md:flex-wrap">
+          <button
+            type="button"
+            :disabled="currentPage === 1"
+            class="h-[34px] min-w-[34px] rounded-[7px] border border-sw-line bg-white font-bold text-slate-700 disabled:text-[#c5cfdc]"
+            @click="currentPage -= 1"
+          >
+            ‹
+          </button>
           <button
             v-for="page in visiblePages"
             :key="page"
             type="button"
-            :class="{ active: page === currentPage }"
+            :class="
+              page === currentPage
+                ? 'border-sw-primary text-sw-primary shadow-[0_6px_16px_rgba(22,119,255,0.13)]'
+                : 'border-sw-line text-slate-700'
+            "
+            class="h-[34px] min-w-[34px] rounded-[7px] border bg-white font-bold disabled:text-[#c5cfdc]"
             @click="currentPage = page"
           >
             {{ page }}
           </button>
-          <button type="button" :disabled="currentPage === totalPages" @click="currentPage += 1">›</button>
+          <button
+            type="button"
+            :disabled="currentPage === totalPages"
+            class="h-[34px] min-w-[34px] rounded-[7px] border border-sw-line bg-white font-bold text-slate-700 disabled:text-[#c5cfdc]"
+            @click="currentPage += 1"
+          >
+            ›
+          </button>
         </div>
-        <select v-model="pageSize" class="sw-select page-size-select">
+        <select v-model="pageSize" class="sw-select w-[116px]">
           <option :value="10">10 条/页</option>
           <option :value="20">20 条/页</option>
           <option :value="50">50 条/页</option>
@@ -241,200 +269,3 @@ async function fetchList() {
 
 onMounted(fetchList)
 </script>
-
-<style scoped>
-.application-list-page {
-  max-width: 1480px;
-}
-
-.list-heading {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 20px;
-}
-
-.list-heading p {
-  margin-top: -12px;
-  margin-bottom: 22px;
-  color: var(--sw-muted);
-  line-height: 1.7;
-}
-
-.filter-card {
-  margin-bottom: 14px;
-}
-
-.filter-grid {
-  display: grid;
-  grid-template-columns: minmax(220px, 1.1fr) minmax(170px, 0.8fr) minmax(360px, 1.35fr) auto;
-  align-items: end;
-  gap: 16px;
-}
-
-.filter-field {
-  display: grid;
-  gap: 8px;
-}
-
-.filter-field span {
-  color: #26364f;
-  font-weight: 800;
-}
-
-.date-inputs,
-.filter-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.date-inputs b {
-  color: #a4b0c2;
-}
-
-.table-card {
-  overflow: hidden;
-}
-
-.list-alert {
-  margin-bottom: 14px;
-}
-
-.table-scroll {
-  overflow-x: auto;
-}
-
-.application-table {
-  width: 100%;
-  min-width: 1040px;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-
-.application-table thead {
-  background: #f4f8fd;
-}
-
-.application-table th,
-.application-table td {
-  border-bottom: 1px solid #edf2f7;
-  padding: 15px 14px;
-  text-align: left;
-  vertical-align: middle;
-}
-
-.application-table th {
-  color: #2f3f56;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.application-table td {
-  color: #334155;
-}
-
-.application-table tbody tr:not(:first-child):hover,
-.application-table tbody tr:hover {
-  background: #fbfdff;
-}
-
-.task-id {
-  color: #14213a;
-  font-family: "SFMono-Regular", Consolas, monospace;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.detail-link {
-  color: var(--sw-primary);
-  font-weight: 800;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.detail-link:hover {
-  color: var(--sw-primary-strong);
-}
-
-.table-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 48px 0;
-  color: var(--sw-muted);
-}
-
-.pagination-bar {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  align-items: center;
-  gap: 18px;
-  padding-top: 20px;
-  color: var(--sw-muted);
-}
-
-.pager {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.pager button {
-  min-width: 34px;
-  height: 34px;
-  border: 1px solid var(--sw-line);
-  border-radius: 7px;
-  background: #fff;
-  color: #334155;
-  font-weight: 700;
-}
-
-.pager button.active {
-  border-color: var(--sw-primary);
-  color: var(--sw-primary);
-  box-shadow: 0 6px 16px rgba(22, 119, 255, 0.13);
-}
-
-.pager button:disabled {
-  color: #c5cfdc;
-}
-
-.page-size-select {
-  width: 116px;
-}
-
-@media (max-width: 1180px) {
-  .filter-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .date-pair,
-  .filter-actions {
-    grid-column: span 2;
-  }
-}
-
-@media (max-width: 760px) {
-  .list-heading {
-    display: block;
-  }
-
-  .filter-grid,
-  .pagination-bar {
-    grid-template-columns: 1fr;
-  }
-
-  .date-pair,
-  .filter-actions {
-    grid-column: auto;
-  }
-
-  .date-inputs,
-  .filter-actions,
-  .pager {
-    flex-wrap: wrap;
-  }
-}
-</style>

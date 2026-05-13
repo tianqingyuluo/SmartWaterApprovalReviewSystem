@@ -1,48 +1,48 @@
 <template>
-  <div class="sw-page new-application-page">
+  <div class="sw-page max-w-[1480px]">
     <h1 class="sw-page-title">新水务申请</h1>
 
-    <form class="application-form" @submit.prevent="handleSubmit">
+    <form class="grid gap-[14px]" @submit.prevent="handleSubmit">
       <PageCard title="申请信息" subtitle="以下业务字段仅用于当前页面记录和展示，现有后端提交接口只接收三类材料附件。">
-        <div class="form-grid">
-          <label class="form-field">
-            <span>申请类型 <small>页面记录</small></span>
+        <div class="grid gap-x-[34px] gap-y-[22px] max-[1080px]:grid-cols-2 max-md:grid-cols-1 [grid-template-columns:repeat(3,minmax(0,1fr))]">
+          <label class="grid gap-2">
+            <span class="flex items-center gap-2 font-extrabold text-[#26364f]">申请类型 <small class="rounded-full bg-[#f3f8ff] px-[7px] py-0.5 text-xs font-semibold text-sw-muted">页面记录</small></span>
             <select v-model="form.applicationType" class="sw-select">
               <option value="新水务申请">新水务申请</option>
               <option value="用水变更申请">用水变更申请</option>
               <option value="报装申请">报装申请</option>
             </select>
           </label>
-          <label class="form-field">
-            <span>申请人 <small>页面记录</small></span>
+          <label class="grid gap-2">
+            <span class="flex items-center gap-2 font-extrabold text-[#26364f]">申请人 <small class="rounded-full bg-[#f3f8ff] px-[7px] py-0.5 text-xs font-semibold text-sw-muted">页面记录</small></span>
             <input v-model="form.applicantName" class="sw-input" placeholder="请输入申请人" />
           </label>
-          <label class="form-field">
-            <span>联系电话 <small>页面记录</small></span>
+          <label class="grid gap-2">
+            <span class="flex items-center gap-2 font-extrabold text-[#26364f]">联系电话 <small class="rounded-full bg-[#f3f8ff] px-[7px] py-0.5 text-xs font-semibold text-sw-muted">页面记录</small></span>
             <input v-model="form.phone" class="sw-input" placeholder="请输入联系电话" />
           </label>
-          <label class="form-field">
-            <span>申请单位 <small>页面记录</small></span>
+          <label class="grid gap-2">
+            <span class="flex items-center gap-2 font-extrabold text-[#26364f]">申请单位 <small class="rounded-full bg-[#f3f8ff] px-[7px] py-0.5 text-xs font-semibold text-sw-muted">页面记录</small></span>
             <input v-model="form.organization" class="sw-input" placeholder="请输入申请单位" />
           </label>
-          <label class="form-field">
-            <span>所属部门</span>
+          <label class="grid gap-2">
+            <span class="flex items-center gap-2 font-extrabold text-[#26364f]">所属部门</span>
             <input v-model="form.department" class="sw-input" placeholder="请输入所属部门" />
           </label>
-          <label class="form-field">
-            <span>职务</span>
+          <label class="grid gap-2">
+            <span class="flex items-center gap-2 font-extrabold text-[#26364f]">职务</span>
             <input v-model="form.position" class="sw-input" placeholder="请输入职务" />
           </label>
-          <label class="form-field">
-            <span>用水项目名称 <small>页面记录</small></span>
+          <label class="grid gap-2">
+            <span class="flex items-center gap-2 font-extrabold text-[#26364f]">用水项目名称 <small class="rounded-full bg-[#f3f8ff] px-[7px] py-0.5 text-xs font-semibold text-sw-muted">页面记录</small></span>
             <input v-model="form.projectName" class="sw-input" placeholder="请输入用水项目名称" />
           </label>
-          <label class="form-field">
-            <span>用水地址 <small>页面记录</small></span>
+          <label class="grid gap-2">
+            <span class="flex items-center gap-2 font-extrabold text-[#26364f]">用水地址 <small class="rounded-full bg-[#f3f8ff] px-[7px] py-0.5 text-xs font-semibold text-sw-muted">页面记录</small></span>
             <input v-model="form.address" class="sw-input" placeholder="请输入用水地址" />
           </label>
-          <label class="form-field">
-            <span>用水用途 <small>页面记录</small></span>
+          <label class="grid gap-2">
+            <span class="flex items-center gap-2 font-extrabold text-[#26364f]">用水用途 <small class="rounded-full bg-[#f3f8ff] px-[7px] py-0.5 text-xs font-semibold text-sw-muted">页面记录</small></span>
             <select v-model="form.waterPurpose" class="sw-select">
               <option value="">请选择用水用途</option>
               <option value="生产用水">生产用水</option>
@@ -51,27 +51,27 @@
               <option value="工程建设">工程建设</option>
             </select>
           </label>
-          <label class="form-field">
-            <span>计划用水量（m³/日） <small>页面记录</small></span>
+          <label class="grid gap-2">
+            <span class="flex items-center gap-2 font-extrabold text-[#26364f]">计划用水量（m³/日） <small class="rounded-full bg-[#f3f8ff] px-[7px] py-0.5 text-xs font-semibold text-sw-muted">页面记录</small></span>
             <input v-model="form.dailyWaterUse" class="sw-input" placeholder="请输入计划用水量" />
           </label>
-          <label class="form-field">
-            <span>计划用水时间</span>
+          <label class="grid gap-2">
+            <span class="flex items-center gap-2 font-extrabold text-[#26364f]">计划用水时间</span>
             <input v-model="form.waterPeriod" class="sw-input" placeholder="例如：2026-06-01 至 2027-05-31" />
           </label>
-          <label class="form-field">
-            <span>备注</span>
+          <label class="grid gap-2">
+            <span class="flex items-center gap-2 font-extrabold text-[#26364f]">备注</span>
             <input v-model="form.remark" class="sw-input" placeholder="请输入备注信息（选填）" />
           </label>
         </div>
       </PageCard>
 
       <PageCard title="上传附件" subtitle="MVP 固定材料槽位：取水许可申请书、营业执照、身份证。允许缺失材料提交，但会产生部分结果或缺失材料提示。">
-        <div class="support-line">
-          <span>支持格式：jpg / jpeg / png / pdf</span>
-          <span>每类材料最多上传 1 个文件</span>
+        <div class="mb-4 mt-[-4px] flex flex-wrap gap-3 text-[13px] text-sw-muted">
+          <span class="rounded-full bg-[#f3f8ff] px-2.5 py-1.5">支持格式：jpg / jpeg / png / pdf</span>
+          <span class="rounded-full bg-[#f3f8ff] px-2.5 py-1.5">每类材料最多上传 1 个文件</span>
         </div>
-        <div class="upload-grid">
+        <div class="grid gap-[14px]">
           <FileUploadSlot
             v-for="slot in slots"
             :key="slot.type"
@@ -88,22 +88,22 @@
 
       <div v-if="submitError" class="sw-alert sw-alert-danger">{{ submitError }}</div>
 
-      <div v-if="result" class="submit-result">
+      <div v-if="result" class="rounded-sw">
         <PageCard compact>
-          <div class="result-grid">
+          <div class="grid items-center gap-5 max-[1080px]:grid-cols-2 max-md:grid-cols-1 [grid-template-columns:1fr_minmax(280px,0.7fr)_auto]">
             <div>
-              <strong>提交成功</strong>
-              <p>后端已创建审核任务，请保存任务 ID 和会话 ID。MVP 无账号模式下，结果页需要这两个标识访问。</p>
+              <strong class="text-[17px] text-[#087443]">提交成功</strong>
+              <p class="mt-2 leading-[1.7] text-sw-muted">后端已创建审核任务，请保存任务 ID 和会话 ID。MVP 无账号模式下，结果页需要这两个标识访问。</p>
             </div>
-            <dl>
-              <dt>任务 ID</dt>
-              <dd><code>{{ result.taskId }}</code></dd>
-              <dt>会话 ID</dt>
-              <dd><code>{{ result.sessionId }}</code></dd>
-              <dt>当前状态</dt>
-              <dd><StatusTag :status="taskStatus" /></dd>
+            <dl class="m-0 grid [grid-template-columns:auto_1fr] gap-x-3 gap-y-2">
+              <dt class="text-sw-muted">任务 ID</dt>
+              <dd class="m-0"><code>{{ result.taskId }}</code></dd>
+              <dt class="text-sw-muted">会话 ID</dt>
+              <dd class="m-0"><code>{{ result.sessionId }}</code></dd>
+              <dt class="text-sw-muted">当前状态</dt>
+              <dd class="m-0"><StatusTag :status="taskStatus" /></dd>
             </dl>
-            <div class="result-actions">
+            <div class="flex justify-center gap-[18px] max-[1080px]:col-span-2 max-md:flex-col">
               <router-link class="sw-btn sw-btn-primary" :to="`/review?taskId=${result.taskId}&sessionId=${result.sessionId}`">
                 查看 AI 初审结果
               </router-link>
@@ -113,7 +113,7 @@
         </PageCard>
       </div>
 
-      <div v-if="isPolling && !isTerminalStatus" class="sw-alert sw-alert-info polling-line">
+      <div v-if="isPolling && !isTerminalStatus" class="sw-alert sw-alert-info flex items-center gap-2.5">
         <span class="sw-spinner"></span>
         <span>AI 初审处理中，完成后可进入结果页查看材料状态、问题清单和审核意见草稿。</span>
       </div>
@@ -126,7 +126,7 @@
         当前任务暂无法生成结果，请检查材料文件是否可读，或重新提交新的任务。
       </div>
 
-      <div class="form-actions">
+      <div class="flex justify-center gap-[18px] pt-3 max-md:flex-col">
         <button type="submit" class="sw-btn sw-btn-primary" :disabled="submitting">
           {{ submitting ? '提交中...' : '提交申请' }}
         </button>
@@ -134,7 +134,7 @@
       </div>
     </form>
 
-    <p class="disclaimer">AI 仅提供审核辅助建议，最终审核结论以审批机关决定为准。</p>
+    <p class="mt-5 text-center text-xs text-sw-faint">AI 仅提供审核辅助建议，最终审核结论以审批机关决定为准。</p>
   </div>
 </template>
 
@@ -310,146 +310,3 @@ function resetForm() {
 
 const isPolling = polling.isPolling
 </script>
-
-<style scoped>
-.new-application-page {
-  max-width: 1480px;
-}
-
-.application-form {
-  display: grid;
-  gap: 14px;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 22px 34px;
-}
-
-.form-field {
-  display: grid;
-  gap: 8px;
-}
-
-.form-field span {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #26364f;
-  font-weight: 800;
-}
-
-.form-field small {
-  border-radius: 999px;
-  background: #f3f8ff;
-  color: var(--sw-muted);
-  padding: 2px 7px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.support-line {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin: -4px 0 16px;
-  color: var(--sw-muted);
-  font-size: 13px;
-}
-
-.support-line span {
-  border-radius: 999px;
-  background: #f3f8ff;
-  padding: 6px 10px;
-}
-
-.upload-grid {
-  display: grid;
-  gap: 14px;
-}
-
-.submit-result {
-  border-radius: var(--sw-radius);
-}
-
-.result-grid {
-  display: grid;
-  grid-template-columns: 1fr minmax(280px, 0.7fr) auto;
-  align-items: center;
-  gap: 20px;
-}
-
-.result-grid strong {
-  color: #087443;
-  font-size: 17px;
-}
-
-.result-grid p {
-  margin-top: 8px;
-  color: var(--sw-muted);
-  line-height: 1.7;
-}
-
-.result-grid dl {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 8px 12px;
-  margin: 0;
-}
-
-.result-grid dt {
-  color: var(--sw-muted);
-}
-
-.result-grid dd {
-  margin: 0;
-}
-
-.result-actions,
-.form-actions {
-  display: flex;
-  justify-content: center;
-  gap: 18px;
-}
-
-.form-actions {
-  padding: 12px 0 0;
-}
-
-.polling-line {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.disclaimer {
-  margin-top: 20px;
-  color: var(--sw-faint);
-  font-size: 12px;
-  text-align: center;
-}
-
-@media (max-width: 1080px) {
-  .form-grid,
-  .result-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .result-actions {
-    grid-column: 1 / -1;
-  }
-}
-
-@media (max-width: 760px) {
-  .form-grid,
-  .result-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .result-actions,
-  .form-actions {
-    flex-direction: column;
-  }
-}
-</style>

@@ -1,57 +1,90 @@
 <template>
-  <div class="app-shell">
-    <aside class="app-sidebar">
-      <div class="brand">
-        <div class="brand-mark" aria-hidden="true">
+  <div class="min-h-screen max-[980px]:block min-[981px]:flex">
+    <aside
+      class="z-[100] flex w-full flex-col bg-[radial-gradient(circle_at_74%_6%,rgba(38,142,255,0.34),transparent_28%),linear-gradient(180deg,#06245a_0%,#041a43_100%)] text-[#eaf3ff] shadow-[12px_0_30px_rgba(4,26,67,0.18)] min-[981px]:fixed min-[981px]:inset-y-0 min-[981px]:left-0 min-[981px]:w-[242px]"
+    >
+      <div class="flex min-h-[76px] items-center gap-3 px-7 text-lg font-extrabold">
+        <div class="grid h-[38px] w-[38px] place-items-center" aria-hidden="true">
           <svg width="31" height="31" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M16 2.5C11.15 8.16 7.5 12.78 7.5 18.08C7.5 24.08 11.3 28 16 28C20.7 28 24.5 24.08 24.5 18.08C24.5 12.78 20.85 8.16 16 2.5Z" fill="white"/>
-            <path d="M16 8.4C13.06 12.12 11.16 15.02 11.16 18.13C11.16 21.58 13.17 23.85 16 23.85C18.83 23.85 20.84 21.58 20.84 18.13C20.84 15.02 18.94 12.12 16 8.4Z" fill="#31a8ff"/>
+            <path
+              d="M16 2.5C11.15 8.16 7.5 12.78 7.5 18.08C7.5 24.08 11.3 28 16 28C20.7 28 24.5 24.08 24.5 18.08C24.5 12.78 20.85 8.16 16 2.5Z"
+              fill="white"
+            />
+            <path
+              d="M16 8.4C13.06 12.12 11.16 15.02 11.16 18.13C11.16 21.58 13.17 23.85 16 23.85C18.83 23.85 20.84 21.58 20.84 18.13C20.84 15.02 18.94 12.12 16 8.4Z"
+              fill="#31a8ff"
+            />
           </svg>
         </div>
         <span>智慧水务管理平台</span>
       </div>
 
-      <nav class="sidebar-nav" aria-label="主导航">
-        <div class="nav-section-title">申请管理</div>
+      <nav
+        class="flex-1 px-4 py-[22px] max-[980px]:flex max-[980px]:gap-2 max-[980px]:overflow-x-auto max-[980px]:px-4 max-[980px]:pb-4 max-[980px]:pt-0"
+        aria-label="主导航"
+      >
+        <div class="mb-[10px] ml-[14px] mt-[6px] text-xs text-[rgba(234,243,255,0.58)] max-[980px]:hidden">
+          申请管理
+        </div>
         <router-link
           v-for="item in menuItems"
           :key="item.path"
           :to="item.path"
-          class="nav-item"
-          :class="{ active: isActive(item.path) }"
+          class="my-1 flex min-h-11 items-center gap-3 rounded-lg px-4 font-bold no-underline transition-all duration-200 ease-out max-[980px]:min-w-max"
+          :class="
+            isActive(item.path)
+              ? 'translate-x-0.5 bg-gradient-to-r from-sw-primary to-sw-primary-strong text-white'
+              : 'text-[rgba(234,243,255,0.84)] hover:translate-x-0.5 hover:bg-gradient-to-r hover:from-sw-primary hover:to-sw-primary-strong hover:text-white'
+          "
         >
-          <span class="nav-icon" aria-hidden="true" v-html="item.icon"></span>
+          <span class="inline-flex" aria-hidden="true" v-html="item.icon"></span>
           <span>{{ item.label }}</span>
         </router-link>
       </nav>
 
-      <div class="sidebar-foot">MVP 演示环境</div>
+      <div
+        class="mx-[26px] mb-6 border-t border-[rgba(234,243,255,0.14)] pt-5 text-[13px] text-[rgba(234,243,255,0.72)] max-[980px]:hidden"
+      >
+        MVP 演示环境
+      </div>
     </aside>
 
-    <div class="app-main-wrapper">
-      <header class="app-header">
-        <div class="breadcrumb">
-          <span class="crumb-muted">申请管理</span>
-          <span class="crumb-divider">/</span>
+    <div class="min-w-0 flex-1 min-[981px]:ml-[242px]">
+      <header
+        class="sticky top-0 z-50 flex min-h-16 items-center justify-between gap-[18px] border-b border-[rgba(213,224,236,0.7)] bg-[rgba(255,255,255,0.92)] px-8 shadow-[0_8px_28px_rgba(15,35,70,0.05)] backdrop-blur-[14px] max-[980px]:flex-col max-[980px]:items-start max-[980px]:px-[18px] max-[980px]:py-[14px]"
+      >
+        <div class="flex items-center gap-[10px] whitespace-nowrap text-[#16233b]">
+          <span class="text-sw-muted">申请管理</span>
+          <span class="text-sw-muted">/</span>
           <strong>{{ currentTitle }}</strong>
         </div>
-        <div class="header-tools">
-          <label class="toolbar-search">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <circle cx="11" cy="11" r="8"/>
-              <path d="m21 21-4.35-4.35"/>
+        <div class="flex items-center gap-4 max-[980px]:w-full max-[980px]:justify-between">
+          <label
+            class="flex h-9 w-[238px] items-center gap-2 rounded-[18px] border border-sw-line-strong bg-white px-[14px] text-[#8a99ad] max-[980px]:hidden"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              aria-hidden="true"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
             </svg>
-            <input disabled placeholder="按页面筛选区查询" />
+            <input class="min-w-0 flex-1 border-0 bg-transparent text-[#8a99ad] outline-0" disabled placeholder="按页面筛选区查询" />
           </label>
-          <span class="tool-pill">无账号模式</span>
-          <div class="user-chip" aria-label="当前演示用户">
-            <span class="avatar">水</span>
+          <span class="rounded-2xl bg-[#eef6ff] px-3 py-1.5 text-xs font-bold text-[#1763b8]">无账号模式</span>
+          <div class="flex items-center gap-[9px] font-bold text-slate-700" aria-label="当前演示用户">
+            <span class="grid h-8 w-8 place-items-center rounded-full bg-[linear-gradient(135deg,#d9ebff,#fff)] text-sw-primary shadow-[inset_0_0_0_1px_#cfe1f7]">水</span>
             <span>张管理员</span>
           </div>
         </div>
       </header>
 
-      <main class="app-main">
+      <main class="min-h-[calc(100vh-64px)] px-10 pb-[38px] pt-7 max-[980px]:px-4 max-[980px]:pb-7 max-[980px]:pt-5">
         <router-view />
       </main>
     </div>
@@ -91,233 +124,3 @@ function isActive(path: string) {
   return route.path.startsWith(path)
 }
 </script>
-
-<style scoped>
-.app-shell {
-  display: flex;
-  min-height: 100vh;
-}
-
-.app-sidebar {
-  position: fixed;
-  inset: 0 auto 0 0;
-  z-index: 100;
-  display: flex;
-  width: 242px;
-  flex-direction: column;
-  background:
-    radial-gradient(circle at 74% 6%, rgba(38, 142, 255, 0.34), transparent 28%),
-    linear-gradient(180deg, var(--sw-sidebar) 0%, var(--sw-sidebar-deep) 100%);
-  color: #eaf3ff;
-  box-shadow: 12px 0 30px rgba(4, 26, 67, 0.18);
-}
-
-.brand {
-  display: flex;
-  min-height: 76px;
-  align-items: center;
-  gap: 12px;
-  padding: 0 28px;
-  font-size: 18px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-}
-
-.brand-mark {
-  display: grid;
-  width: 38px;
-  height: 38px;
-  place-items: center;
-}
-
-.sidebar-nav {
-  flex: 1;
-  padding: 22px 16px;
-}
-
-.nav-section-title {
-  margin: 6px 14px 10px;
-  color: rgba(234, 243, 255, 0.58);
-  font-size: 12px;
-  letter-spacing: 0.1em;
-}
-
-.nav-item {
-  display: flex;
-  min-height: 44px;
-  align-items: center;
-  gap: 12px;
-  margin: 6px 0;
-  border-radius: 8px;
-  padding: 0 16px;
-  color: rgba(234, 243, 255, 0.84);
-  font-weight: 700;
-  text-decoration: none;
-  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
-}
-
-.nav-item:hover,
-.nav-item.active {
-  background: linear-gradient(90deg, #1677ff 0%, #0f63df 100%);
-  color: #fff;
-  transform: translateX(2px);
-}
-
-.nav-icon {
-  display: inline-flex;
-}
-
-.sidebar-foot {
-  margin: 0 26px 24px;
-  border-top: 1px solid rgba(234, 243, 255, 0.14);
-  padding-top: 20px;
-  color: rgba(234, 243, 255, 0.72);
-  font-size: 13px;
-}
-
-.app-main-wrapper {
-  min-width: 0;
-  flex: 1;
-  margin-left: 242px;
-}
-
-.app-header {
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  display: flex;
-  min-height: 64px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  border-bottom: 1px solid rgba(213, 224, 236, 0.7);
-  background: rgba(255, 255, 255, 0.92);
-  padding: 0 32px;
-  backdrop-filter: blur(14px);
-  box-shadow: 0 8px 28px rgba(15, 35, 70, 0.05);
-}
-
-.breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: #16233b;
-  white-space: nowrap;
-}
-
-.crumb-muted,
-.crumb-divider {
-  color: var(--sw-muted);
-}
-
-.header-tools {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.toolbar-search {
-  display: flex;
-  width: 238px;
-  height: 36px;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid var(--sw-line-strong);
-  border-radius: 18px;
-  background: #fff;
-  color: #8a99ad;
-  padding: 0 14px;
-}
-
-.toolbar-search input {
-  min-width: 0;
-  flex: 1;
-  border: 0;
-  background: transparent;
-  color: #8a99ad;
-  outline: 0;
-}
-
-.tool-pill {
-  border-radius: 16px;
-  background: #eef6ff;
-  color: #1763b8;
-  padding: 6px 12px;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.user-chip {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  color: #334155;
-  font-weight: 700;
-}
-
-.avatar {
-  display: grid;
-  width: 32px;
-  height: 32px;
-  place-items: center;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #d9ebff, #fff);
-  color: var(--sw-primary);
-  box-shadow: inset 0 0 0 1px #cfe1f7;
-}
-
-.app-main {
-  min-height: calc(100vh - 64px);
-  padding: 28px 40px 38px;
-}
-
-@media (max-width: 980px) {
-  .app-sidebar {
-    position: static;
-    width: 100%;
-  }
-
-  .app-shell {
-    display: block;
-  }
-
-  .sidebar-nav {
-    display: flex;
-    gap: 8px;
-    overflow-x: auto;
-    padding: 0 16px 16px;
-  }
-
-  .nav-section-title,
-  .sidebar-foot {
-    display: none;
-  }
-
-  .nav-item {
-    min-width: max-content;
-  }
-
-  .app-main-wrapper {
-    margin-left: 0;
-  }
-
-  .app-header {
-    align-items: flex-start;
-    flex-direction: column;
-    padding: 14px 18px;
-  }
-
-  .header-tools {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .toolbar-search {
-    display: none;
-  }
-
-  .app-main {
-    padding: 20px 16px 28px;
-  }
-}
-</style>

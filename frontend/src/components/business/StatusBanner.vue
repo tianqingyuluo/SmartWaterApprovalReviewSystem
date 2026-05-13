@@ -1,17 +1,17 @@
 <template>
-  <div class="status-banner" :class="bannerClass">
-    <div class="status-label">{{ label }}</div>
-    <div v-if="resultSummary" class="status-summary">
-      <span v-if="resultSummary.blockerCount" class="count blocker">
+  <div class="mb-5 rounded-lg border px-5 py-4" :class="bannerClass">
+    <div class="mb-2 text-base font-semibold">{{ label }}</div>
+    <div v-if="resultSummary" class="flex flex-wrap gap-3 text-[13px]">
+      <span v-if="resultSummary.blockerCount" class="text-[#ff4d4f]">
         阻断: {{ resultSummary.blockerCount }}
       </span>
-      <span v-if="resultSummary.warningCount" class="count warning">
+      <span v-if="resultSummary.warningCount" class="text-[#fa8c16]">
         警告: {{ resultSummary.warningCount }}
       </span>
-      <span v-if="resultSummary.infoCount" class="count info">
+      <span v-if="resultSummary.infoCount" class="text-[#1890ff]">
         提示: {{ resultSummary.infoCount }}
       </span>
-      <span class="count total">共 {{ resultSummary.totalFindings }} 项</span>
+      <span class="text-[#666]">共 {{ resultSummary.totalFindings }} 项</span>
     </div>
   </div>
 </template>
@@ -39,76 +39,16 @@ const label = computed(() => {
 const bannerClass = computed(() => {
   switch (props.status) {
     case 'COMPLETED':
-      return 'banner-completed'
+      return 'bg-[#f6ffed] border-[#b7eb8f]'
     case 'PARTIAL_SUCCESS':
-      return 'banner-partial'
+      return 'bg-[#fff7e6] border-[#ffd591]'
     case 'FAILED':
-      return 'banner-failed'
+      return 'bg-[#fff2f0] border-[#ffccc7]'
     case 'PROCESSING':
     case 'QUEUED':
-      return 'banner-processing'
+      return 'bg-[#e6f7ff] border-[#91d5ff]'
     default:
       return ''
   }
 })
 </script>
-
-<style scoped>
-.status-banner {
-  padding: 16px 20px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-}
-
-.banner-completed {
-  background: #f6ffed;
-  border: 1px solid #b7eb8f;
-}
-
-.banner-partial {
-  background: #fff7e6;
-  border: 1px solid #ffd591;
-}
-
-.banner-failed {
-  background: #fff2f0;
-  border: 1px solid #ffccc7;
-}
-
-.banner-processing {
-  background: #e6f7ff;
-  border: 1px solid #91d5ff;
-}
-
-.status-label {
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: 8px;
-}
-
-.status-summary {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.count {
-  font-size: 13px;
-}
-
-.blocker {
-  color: #ff4d4f;
-}
-
-.warning {
-  color: #fa8c16;
-}
-
-.info {
-  color: #1890ff;
-}
-
-.total {
-  color: #666;
-}
-</style>
