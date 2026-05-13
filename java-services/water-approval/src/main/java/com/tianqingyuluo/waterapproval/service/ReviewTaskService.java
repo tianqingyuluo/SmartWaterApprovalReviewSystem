@@ -13,6 +13,7 @@ public interface ReviewTaskService {
     ReviewerResultResponse getReviewerResult(String taskId, String sessionId);
 
     List<PendingTaskResponse> getPendingTasks();
+    TaskListResponse getTaskList(int page, int size);
     void updateStatus(String taskId, String status);
     void writeResult(String taskId, ResultWriteRequest request);
     InputStream downloadMaterial(String storageKey);

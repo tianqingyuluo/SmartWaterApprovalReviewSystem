@@ -5,13 +5,24 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      name: 'applicant',
-      component: () => import('@/pages/ApplicantPage.vue'),
-    },
-    {
-      path: '/review',
-      name: 'reviewer',
-      component: () => import('@/pages/ReviewerPage.vue'),
+      component: () => import('@/layouts/AppLayout.vue'),
+      children: [
+        {
+          path: '',
+          name: 'application-list',
+          component: () => import('@/pages/ApplicationListPage.vue'),
+        },
+        {
+          path: '/apply',
+          name: 'new-application',
+          component: () => import('@/pages/NewApplicationPage.vue'),
+        },
+        {
+          path: '/review',
+          name: 'review-result',
+          component: () => import('@/pages/ReviewResultPage.vue'),
+        },
+      ],
     },
   ],
 })

@@ -1,5 +1,5 @@
 <template>
-  <div class="applicant-page">
+  <div class="new-application-page">
     <header class="page-header">
       <h1>取水许可智能审核 — 材料提交</h1>
       <p class="page-desc">请按材料类型上传文件。部分材料缺失时仍可提交，系统将提示缺失项。</p>
@@ -60,12 +60,20 @@
           <dd><code>{{ result.sessionId }}</code></dd>
         </dl>
         <p class="result-note">请保存以上 ID，用于后续查询审核结果。</p>
-        <button class="btn-new" @click="resetForm">提交新的材料</button>
+        <div class="result-actions">
+          <router-link
+            :to="`/review?taskId=${result.taskId}&sessionId=${result.sessionId}`"
+            class="btn-primary"
+          >
+            前往结果页
+          </router-link>
+          <button class="btn-new" @click="resetForm">提交新的材料</button>
+        </div>
       </div>
     </div>
 
     <div v-if="isPolling && !isTerminalStatus" class="polling-section">
-      <StatusBadge :status="taskStatus" audience="applicant" />
+      <StatusTag :status="taskStatus" />
       <p class="polling-hint">审核处理中，请稍候...</p>
     </div>
 
@@ -99,6 +107,12 @@
       </div>
 
       <div class="app-result-actions">
+        <router-link
+          :to="`/review?taskId=${taskId}&sessionId=${sessionId}`"
+          class="btn-primary"
+        >
+          查看完整结果
+        </router-link>
         <button class="btn-new" @click="resetForm">提交新的材料</button>
       </div>
     </div>
@@ -135,7 +149,7 @@ import {
   MATERIAL_FORM_FIELDS,
 } from '@/types'
 import type { ProcessingStatus } from '@/types'
-import StatusBadge from '@/components/common/StatusBadge.vue'
+import StatusTag from '@/components/common/StatusTag.vue'
 
 interface SlotState {
   type: string
@@ -276,10 +290,9 @@ function resetForm() {
 </script>
 
 <style scoped>
-.applicant-page {
+.new-application-page {
   max-width: 680px;
   margin: 0 auto;
-  padding: 32px 16px;
 }
 
 .page-header {
@@ -469,12 +482,38 @@ function resetForm() {
   margin-bottom: 16px;
 }
 
+.result-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 20px;
+  background: #1890ff;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+
+.btn-primary:hover {
+  background: #40a9ff;
+}
+
 .btn-new {
   border: 1px solid #d9d9d9;
   background: #fff;
   padding: 8px 16px;
   border-radius: 4px;
   cursor: pointer;
+  font-size: 14px;
 }
 
 .polling-section {
@@ -581,6 +620,7 @@ function resetForm() {
   display: flex;
   gap: 12px;
   justify-content: center;
+  flex-wrap: wrap;
 }
 
 .disclaimer {

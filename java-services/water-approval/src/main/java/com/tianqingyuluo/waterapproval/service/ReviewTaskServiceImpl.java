@@ -338,6 +338,65 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
     }
 
     @Override
+    public TaskListResponse getTaskList(int page, int size) {
+        int offset = (page - 1) * size;
+
+        List<ReviewTask> tasks = taskMapper.selectList(
+                new LambdaQueryWrapper<ReviewTask>()
+                        .orderByDesc(ReviewTask::getSubmittedAt)
+                        .last("LIMIT " + size + " OFFSET " + offset)
+        );
+
+        long total = taskMapper.selectCount(new LambdaQueryWrapper<ReviewTask>());
+
+        List<TaskListResponse.TaskListItem> items = new ArrayList<>();
+        for (ReviewTask task : tasks) {
+            TaskListResponse.TaskListItem item = new TaskListResponse.TaskListItem();
+            item.setTaskId(task.getTaskId());
+            item.setSessionId(task.getSessionId());
+            item.setStatus(task.getStatus());
+            item.setSubmittedAt(task.getSubmittedAt());
+            item.setUpdatedAt(task.getUpdatedAt());
+            item.setKnowledgePackVersion(task.getKnowledgePackVersion());
+
+            List<MaterialSlot> slots = materialSlotMapper.selectList(
+                    new LambdaQueryWrapper<MaterialSlot>().eq(MaterialSlot::getTaskId, task.getTaskId())
+            );
+
+            List<TaskListResponse.MaterialStatus> materialStatuses = new ArrayList<>();
+            for (String type : MATERIAL_TYPES) {
+                TaskListResponse.MaterialStatus status = new TaskListResponse.MaterialStatus();
+                status.setMaterialType(type);
+
+                Optional<MaterialSlot> slot = slots.stream()
+                        .filter(s -> s.getMaterialType().equals(type))
+                        .findFirst();
+
+                if (slot.isPresent()) {
+                    status.setUploaded(true);
+                    status.setOriginalFileName(slot.get().getOriginalFileName());
+                } else {
+                    status.setUploaded(false);
+                    status.setOriginalFileName(null);
+                }
+
+                materialStatuses.add(status);
+            }
+            item.setMaterials(materialStatuses);
+            items.add(item);
+        }
+
+        TaskListResponse response = new TaskListResponse();
+        response.setItems(items);
+        response.setTotal(total);
+        response.setPage(page);
+        response.setSize(size);
+
+        log.info("Task list queried: page={}, size={}, total={}, returned={}", page, size, total, items.size());
+        return response;
+    }
+
+    @Override
     @Transactional
     public List<PendingTaskResponse> getPendingTasks() {
         List<ReviewTask> tasks = taskMapper.selectList(

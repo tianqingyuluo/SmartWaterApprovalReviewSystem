@@ -5,8 +5,10 @@ import type {
   TaskStatusResponse,
   ApplicantResultResponse,
   ReviewerResultResponse,
+  TaskListResponse,
   ApplicantResultView,
   ReviewerResultView,
+  FailureCategory,
   ApplicantIssueDto,
   ReviewerIssueDto,
   RiskHintDto,
@@ -40,6 +42,12 @@ export function getReviewerResult(taskId: string, sessionId: string) {
   })
 }
 
+export function getTaskList(page = 1, size = 20) {
+  return request.get<R<TaskListResponse>>('/task/list', {
+    params: { page, size },
+  })
+}
+
 // ── Adapters: backend DTO → page view model ──
 
 export function toApplicantResultView(dto: ApplicantResultResponse): ApplicantResultView {
@@ -55,6 +63,9 @@ export function toReviewerResultView(
   statusDto: TaskStatusResponse,
   resultDto: ReviewerResultResponse,
 ): ReviewerResultView {
+  const { failureCategory, failureReason } = extractFailureInfo(resultDto)
+  const hasBlocker = resultDto.issues.some((f) => f.severity === 'BLOCKER')
+
   return {
     status: resultDto.status,
     materials: statusDto.materials,
@@ -66,9 +77,31 @@ export function toReviewerResultView(
     riskHints: resultDto.riskHints.map(formatRiskHint),
     draftOpinion: resultDto.draftOpinion,
     manualReviewNotice: resultDto.manualReviewNotice ?? '',
-    failureCategory: resultDto.status === 'FAILED' ? 'SYSTEM_ERROR' : null,
-    failureReason: resultDto.status === 'FAILED' ? resultDto.summary : null,
+    failureCategory,
+    failureReason,
+    requiresManualReview: failureCategory !== null || hasBlocker || (resultDto.manualReviewNotice ?? '') !== '',
   }
+}
+
+function extractFailureInfo(resultDto: ReviewerResultResponse): { failureCategory: FailureCategory; failureReason: string | null } {
+  if (resultDto.status !== 'FAILED') {
+    return { failureCategory: null, failureReason: null }
+  }
+
+  // Try to infer from modelMetadata if available
+  const meta = resultDto.modelMetadata
+  if (meta) {
+    const knownCategories: FailureCategory[] = [
+      'SYSTEM_ERROR', 'AUTH_ERROR', 'RATE_LIMIT', 'TIMEOUT',
+      'UPSTREAM_5XX', 'INVALID_JSON', 'SCHEMA_MISMATCH', 'CONTENT_FILTERED',
+    ]
+    const matched = knownCategories.find((c) => c && meta.includes(c))
+    if (matched) {
+      return { failureCategory: matched, failureReason: resultDto.summary || null }
+    }
+  }
+
+  return { failureCategory: 'SYSTEM_ERROR', failureReason: resultDto.summary || null }
 }
 
 function toApplicantFinding(issue: ApplicantIssueDto): Finding {

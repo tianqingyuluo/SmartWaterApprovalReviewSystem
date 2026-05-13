@@ -7,6 +7,7 @@ import com.tianqingyuluo.waterapproval.dto.PendingTaskResponse;
 import com.tianqingyuluo.waterapproval.dto.ResultWriteRequest;
 import com.tianqingyuluo.waterapproval.dto.ReviewerResultResponse;
 import com.tianqingyuluo.waterapproval.dto.StatusUpdateRequest;
+import com.tianqingyuluo.waterapproval.dto.TaskListResponse;
 import com.tianqingyuluo.waterapproval.dto.TaskStatusResponse;
 import com.tianqingyuluo.waterapproval.service.ReviewTaskService;
 import org.junit.jupiter.api.Test;
@@ -173,5 +174,50 @@ class ReviewTaskControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.manualReviewNotice").value("请人工复核证照一致性"));
+    }
+
+    @Test
+    void getTaskListShouldReturnTasksWithoutWorkerToken() throws Exception {
+        TaskListResponse response = new TaskListResponse();
+        response.setTotal(1);
+        response.setPage(1);
+        response.setSize(20);
+        when(reviewTaskService.getTaskList(1, 20)).thenReturn(response);
+
+        mockMvc.perform(get("/task/list"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.total").value(1));
+    }
+
+    @Test
+    void getTaskListShouldReturnPaginatedResults() throws Exception {
+        TaskListResponse response = new TaskListResponse();
+        response.setTotal(100);
+        response.setPage(2);
+        response.setSize(10);
+        when(reviewTaskService.getTaskList(2, 10)).thenReturn(response);
+
+        mockMvc.perform(get("/task/list")
+                        .param("page", "2")
+                        .param("size", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.page").value(2))
+                .andExpect(jsonPath("$.data.size").value(10));
+    }
+
+    @Test
+    void getTaskListShouldCapMaxSize() throws Exception {
+        TaskListResponse response = new TaskListResponse();
+        response.setTotal(0);
+        response.setPage(1);
+        response.setSize(100);
+        when(reviewTaskService.getTaskList(1, 100)).thenReturn(response);
+
+        mockMvc.perform(get("/task/list")
+                        .param("size", "500"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
     }
 }

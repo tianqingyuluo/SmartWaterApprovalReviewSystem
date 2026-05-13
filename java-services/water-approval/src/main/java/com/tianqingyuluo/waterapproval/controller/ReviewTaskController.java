@@ -32,6 +32,16 @@ public class ReviewTaskController {
         return R.ok(tasks);
     }
 
+    @GetMapping("/list")
+    public R<TaskListResponse> getTaskList(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        log.info("查询任务列表: page={}, size={}", page, size);
+        size = Math.min(size, 100);
+        TaskListResponse response = reviewTaskService.getTaskList(page, size);
+        return R.ok(response);
+    }
+
     @GetMapping("/{taskId}/status")
     public R<TaskStatusResponse> getStatus(@PathVariable String taskId, @RequestParam String sessionId) {
         log.info("查询任务状态: taskId={}", taskId);

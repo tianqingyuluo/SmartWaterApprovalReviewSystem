@@ -22,6 +22,38 @@ export const MATERIAL_SLOTS: MaterialType[] = ['APPLICATION_FORM', 'BUSINESS_LIC
 
 export const ACCEPTED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'pdf']
 
+export type FailureCategory =
+  | 'SYSTEM_ERROR'
+  | 'AUTH_ERROR'
+  | 'RATE_LIMIT'
+  | 'TIMEOUT'
+  | 'UPSTREAM_5XX'
+  | 'INVALID_JSON'
+  | 'SCHEMA_MISMATCH'
+  | 'CONTENT_FILTERED'
+  | null
+
+export const FAILURE_CATEGORY_LABELS: Record<string, string> = {
+  SYSTEM_ERROR: '系统处理异常',
+  AUTH_ERROR: '服务认证失败',
+  RATE_LIMIT: '请求过于频繁',
+  TIMEOUT: '处理超时',
+  UPSTREAM_5XX: '上游服务异常',
+  INVALID_JSON: '结果格式异常',
+  SCHEMA_MISMATCH: '结果结构不匹配',
+  CONTENT_FILTERED: '内容被过滤',
+}
+
+/** Status tag colors for list/table display */
+export const STATUS_TAG_COLORS: Record<ProcessingStatus, { bg: string; text: string; border: string }> = {
+  SUBMITTED: { bg: '#f5f5f5', text: '#999', border: '#d9d9d9' },
+  QUEUED: { bg: '#f5f5f5', text: '#999', border: '#d9d9d9' },
+  PROCESSING: { bg: '#e6f7ff', text: '#1890ff', border: '#91d5ff' },
+  PARTIAL_SUCCESS: { bg: '#fff7e6', text: '#fa8c16', border: '#ffd591' },
+  COMPLETED: { bg: '#f6ffed', text: '#52c41a', border: '#b7eb8f' },
+  FAILED: { bg: '#fff2f0', text: '#ff4d4f', border: '#ffccc7' },
+}
+
 /** MaterialType → multipart form field name expected by Java backend */
 export const MATERIAL_FORM_FIELDS: Record<MaterialType, string> = {
   APPLICATION_FORM: 'applicationForm',
@@ -120,6 +152,25 @@ export interface ReviewerResultResponse {
   modelMetadata?: string | null
 }
 
+// ── Task List ──
+
+export interface TaskListItem {
+  taskId: string
+  sessionId: string
+  status: ProcessingStatus
+  submittedAt: string
+  updatedAt: string
+  knowledgePackVersion: string | null
+  materials: MaterialSlot[]
+}
+
+export interface TaskListResponse {
+  items: TaskListItem[]
+  total: number
+  page: number
+  size: number
+}
+
 // ── View models (transformed from backend DTOs for page consumption) ──
 
 export interface ApplicantResultView {
@@ -140,8 +191,9 @@ export interface ReviewerResultView {
   riskHints: string[]
   draftOpinion: string
   manualReviewNotice: string
-  failureCategory: string | null
+  failureCategory: FailureCategory
   failureReason: string | null
+  requiresManualReview: boolean
 }
 
 // ── Status labels ──

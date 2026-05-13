@@ -1,8 +1,8 @@
 <template>
-  <div class="reviewer-page">
-    <header class="page-header">
-      <h1>审核辅助结果</h1>
-      <div class="task-lookup" v-if="!task">
+  <div class="review-result-page">
+    <div class="page-header-bar">
+      <h1 class="page-title">审核辅助结果</h1>
+      <div v-if="!task" class="task-lookup">
         <input
           v-model="inputTaskId"
           class="task-input"
@@ -15,14 +15,25 @@
           placeholder="输入会话 ID"
           @keyup.enter="lookup"
         />
-        <button class="btn-lookup" @click="lookup" :disabled="loading">
+        <button class="btn-primary" @click="lookup" :disabled="loading">
           {{ loading ? '查询中...' : '查询' }}
         </button>
       </div>
       <p v-if="lookupError" class="lookup-error">{{ lookupError }}</p>
-    </header>
+    </div>
 
+    <!-- Status Banner with enhanced states -->
     <StatusBanner v-if="task" :status="task.status" :resultSummary="task.summary" />
+
+    <!-- Manual review warning for COMPLETED with BLOCKER -->
+    <div v-if="task && task.status === 'COMPLETED' && task.requiresManualReview" class="manual-review-banner">
+      <div class="manual-review-icon">⚠</div>
+      <div class="manual-review-content">
+        <h3>结果已生成，但需人工复核</h3>
+        <p v-if="task.manualReviewNotice">{{ task.manualReviewNotice }}</p>
+        <p v-else>审核结果中存在阻断性问题，请人工复核后继续办理。</p>
+      </div>
+    </div>
 
     <div v-if="task && (task.status === 'COMPLETED' || task.status === 'PARTIAL_SUCCESS')" class="result-body">
       <MaterialSlotSummary :slots="task.materials" />
@@ -54,19 +65,21 @@
       />
 
       <ManualReviewNotice
-        v-if="task.manualReviewNotice"
+        v-if="task.manualReviewNotice && !task.requiresManualReview"
         :notice="task.manualReviewNotice"
       />
     </div>
 
     <div v-if="task && task.status === 'FAILED'" class="failure-block">
-      <h3>处理失败</h3>
-      <p v-if="task.failureReason">{{ task.failureReason }}</p>
-      <p>请检查材料文件是否可读，或重新提交新的任务。</p>
+      <FailureInfo :failureCategory="task.failureCategory" :failureReason="task.failureReason" />
     </div>
 
-    <div class="back-link">
-      <router-link to="/">返回提交页</router-link>
+    <div v-if="task && task.status === 'PARTIAL_SUCCESS'" class="partial-warning">
+      <p>部分材料或处理步骤失败，结果可能不完整。请检查材料状态。</p>
+    </div>
+
+    <div class="disclaimer">
+      <p>本系统提供 AI 辅助审核建议，最终审核结果以审批机关决定为准。</p>
     </div>
   </div>
 </template>
@@ -84,6 +97,7 @@ import MaterialSummary from '@/components/business/MaterialSummary.vue'
 import RiskHints from '@/components/business/RiskHints.vue'
 import DraftOpinion from '@/components/business/DraftOpinion.vue'
 import ManualReviewNotice from '@/components/business/ManualReviewNotice.vue'
+import FailureInfo from '@/components/business/FailureInfo.vue'
 
 const route = useRoute()
 
@@ -121,19 +135,20 @@ if (inputTaskId.value && inputSessionId.value) {
 </script>
 
 <style scoped>
-.reviewer-page {
-  max-width: 800px;
+.review-result-page {
+  max-width: 900px;
   margin: 0 auto;
-  padding: 32px 16px;
 }
 
-.page-header {
+.page-header-bar {
   margin-bottom: 24px;
 }
 
-.page-header h1 {
-  font-size: 24px;
-  margin-bottom: 16px;
+.page-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 16px 0;
 }
 
 .task-lookup {
@@ -151,7 +166,12 @@ if (inputTaskId.value && inputSessionId.value) {
   font-size: 14px;
 }
 
-.btn-lookup {
+.task-input:focus {
+  outline: none;
+  border-color: #1890ff;
+}
+
+.btn-primary {
   padding: 8px 24px;
   background: #1890ff;
   color: #fff;
@@ -159,13 +179,14 @@ if (inputTaskId.value && inputSessionId.value) {
   border-radius: 4px;
   cursor: pointer;
   font-size: 14px;
+  transition: background 0.2s;
 }
 
-.btn-lookup:hover {
+.btn-primary:hover {
   background: #40a9ff;
 }
 
-.btn-lookup:disabled {
+.btn-primary:disabled {
   background: #91d5ff;
   cursor: not-allowed;
 }
@@ -182,25 +203,51 @@ if (inputTaskId.value && inputSessionId.value) {
   gap: 16px;
 }
 
-.failure-block {
-  background: #fff2f0;
-  border: 1px solid #ffccc7;
+.manual-review-banner {
+  display: flex;
+  gap: 12px;
+  background: #fff7e6;
+  border: 1px solid #ffd591;
   border-radius: 8px;
-  padding: 24px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
 }
 
-.failure-block h3 {
-  color: #ff4d4f;
-  margin-bottom: 8px;
+.manual-review-icon {
+  font-size: 24px;
+  flex-shrink: 0;
 }
 
-.back-link {
+.manual-review-content h3 {
+  font-size: 15px;
+  color: #fa8c16;
+  margin: 0 0 4px 0;
+}
+
+.manual-review-content p {
+  font-size: 14px;
+  color: #666;
+  margin: 0;
+}
+
+.failure-block {
+  margin-bottom: 16px;
+}
+
+.partial-warning {
+  background: #fff7e6;
+  border: 1px solid #ffd591;
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  color: #fa8c16;
+  font-size: 14px;
+}
+
+.disclaimer {
   margin-top: 32px;
   text-align: center;
-}
-
-.back-link a {
-  color: #1890ff;
-  font-size: 14px;
+  font-size: 12px;
+  color: #bbb;
 }
 </style>

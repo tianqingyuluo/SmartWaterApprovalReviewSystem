@@ -96,4 +96,102 @@ describe('task API adapters', () => {
     expect(view.riskHints[0]).toContain('取水量字段与材料描述需要复核')
     expect(view.manualReviewNotice).toBe('请人工复核证照一致性。')
   })
+
+  it('maps FAILED status to failure category and reason', () => {
+    const statusDto: TaskStatusResponse = {
+      taskId: 'task-1',
+      status: 'FAILED',
+      submittedAt: '2026-05-08T10:00:00',
+      updatedAt: '2026-05-08T10:01:00',
+      materials: [],
+    }
+    const resultDto: ReviewerResultResponse = {
+      taskId: 'task-1',
+      status: 'FAILED',
+      summary: '模型返回格式错误',
+      missingMaterials: [],
+      draftOpinion: '',
+      manualReviewNotice: '',
+      extractedFields: {},
+      issues: [],
+      riskHints: [],
+      modelMetadata: 'SCHEMA_MISMATCH',
+    }
+
+    const view = toReviewerResultView(statusDto, resultDto)
+
+    expect(view.status).toBe('FAILED')
+    expect(view.failureCategory).toBe('SCHEMA_MISMATCH')
+    expect(view.failureReason).toBe('模型返回格式错误')
+    expect(view.requiresManualReview).toBe(true)
+  })
+
+  it('marks COMPLETED with BLOCKER as requiring manual review', () => {
+    const statusDto: TaskStatusResponse = {
+      taskId: 'task-1',
+      status: 'COMPLETED',
+      submittedAt: '2026-05-08T10:00:00',
+      updatedAt: '2026-05-08T10:01:00',
+      materials: [],
+    }
+    const resultDto: ReviewerResultResponse = {
+      taskId: 'task-1',
+      status: 'COMPLETED',
+      summary: '审核辅助结果已生成',
+      missingMaterials: [],
+      draftOpinion: '建议人工复核后继续办理。',
+      manualReviewNotice: '',
+      extractedFields: {},
+      issues: [
+        {
+          code: 'INCONSISTENT_IDENTITY',
+          severity: 'BLOCKER',
+          message: '身份不一致需人工复核',
+          applicantVisible: true,
+        },
+      ],
+      riskHints: [],
+    }
+
+    const view = toReviewerResultView(statusDto, resultDto)
+
+    expect(view.status).toBe('COMPLETED')
+    expect(view.failureCategory).toBeNull()
+    expect(view.requiresManualReview).toBe(true)
+    expect(view.findings[0].severity).toBe('BLOCKER')
+  })
+
+  it('marks normal COMPLETED without manual review requirement', () => {
+    const statusDto: TaskStatusResponse = {
+      taskId: 'task-1',
+      status: 'COMPLETED',
+      submittedAt: '2026-05-08T10:00:00',
+      updatedAt: '2026-05-08T10:01:00',
+      materials: [],
+    }
+    const resultDto: ReviewerResultResponse = {
+      taskId: 'task-1',
+      status: 'COMPLETED',
+      summary: '审核辅助结果已生成',
+      missingMaterials: [],
+      draftOpinion: '建议通过。',
+      manualReviewNotice: '',
+      extractedFields: {},
+      issues: [
+        {
+          code: 'WATER_AMOUNT_REVIEW_REQUIRED',
+          severity: 'WARNING',
+          message: '取水量需复核',
+          applicantVisible: false,
+        },
+      ],
+      riskHints: [],
+    }
+
+    const view = toReviewerResultView(statusDto, resultDto)
+
+    expect(view.status).toBe('COMPLETED')
+    expect(view.failureCategory).toBeNull()
+    expect(view.requiresManualReview).toBe(false)
+  })
 })
