@@ -1,0 +1,7 @@
+{"file": ".trellis/spec/frontend/index.md", "reason": "Frontend spec index and required pre-development checklist"}
+{"file": ".trellis/spec/frontend/component-guidelines.md", "reason": "Component/page/API adapter responsibility boundaries during style migration"}
+{"file": ".trellis/spec/frontend/type-safety.md", "reason": "Keep TypeScript and DTO/view-model boundaries stable while editing Vue files"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "Frontend build/test gates and request-layer contract rules"}
+{"file": "docs/UI设计/申请列表.png", "reason": "Visual reference for list page after Tailwind migration"}
+{"file": "docs/UI设计/申请.png", "reason": "Visual reference for application page after Tailwind migration"}
+{"file": "docs/UI设计/AI初审结果.png", "reason": "Visual reference for AI review result page after Tailwind migration"}

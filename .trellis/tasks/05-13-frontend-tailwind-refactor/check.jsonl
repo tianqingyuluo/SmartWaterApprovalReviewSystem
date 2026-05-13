@@ -1,0 +1,7 @@
+{"file": ".trellis/spec/frontend/index.md", "reason": "Verify frontend migration follows project frontend specs"}
+{"file": ".trellis/spec/frontend/component-guidelines.md", "reason": "Verify component boundaries remain clean after Tailwind class migration"}
+{"file": ".trellis/spec/frontend/type-safety.md", "reason": "Verify Vue/TS changes keep type safety"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "Verify frontend build/test gates and Java R<T> business-code behavior remain covered"}
+{"file": "docs/UI设计/申请列表.png", "reason": "Check list page visual structure did not regress"}
+{"file": "docs/UI设计/申请.png", "reason": "Check application page visual structure did not regress"}
+{"file": "docs/UI设计/AI初审结果.png", "reason": "Check AI result page visual structure did not regress"}
