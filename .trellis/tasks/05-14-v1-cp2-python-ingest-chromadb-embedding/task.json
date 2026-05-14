@@ -9,7 +9,7 @@
   "package": null,
   "priority": "P1",
   "creator": "tianqingyuluo",
-  "assignee": "tianqingyuluo",
+  "assignee": "6newuser6",
   "createdAt": "2026-05-14",
   "completedAt": null,
   "branch": null,
@@ -28,6 +28,8 @@
     "wave": 1,
     "dependsOn": [],
     "unlockCriteria": "Wave 1 baseline task for CP2 knowledge base.",
-    "gatePolicy": "Do not start locked tasks until dependencies are completed and parent task approves next wave."
+    "gatePolicy": "Do not start locked tasks until dependencies are completed and parent task approves next wave.",
+    "assignedBy": "tianqingyuluo",
+    "assignedAt": "2026-05-14"
   }
 }

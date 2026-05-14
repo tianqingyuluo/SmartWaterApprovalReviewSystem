@@ -28,6 +28,8 @@
     "wave": 1,
     "dependsOn": [],
     "unlockCriteria": "Wave 1 baseline task for CP2 MCP capability.",
-    "gatePolicy": "Do not start locked tasks until dependencies are completed and parent task approves next wave."
+    "gatePolicy": "Do not start locked tasks until dependencies are completed and parent task approves next wave.",
+    "assignedBy": "tianqingyuluo",
+    "assignedAt": "2026-05-14"
   }
 }
