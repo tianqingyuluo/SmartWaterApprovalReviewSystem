@@ -71,9 +71,14 @@ python-services/smart-water-approval-review-system-py/src/
 ├── adapters/
 │   ├── ocr_adapter.py
 │   └── review_adapter.py
+├── mcp_server/
+│   ├── app.py
+│   ├── demo.py
+│   └── server.py
 ├── models/
 └── services/
     ├── field_extractor.py
+    ├── knowledge_tools.py
     ├── result_writer.py
     └── worker.py
 ```
@@ -81,6 +86,8 @@ python-services/smart-water-approval-review-system-py/src/
 当前 Worker 约定：
 
 - `adapters/` 只处理外部 OCR/推理供应商差异。
+- `mcp_server/` 只放 MCP Server 启动、工具注册和本地 demo CLI，不能写知识库检索或材料完整性判断细节。
+- `services/knowledge_tools.py` 负责可单测的知识库工具核心逻辑，MCP、CLI 和未来 HTTP/Worker 入口都应复用这里的函数/类。
 - `services/worker.py` 负责主流程编排。
 - `services/result_writer.py` 负责把标准结果 schema 回写到 Java 服务。
 - 跨服务 contract 以 Java API 为准，不允许 Worker 自行发明新的 wire 字段。
@@ -107,6 +114,7 @@ python-services/smart-water-approval-review-system-py/src/
 | 文件名 | snake_case | `result_writer.py` |
 | 适配器 | `<domain>_adapter.py` | `review_adapter.py` |
 | 服务文件 | 以业务责任命名 | `field_extractor.py` |
+| MCP 模块 | 启动/注册放 `src/mcp_server/`，业务逻辑放 `src/services/` | `mcp_server/server.py`、`services/knowledge_tools.py` |
 
 ---
 
