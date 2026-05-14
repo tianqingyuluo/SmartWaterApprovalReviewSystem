@@ -1,0 +1,33 @@
+{
+  "id": "v1-cp1-docs-git-demo-evidence",
+  "name": "v1-cp1-docs-git-demo-evidence",
+  "title": "CP1-D Git、运行与答辩证据整理",
+  "description": "建立 CP1 证据总表，统一 Git 分工、运行步骤和截图资产。",
+  "status": "in_progress",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P1",
+  "creator": "tianqingyuluo",
+  "assignee": "tianqingyuluo",
+  "createdAt": "2026-05-14",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "mvp/smartwater",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "05-13-v1-system-design-checkpoints",
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {
+    "checkpoint": "CP1",
+    "lane": "docs-tests",
+    "wave": 1,
+    "dependsOn": [],
+    "unlockCriteria": "Wave 1 baseline task; completion unlocks CP1 follow-up lanes.",
+    "gatePolicy": "Do not start locked tasks until dependencies are completed and parent task approves next wave."
+  }
+}

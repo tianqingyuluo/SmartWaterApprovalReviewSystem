@@ -1,0 +1,37 @@
+{
+  "id": "v1-cp2-docs-tests-demo",
+  "name": "v1-cp2-docs-tests-demo",
+  "title": "CP2-D CP2 文档、测试与演示脚本",
+  "description": "沉淀 CP2 运行文档、测试记录与答辩演示脚本。",
+  "status": "locked",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P1",
+  "creator": "tianqingyuluo",
+  "assignee": "tianqingyuluo",
+  "createdAt": "2026-05-14",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "mvp/smartwater",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "05-13-v1-system-design-checkpoints",
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {
+    "checkpoint": "CP2",
+    "lane": "docs-tests",
+    "wave": 2,
+    "dependsOn": [
+      "v1-cp2-java-ai-config-health",
+      "v1-cp2-python-ingest-chromadb-embedding",
+      "v1-cp2-mcp-server-tools"
+    ],
+    "unlockCriteria": "CP2 implementation tasks completed and parent approves Wave 2 docs pack.",
+    "gatePolicy": "Do not start locked tasks until dependencies are completed and parent task approves next wave."
+  }
+}

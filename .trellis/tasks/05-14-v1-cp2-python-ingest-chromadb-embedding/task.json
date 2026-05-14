@@ -1,0 +1,33 @@
+{
+  "id": "v1-cp2-python-ingest-chromadb-embedding",
+  "name": "v1-cp2-python-ingest-chromadb-embedding",
+  "title": "CP2-B Python ingest、ChromaDB、Embedding",
+  "description": "实现课程资料 ingest 主线，落地 ChromaDB 持久化与外部 Embedding。",
+  "status": "in_progress",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P1",
+  "creator": "tianqingyuluo",
+  "assignee": "tianqingyuluo",
+  "createdAt": "2026-05-14",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "mvp/smartwater",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "05-13-v1-system-design-checkpoints",
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {
+    "checkpoint": "CP2",
+    "lane": "python",
+    "wave": 1,
+    "dependsOn": [],
+    "unlockCriteria": "Wave 1 baseline task for CP2 knowledge base.",
+    "gatePolicy": "Do not start locked tasks until dependencies are completed and parent task approves next wave."
+  }
+}

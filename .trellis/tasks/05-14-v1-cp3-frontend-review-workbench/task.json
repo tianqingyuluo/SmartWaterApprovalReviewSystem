@@ -1,0 +1,36 @@
+{
+  "id": "v1-cp3-frontend-review-workbench",
+  "name": "v1-cp3-frontend-review-workbench",
+  "title": "CP3-C 前端 AI 结果、待办和审核动作",
+  "description": "交付审批人员待办、AI 结果展示和三类审核动作页面。",
+  "status": "locked",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P1",
+  "creator": "tianqingyuluo",
+  "assignee": "tianqingyuluo",
+  "createdAt": "2026-05-14",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "mvp/smartwater",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "05-13-v1-system-design-checkpoints",
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {
+    "checkpoint": "CP3",
+    "lane": "frontend",
+    "wave": 3,
+    "dependsOn": [
+      "v1-cp3-java-ai-task-callback-results",
+      "v1-cp3-python-fastapi-rules-agent"
+    ],
+    "unlockCriteria": "CP3 backend + python review chain completed and parent approves Wave 3.",
+    "gatePolicy": "Do not start locked tasks until dependencies are completed and parent task approves next wave."
+  }
+}

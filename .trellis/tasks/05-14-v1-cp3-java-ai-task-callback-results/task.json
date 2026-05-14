@@ -1,0 +1,33 @@
+{
+  "id": "v1-cp3-java-ai-task-callback-results",
+  "name": "v1-cp3-java-ai-task-callback-results",
+  "title": "CP3-A Java AI 任务、回调与结果持久化",
+  "description": "建立 Java 侧 AI 任务模型、回调入口与结果持久化主链路。",
+  "status": "in_progress",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P1",
+  "creator": "tianqingyuluo",
+  "assignee": "tianqingyuluo",
+  "createdAt": "2026-05-14",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "mvp/smartwater",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "05-13-v1-system-design-checkpoints",
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {
+    "checkpoint": "CP3",
+    "lane": "java",
+    "wave": 1,
+    "dependsOn": [],
+    "unlockCriteria": "Wave 1 baseline task for CP3 async integration.",
+    "gatePolicy": "Do not start locked tasks until dependencies are completed and parent task approves next wave."
+  }
+}
