@@ -250,3 +250,37 @@ Switched Worker OCR from glm-4v chat completions to the official GLM OCR layout_
 ### Next Steps
 
 - None - task complete
+
+
+## Session 8: CP1-D 证据文档整理
+
+**Date**: 2026-05-14
+**Task**: CP1-D 证据文档整理
+**Branch**: `v1`
+
+### Summary
+
+完成 CP1-D 任务：建立 CP1 评分点到 MVP 证据映射总表，整理本地启动步骤、Git 分工与提交证明，更新开发日志。覆盖 19 个评分项，8 项待补齐已关联后续子任务。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `fdd4138` | (see git log) |
+| `c576c5d` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
