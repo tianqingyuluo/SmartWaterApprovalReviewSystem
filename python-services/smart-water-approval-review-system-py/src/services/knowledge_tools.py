@@ -332,6 +332,8 @@ class SmartWaterKnowledgeTools:
         elif isinstance(materials, Mapping):
             if "materials" in materials and isinstance(materials["materials"], list):
                 material_items = list(materials["materials"])
+            elif all(isinstance(v, bool) for v in materials.values()):
+                material_items = [k for k, v in materials.items() if v]
             else:
                 material_items = list(materials.values())
         elif isinstance(materials, Sequence) and not isinstance(materials, (str, bytes, bytearray)):
