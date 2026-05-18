@@ -115,10 +115,7 @@ class ChromaStore:
         logger.info("Rebuilt ChromaDB at: %s", persist_dir)
 
     def _get_or_create_collection(self):
-        try:
-            return self._client.get_collection(self._collection_name)
-        except ValueError:
-            return self._client.create_collection(
-                name=self._collection_name,
-                metadata={"hnsw:space": "cosine"},
-            )
+        return self._client.get_or_create_collection(
+            name=self._collection_name,
+            metadata={"hnsw:space": "cosine"},
+        )

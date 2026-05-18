@@ -24,7 +24,7 @@ class TestChromaStore(unittest.TestCase):
     def test_store_and_count(self, mock_persistent):
         store = ChromaStore()
         mock_collection = MagicMock()
-        store._client.get_collection.return_value = mock_collection
+        store._client.get_or_create_collection.return_value = mock_collection
         mock_collection.count.return_value = 2
 
         chunks = [
