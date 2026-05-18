@@ -30,9 +30,7 @@ class SmartWaterKnowledgeToolsTests(unittest.TestCase):
     def test_knowledge_search_includes_direct_review_basis_source_id(self) -> None:
         result = self.tools.knowledge_search(query="BASIS_WATER_LAW_PERMIT_REQUIREMENT", top_k=1)
 
-        review_basis_results = [
-            item for item in result["results"] if item["section"] == "reviewBasis"
-        ]
+        review_basis_results = [item for item in result["results"] if item["section"] == "reviewBasis"]
         self.assertTrue(review_basis_results)
         self.assertIn("SRC_PROCESS_DOC", review_basis_results[0]["sourceIds"])
 
@@ -111,6 +109,13 @@ class SmartWaterKnowledgeToolsTests(unittest.TestCase):
 
         self.assertEqual([], result["submitted"])
         self.assertEqual(["APPLICATION_FORM", "BUSINESS_LICENSE", "ID_CARD"], result["missing"])
+        self.assertFalse(result["complete"])
+
+    def test_check_completeness_nested_dict_bool_input(self) -> None:
+        result = self.tools.check_completeness({"materials": {"APPLICATION_FORM": True, "BUSINESS_LICENSE": True}})
+
+        self.assertEqual(["APPLICATION_FORM", "BUSINESS_LICENSE"], result["submitted"])
+        self.assertEqual(["ID_CARD"], result["missing"])
         self.assertFalse(result["complete"])
 
 

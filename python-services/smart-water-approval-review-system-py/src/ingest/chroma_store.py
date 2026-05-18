@@ -58,7 +58,7 @@ class ChromaStore:
             documents.append(chunk.content)
             embedding_list.append(emb)
 
-        collection.add(
+        collection.upsert(
             ids=ids,
             embeddings=embedding_list,
             metadatas=metadatas,
