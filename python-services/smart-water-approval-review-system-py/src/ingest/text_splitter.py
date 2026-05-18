@@ -74,6 +74,9 @@ def _split_single_block(
         )
         chunks.extend(sub_chunks)
 
+    for global_idx, ch in enumerate(chunks):
+        ch.metadata["chunk_index"] = global_idx
+
     return chunks
 
 

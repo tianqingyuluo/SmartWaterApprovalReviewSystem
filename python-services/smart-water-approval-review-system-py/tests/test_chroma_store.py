@@ -108,3 +108,32 @@ class TestChromaStore(unittest.TestCase):
             finally:
                 config.CHROMA_PERSIST_DIR = orig_persist
                 config.CHROMA_COLLECTION_NAME = orig_collection
+
+    def test_same_block_multi_section_no_duplicate_id_error(self):
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmpdir:
+            persist_dir = Path(tmpdir) / "chroma"
+            orig_persist = config.CHROMA_PERSIST_DIR
+            orig_collection = config.CHROMA_COLLECTION_NAME
+            try:
+                config.CHROMA_PERSIST_DIR = str(persist_dir)
+                config.CHROMA_COLLECTION_NAME = "section_test"
+                store = ChromaStore()
+
+                chunks = [
+                    ChunkResult(
+                        content="一、申请条件",
+                        metadata={"source_file": "guide.docx", "block_index": 0, "chunk_index": 0},
+                    ),
+                    ChunkResult(
+                        content="二、办理流程",
+                        metadata={"source_file": "guide.docx", "block_index": 0, "chunk_index": 1},
+                    ),
+                ]
+                emb = [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]]
+
+                count = store.store_chunks(chunks, emb)
+                self.assertEqual(2, count)
+                self.assertEqual(2, store.count())
+            finally:
+                config.CHROMA_PERSIST_DIR = orig_persist
+                config.CHROMA_COLLECTION_NAME = orig_collection

@@ -61,3 +61,17 @@ class TestTextSplitter(unittest.TestCase):
         self.assertEqual(meta["chapter"], "第一章")
         self.assertEqual(meta["page_num"], 1)
         self.assertEqual(meta["block_index"], 3)
+
+    def test_structured_headings_produce_unique_chunk_indices(self):
+        content = "一、申请条件\n需要提供申请书和营业执照。\n二、办理流程\n申请人提交材料后等待审核。"
+        block = DocumentBlock(
+            source_file="guide.docx",
+            source_title="guide",
+            content=content,
+            doc_type="paragraph",
+            block_index=0,
+        )
+        result = split_blocks([block], chunk_size=512, chunk_overlap=64)
+        self.assertEqual(len(result), 2)
+        indices = [r.metadata["chunk_index"] for r in result]
+        self.assertEqual(indices, [0, 1])
