@@ -17,7 +17,7 @@ def build_mcp_server(tools: SmartWaterKnowledgeTools | None = None) -> FastMCP:
         name="knowledge_search",
         description="Search SmartWater MVP knowledge pack and return structured matches.",
     )
-    def knowledge_search(query: str, top_k: int = 5) -> dict:
+    def knowledge_search(query: str, top_k: int | str = 5) -> dict:
         return knowledge_tools.knowledge_search(query=query, top_k=top_k)
 
     @server.tool(

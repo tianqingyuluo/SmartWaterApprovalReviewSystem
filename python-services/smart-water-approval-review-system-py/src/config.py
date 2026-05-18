@@ -23,6 +23,19 @@ class Config:
 
     KNOWLEDGE_PACK_DIR: str = os.getenv("KNOWLEDGE_PACK_DIR", "./knowledge_pack")
 
+    EMBEDDING_PROVIDER: str = os.getenv("EMBEDDING_PROVIDER", "dashscope")
+    EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "text-embedding-v3")
+    EMBEDDING_BASE_URL: str = os.getenv("EMBEDDING_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")
+    EMBEDDING_API_KEY: str = os.getenv("EMBEDDING_API_KEY", "")
+
+    CHROMA_PERSIST_DIR: str = os.getenv("CHROMA_PERSIST_DIR", "./data/chroma")
+    CHROMA_COLLECTION_NAME: str = os.getenv("CHROMA_COLLECTION_NAME", "knowledge_base")
+
+    KNOWLEDGE_SOURCE_DIR: str = os.getenv("KNOWLEDGE_SOURCE_DIR", "")
+
+    CHUNK_SIZE: int = int(os.getenv("CHUNK_SIZE", "512"))
+    CHUNK_OVERLAP: int = int(os.getenv("CHUNK_OVERLAP", "64"))
+
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
 
 

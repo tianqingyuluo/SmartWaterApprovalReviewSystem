@@ -90,10 +90,7 @@ class SmartWaterWorker:
             fields = self.extractor.extract(material)
             extracted_fields.extend(fields)
 
-            has_error = any(
-                f.field_key in ("ocr_error", "extraction_error", "download_error")
-                for f in fields
-            )
+            has_error = any(f.field_key in ("ocr_error", "extraction_error", "download_error") for f in fields)
             if has_error:
                 partial_failures.append(material.material_type)
 
@@ -130,9 +127,7 @@ class SmartWaterWorker:
                 manual_review_notice="AI审核服务暂时不可用，请稍后重试或人工审核。",
             )
 
-        processing_result = self._build_processing_result(
-            task_id, review_result, partial_failures, missing
-        )
+        processing_result = self._build_processing_result(task_id, review_result, partial_failures, missing)
 
         success = self.writer.write_results(task_id, processing_result)
         if not success:
@@ -152,15 +147,14 @@ class SmartWaterWorker:
             status = "COMPLETED"
 
         result_summary = (
-            f"{review_result.summary} (已处理材料{3 - len(missing_materials)}/3, "
-            f"部分失败: {len(partial_failures)})"
-        ) if partial_failures else review_result.summary
+            (f"{review_result.summary} (已处理材料{3 - len(missing_materials)}/3, 部分失败: {len(partial_failures)})")
+            if partial_failures
+            else review_result.summary
+        )
 
         applicant_result = ReviewResult(
             summary=review_result.summary,
-            issues=[
-                i for i in review_result.issues if i.applicant_visible
-            ],
+            issues=[i for i in review_result.issues if i.applicant_visible],
             material_completeness=review_result.material_completeness,
             manual_review_notice=review_result.manual_review_notice,
         )
