@@ -319,6 +319,145 @@ Output basisRefs: ["BASIS_PUBLIC_NOTICE"]
 
 ---
 
+## MCP Knowledge Tools Contract
+
+The V1 MCP server exposes local knowledge tools over the Python service and must reuse the static MVP knowledge pack.
+
+### 1. Scope / Trigger
+
+- Trigger: adding or changing MCP tools, local knowledge search, material completeness checks, MCP demo commands, or future Java/agent integration with these tools.
+- Runtime module: `python-services/smart-water-approval-review-system-py/src/mcp_server/`.
+- Core logic module: `python-services/smart-water-approval-review-system-py/src/services/knowledge_tools.py`.
+- Dependency: official Python `mcp` SDK with `FastMCP`.
+
+### 2. Signatures
+
+- Server startup:
+
+```bash
+uv run python -m src.mcp_server.app --transport stdio
+uv run python -m src.mcp_server.app --transport streamable-http
+uv run python -m src.mcp_server.app --transport sse
+```
+
+- Demo commands:
+
+```bash
+uv run python -m src.mcp_server.demo --list-tools
+uv run python -m src.mcp_server.demo --run-samples --query "营业执照" --top-k 3 --materials-json '["APPLICATION_FORM","BUSINESS_LICENSE"]'
+```
+
+- Tool signatures:
+
+```python
+knowledge_search(query: str, top_k: int = 5) -> dict
+check_completeness(materials: list | dict | str | None = None) -> dict
+```
+
+### 3. Contracts
+
+`knowledge_search` response fields:
+
+| Field | Contract |
+|---|---|
+| `query` | Original stripped query string. |
+| `topK` | Clamped effective result limit, minimum `1`, maximum `50`. |
+| `requestedTopK` | Caller-provided `top_k` value before clamping/coercion. |
+| `knowledgePackVersion` | Exact `water_permit_mvp.json` `version`. |
+| `total` | Number of returned result rows after filtering and limit. |
+| `results[]` | Ranked match objects from `materialChecklist`, `applicationFieldRules`, `reviewBasis`, `promptSnippets`, or `manualReviewRules`. |
+| `results[].section` | Knowledge pack section name. |
+| `results[].id` | Stable item ID from the knowledge pack. |
+| `results[].title` | Display name, source title, snippet kind, or item ID. |
+| `results[].materialType` | Material type when present, else `null`. |
+| `results[].fieldPath` | Field path when present, else `null`. |
+| `results[].excerpt` | Summary/instruction/text or referenced basis summary. |
+| `results[].score` | Local lexical match score. |
+| `results[].rank` | 1-based rank after score sorting. |
+| `results[].sourceRefs` | Direct source references from the item. |
+| `results[].sourceIds` | Normalized source IDs, including IDs derived from referenced `reviewBasis`. |
+| `results[].basisRefs` | Direct basis refs from the item. |
+
+`check_completeness` input contract:
+
+- Accepts MVP material strings such as `"APPLICATION_FORM"`.
+- Accepts lists of strings or material objects with `materialType`, `material_type`, `type`, or `name`.
+- Accepts dictionaries whose values are strings, booleans, or material objects.
+- Ignores unknown material types; Java remains authoritative for upload validation.
+
+`check_completeness` response fields:
+
+| Field | Contract |
+|---|---|
+| `knowledgePackVersion` | Exact `water_permit_mvp.json` `version`. |
+| `required` | Required MVP material type list from `materialChecklist`. |
+| `submitted` | Deduplicated recognized submitted material types. |
+| `missing` | Required material types absent from `submitted`. |
+| `complete` | `true` only when `missing` is empty. |
+| `findings[]` | One finding per missing required material. |
+| `findings[].code` | Missing finding code, normally `MISSING_MATERIAL`. |
+| `findings[].severity` | Configured severity from `materialChecklist[].missingFinding`. |
+| `findings[].message` | Reviewer message from the knowledge pack. |
+| `findings[].applicantMessage` | Applicant-safe message from the knowledge pack. |
+| `findings[].sourceRefs` | Source refs for the checklist item. |
+| `findings[].basisRefs` | Basis refs for the checklist item. |
+
+### 4. Validation & Error Matrix
+
+| Condition | Expected behavior |
+|---|---|
+| Knowledge pack missing or structurally invalid | Construction raises `KnowledgePackError`; do not start MCP with a silent empty pack. |
+| `query` is empty | Return structured response with zero or default-ranked matches, not an exception. |
+| `top_k` is non-numeric | Coerce to default `5`. |
+| `top_k < 1` | Clamp effective `topK` to `1`. |
+| `top_k > 50` | Clamp effective `topK` to `50`. |
+| `materials` is `None` | Treat as no submitted materials and report all missing required items. |
+| `materials` includes unknown values | Ignore unknown values and do not mark required materials as present. |
+| Demo `--materials-json` is invalid JSON | CLI may fail fast with JSON parse error; tests should cover valid examples. |
+
+### 5. Good/Base/Bad Cases
+
+- Good: MCP tool handlers are thin wrappers around `SmartWaterKnowledgeTools`, so tests call core logic without starting a server.
+- Good: `knowledge_search("营业执照", 3)` returns ranked matches with `sourceIds`, `sourceRefs`, `basisRefs`, and `knowledgePackVersion`.
+- Base: `check_completeness(["APPLICATION_FORM", "BUSINESS_LICENSE"])` returns `missing=["ID_CARD"]` and one `MISSING_MATERIAL` finding.
+- Bad: Tool handlers duplicate checklist logic inside `mcp_server/server.py`, making CLI and future API behavior drift.
+- Bad: MCP tools call OCR, LLM, Java backend, object storage, or network services during local knowledge lookup.
+
+### 6. Tests Required
+
+- Unit tests for `knowledge_search` response shape, rank/score behavior, `top_k` clamping, and `sourceIds` derivation.
+- Unit tests for `check_completeness` list/dict/string inputs, unknown materials, duplicate materials, and missing finding payloads.
+- Registration test that `build_mcp_server().list_tools()` exposes `knowledge_search` and `check_completeness`.
+- Demo test or command evidence for `--list-tools` and `--run-samples`.
+- Verification commands for Python MCP changes:
+
+```bash
+uv run python -m compileall src main.py knowledge_pack
+uv run python -m pytest
+uv run ruff check .
+uv run mypy src main.py knowledge_pack
+```
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```python
+@server.tool()
+def check_completeness(materials: list) -> str:
+    return "缺少身份证"
+```
+
+#### Correct
+
+```python
+@server.tool(name="check_completeness")
+def check_completeness(materials: list | dict | str | None = None) -> dict:
+    return SmartWaterKnowledgeTools().check_completeness(materials)
+```
+
+---
+
 ## Forbidden Patterns
 
 - Do not introduce alternate enum names such as `WATER_INTAKE_APPLICATION` unless the contract is updated everywhere.

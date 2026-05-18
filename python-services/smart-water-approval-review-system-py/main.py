@@ -4,7 +4,7 @@ from src.config import config
 from src.services.worker import SmartWaterWorker
 
 
-def main():
+def main() -> None:
     logging.basicConfig(
         level=getattr(logging, config.LOG_LEVEL.upper(), logging.INFO),
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",

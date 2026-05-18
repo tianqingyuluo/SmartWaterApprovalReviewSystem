@@ -1,0 +1,7 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/tasks/05-14-v1-cp2-mcp-server-tools/research/mcp-python-sdk-design.md", "reason": "MCP Python SDK design boundary and verification plan"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Python quality, tests, and dependency injection rules"}
+{"file": ".trellis/spec/backend/logging-guidelines.md", "reason": "Python logging and sensitive data guardrails"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Structured API and worker error handling constraints"}
+{"file": ".trellis/spec/backend/smartwater-mvp-contracts.md", "reason": "MVP material and knowledge pack contracts"}
+{"file": ".trellis/spec/backend/directory-structure.md", "reason": "Python service layout and backend boundary rules"}
