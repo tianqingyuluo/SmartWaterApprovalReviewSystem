@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 
-from src.models import MaterialCompleteness, ReviewResult
+from src.models import ExtractedField, MaterialCompleteness, ReviewResult
 from src.services.worker import SmartWaterWorker
 
 
@@ -29,9 +29,32 @@ class WorkerKnowledgePackTests(unittest.TestCase):
             ),
             partial_failures=[],
             missing_materials=[],
+            extracted_fields=[],
         )
 
         self.assertEqual("water-permit-mvp-2026-04-27", result.knowledge_pack_version)
+
+    def test_processing_result_carries_extracted_field_snapshot_to_reviewer_only(self) -> None:
+        worker = SmartWaterWorker()
+        fields = [
+            ExtractedField(
+                field_key="applicant.name",
+                field_value="某某科技有限公司",
+                confidence=0.93,
+                source_material="APPLICATION_FORM",
+            )
+        ]
+
+        result = worker._build_processing_result(
+            task_id="task-1",
+            review_result=ReviewResult(summary="done"),
+            partial_failures=[],
+            missing_materials=[],
+            extracted_fields=fields,
+        )
+
+        self.assertEqual([], result.applicant_result.extracted_fields)
+        self.assertEqual(fields, result.reviewer_result.extracted_fields)
 
     @patch("src.services.worker.config.KNOWLEDGE_PACK_DIR", "/path/not-found")
     def test_missing_knowledge_pack_dir_leaves_empty_cache(self) -> None:

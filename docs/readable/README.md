@@ -6,6 +6,7 @@
 
 - [开发日志](./dev-log/index.md)：按任务或 PR 记录阶段性变更、验证结果和后续事项。
 - [Worker 适配器文档](./modules/worker/adapters.md)：记录 Python Worker 的 OCR / 审核适配器边界与当前接口约定。
+- [Worker 与 Java 回写接口](./modules/worker/api.md)：记录 Worker 领取任务、结果回写、字段快照和幂等约定。
 - [Worker 模块文档](./modules/worker/failure-handling.md)：记录 Python Worker 与 Java 后端的失败处理和接口契约。
 
 其他边界：

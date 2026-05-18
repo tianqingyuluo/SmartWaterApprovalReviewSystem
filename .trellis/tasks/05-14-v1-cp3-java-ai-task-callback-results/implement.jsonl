@@ -1,1 +1,5 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/backend/smartwater-mvp-contracts.md", "reason": "Cross-service task/result ownership, status, visibility, and material/result contracts."}
+{"file": ".trellis/spec/backend/review-reasoning-adapter.md", "reason": "Worker review result payload, reviewer-only extractedFields, and model output contract."}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Java R<T>, BusinessException, Worker API token, status transition, and result parsing error behavior."}
+{"file": ".trellis/spec/backend/database-guidelines.md", "reason": "review_task/material_slot/review_result persistence boundaries and schema/entity sync rules."}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Backend and Worker test gates for result writeback, idempotency, field snapshots, and external dependency mocking."}

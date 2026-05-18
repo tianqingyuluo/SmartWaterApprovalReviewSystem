@@ -131,7 +131,7 @@ class SmartWaterWorker:
             )
 
         processing_result = self._build_processing_result(
-            task_id, review_result, partial_failures, missing
+            task_id, review_result, partial_failures, missing, extracted_fields
         )
 
         success = self.writer.write_results(task_id, processing_result)
@@ -145,6 +145,7 @@ class SmartWaterWorker:
         review_result: ReviewResult,
         partial_failures: list[str],
         missing_materials: list[str],
+        extracted_fields: list[ExtractedField] | None = None,
     ) -> ProcessingResult:
         if partial_failures or missing_materials:
             status = "PARTIAL_SUCCESS"
@@ -165,12 +166,15 @@ class SmartWaterWorker:
             manual_review_notice=review_result.manual_review_notice,
         )
 
+        reviewer_result = review_result.model_copy(deep=True)
+        reviewer_result.extracted_fields = extracted_fields or []
+
         return ProcessingResult(
             task_id=task_id,
             status=status,
             result_summary=result_summary,
             applicant_result=applicant_result,
-            reviewer_result=review_result,
+            reviewer_result=reviewer_result,
             knowledge_pack_version=self._knowledge_pack_version,
         )
 

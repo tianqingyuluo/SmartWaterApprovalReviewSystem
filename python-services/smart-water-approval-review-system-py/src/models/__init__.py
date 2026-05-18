@@ -98,6 +98,7 @@ class ReviewResult(BaseModel):
     risk_hints: list[RiskHint] = []
     draft_opinion: str = ""
     material_completeness: MaterialCompleteness = MaterialCompleteness()
+    extracted_fields: list[ExtractedField] = []
     basis_refs: list[str] = []
     manual_review_notice: str = ""
     model_metadata: ModelMetadata | None = None
