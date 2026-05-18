@@ -44,11 +44,15 @@ class ChromaStore:
         documents: list[str] = []
         embedding_list: list[list[float]] = []
 
-        for i, (chunk, emb) in enumerate(zip(chunks, embeddings, strict=True)):
-            chunk_id = f"{chunk.metadata.get('source_file', 'unknown')}_{chunk.metadata.get('chunk_index', 0)}_{i}"
+        for _i, (chunk, emb) in enumerate(zip(chunks, embeddings, strict=True)):
+            chunk_id = (
+                f"{chunk.metadata.get('source_file', 'unknown')}_"
+                f"{chunk.metadata.get('block_index', 0)}_"
+                f"{chunk.metadata.get('chunk_index', 0)}"
+            )
 
             meta: dict[str, Any] = {}
-            for key in ("source_file", "source_title", "doc_type", "chapter", "page_num", "chunk_index"):
+            for key in ("source_file", "source_title", "doc_type", "chapter", "page_num", "block_index", "chunk_index"):
                 val = chunk.metadata.get(key)
                 if val is not None:
                     meta[key] = val

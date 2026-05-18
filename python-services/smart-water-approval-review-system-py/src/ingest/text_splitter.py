@@ -100,6 +100,7 @@ def _fixed_length_split(
             "doc_type": block.doc_type,
             "chapter": block.chapter or heading,
             "page_num": block.page_num,
+            "block_index": block.block_index,
             "chunk_index": i,
         }
         results.append(ChunkResult(content=chunk_text, metadata=metadata))

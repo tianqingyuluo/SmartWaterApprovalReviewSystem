@@ -51,6 +51,7 @@ class TestTextSplitter(unittest.TestCase):
             doc_type="paragraph",
             chapter="第一章",
             page_num=1,
+            block_index=3,
         )
         result = split_blocks([block], chunk_size=100, chunk_overlap=10)
         self.assertEqual(len(result), 1)
@@ -59,3 +60,4 @@ class TestTextSplitter(unittest.TestCase):
         self.assertEqual(meta["source_title"], "TestDoc")
         self.assertEqual(meta["chapter"], "第一章")
         self.assertEqual(meta["page_num"], 1)
+        self.assertEqual(meta["block_index"], 3)

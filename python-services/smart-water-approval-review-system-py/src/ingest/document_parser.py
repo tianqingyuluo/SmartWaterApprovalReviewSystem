@@ -190,7 +190,9 @@ def list_source_files(source_dir: str | Path) -> list[Path]:
 
     files: list[Path] = []
     for ext in SUPPORTED_EXTENSIONS:
-        files.extend(sorted(source_path.rglob(f"*{ext}")))
+        files.extend(source_path.rglob(f"*{ext}"))
+
+    files.sort()
 
     logger.info("Found %d source files in %s", len(files), source_dir)
     return files

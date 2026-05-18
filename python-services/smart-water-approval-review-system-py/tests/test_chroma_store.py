@@ -62,3 +62,49 @@ class TestChromaStore(unittest.TestCase):
             finally:
                 config.CHROMA_PERSIST_DIR = orig_persist
                 config.CHROMA_COLLECTION_NAME = orig_collection
+
+    def test_repeat_ingest_different_file_order_does_not_duplicate(self):
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmpdir:
+            persist_dir = Path(tmpdir) / "chroma"
+            orig_persist = config.CHROMA_PERSIST_DIR
+            orig_collection = config.CHROMA_COLLECTION_NAME
+            try:
+                config.CHROMA_PERSIST_DIR = str(persist_dir)
+                config.CHROMA_COLLECTION_NAME = "dup_test"
+                store = ChromaStore()
+
+                emb = [[0.1, 0.2, 0.3]]
+                chunks_a = [
+                    ChunkResult(
+                        content="docx block 0 chunk 0",
+                        metadata={"source_file": "a.docx", "block_index": 0, "chunk_index": 0},
+                    ),
+                    ChunkResult(
+                        content="pdf block 0 chunk 0",
+                        metadata={"source_file": "b.pdf", "block_index": 0, "chunk_index": 0},
+                    ),
+                ]
+                emb_a = [emb[0], emb[0]]
+
+                r1 = store.store_chunks(chunks_a, emb_a)
+                self.assertEqual(2, r1)
+                self.assertEqual(2, store.count())
+
+                chunks_b = [
+                    ChunkResult(
+                        content="pdf block 0 chunk 0",
+                        metadata={"source_file": "b.pdf", "block_index": 0, "chunk_index": 0},
+                    ),
+                    ChunkResult(
+                        content="docx block 0 chunk 0",
+                        metadata={"source_file": "a.docx", "block_index": 0, "chunk_index": 0},
+                    ),
+                ]
+                emb_b = [emb[0], emb[0]]
+
+                r2 = store.store_chunks(chunks_b, emb_b)
+                self.assertEqual(2, r2)
+                self.assertEqual(2, store.count())
+            finally:
+                config.CHROMA_PERSIST_DIR = orig_persist
+                config.CHROMA_COLLECTION_NAME = orig_collection
