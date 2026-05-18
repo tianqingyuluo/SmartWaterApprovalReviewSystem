@@ -128,9 +128,7 @@ class ReviewReasoningAdapter(ReviewAdapter):
     ) -> ReviewResult:
         client = self._build_client()
         allowed_basis_refs = _knowledge_fragment_ids(knowledge_fragments)
-        user_prompt = self._build_user_prompt(
-            extracted_fields, material_types, missing_materials, knowledge_fragments
-        )
+        user_prompt = self._build_user_prompt(extracted_fields, material_types, missing_materials, knowledge_fragments)
 
         messages: list[dict[str, str]] = [
             {"role": "system", "content": _SYSTEM_PROMPT},
@@ -184,7 +182,9 @@ class ReviewReasoningAdapter(ReviewAdapter):
                     )
                     logger.info(
                         "Review done for task %s: model=%s latency=%.1fs tokens=%s",
-                        task_id, config.REVIEW_LLM_MODEL, elapsed,
+                        task_id,
+                        config.REVIEW_LLM_MODEL,
+                        elapsed,
                         _safe_token_usage(resp),
                     )
                     return parsed
@@ -193,7 +193,10 @@ class ReviewReasoningAdapter(ReviewAdapter):
                 classification = failure_type
                 logger.warning(
                     "Review validation failed for task %s: %s latency=%.1fs attempt=%d",
-                    task_id, failure_type, elapsed, attempt + 1,
+                    task_id,
+                    failure_type,
+                    elapsed,
+                    attempt + 1,
                 )
 
                 if repair_attempted or attempt >= config.WORKER_MAX_RETRIES - 1:
@@ -206,7 +209,9 @@ class ReviewReasoningAdapter(ReviewAdapter):
                 elapsed = time.time() - start_time
                 logger.error(
                     "Review API error for task %s: %s latency=%.1fs",
-                    task_id, e, elapsed,
+                    task_id,
+                    e,
+                    elapsed,
                 )
                 category = _classify_error(e)
                 if attempt < config.WORKER_MAX_RETRIES - 1 and category in RETRYABLE_FAILURES:
@@ -239,21 +244,15 @@ class ReviewReasoningAdapter(ReviewAdapter):
 
         parts.append("\n## 抽取字段")
         for f in fields:
-            parts.append(
-                f"- {f.field_key}: {f.field_value} (置信度: {f.confidence:.2f})"
-            )
+            parts.append(f"- {f.field_key}: {f.field_value} (置信度: {f.confidence:.2f})")
 
         if knowledge:
             parts.append("\n## 法规依据")
             for k in knowledge:
                 if hasattr(k, "source_title"):
-                    parts.append(
-                        f"- [{k.source_id}] {k.source_title}: {k.content}"
-                    )
+                    parts.append(f"- [{k.source_id}] {k.source_title}: {k.content}")
                 elif isinstance(k, dict):
-                    parts.append(
-                        f"- [{k.get('source_id', '')}] {k.get('source_title', '')}: {k.get('content', '')}"
-                    )
+                    parts.append(f"- [{k.get('source_id', '')}] {k.get('source_title', '')}: {k.get('content', '')}")
 
         parts.append(f"审核模式: {_REVIEW_MODE}, 输出语言: {_OUTPUT_LANGUAGE}")
 
@@ -297,9 +296,7 @@ class ReviewReasoningAdapter(ReviewAdapter):
                 return None, "SCHEMA_MISMATCH"
             missing_issue = _SCHEMA_REQUIRED_ISSUE - set(i.keys())
             if missing_issue:
-                logger.warning(
-                    "Schema mismatch for task %s: issue[%d] missing keys %s", task_id, idx, missing_issue
-                )
+                logger.warning("Schema mismatch for task %s: issue[%d] missing keys %s", task_id, idx, missing_issue)
                 return None, "SCHEMA_MISMATCH"
 
         risk_hints_raw = data.get("risk_hints", [])
@@ -393,10 +390,7 @@ class ReviewReasoningAdapter(ReviewAdapter):
 
 def _repair_prompt(failure_type: str) -> str:
     if failure_type == "INVALID_JSON":
-        return (
-            "你上一次的输出不是有效的JSON格式。请严格按照JSON格式重新输出，"
-            "确保所有字段都存在且符合指定的schema。"
-        )
+        return "你上一次的输出不是有效的JSON格式。请严格按照JSON格式重新输出，确保所有字段都存在且符合指定的schema。"
     else:
         return (
             "你上一次的输出缺少必要的字段或字段类型不正确。"

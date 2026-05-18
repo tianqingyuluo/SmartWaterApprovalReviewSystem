@@ -1,1 +1,8 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Python 代码规范：Type Hints、Pydantic、可测试性"}
+{"file": ".trellis/spec/backend/logging-guidelines.md", "reason": "Python 日志规范：不记录 API Key、结构化 ingest 统计日志"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "错误处理模式：外部 API 错误需结构化返回"}
+{"file": ".trellis/spec/backend/ocr-adapter.md", "reason": "GLM OCR adapter contract：图片/扫描件处理沿用现有 OCR 模式"}
+{"file": ".trellis/spec/backend/smartwater-mvp-contracts.md", "reason": "领域契约：MaterialType、文件类型枚举"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "代码复用思考：搜索现有相似模式"}
+{"file": ".trellis/tasks/05-13-v1-system-design-checkpoints/system-design.md", "reason": "V1 系统设计：Python AI 服务、知识库、ChromaDB、Embedding 架构"}
+{"file": ".trellis/tasks/05-13-v1-system-design-checkpoints/v1-checkpoint-task-list.md", "reason": "V1 任务清单：CP2-B 交付物和验收标准确认"}
