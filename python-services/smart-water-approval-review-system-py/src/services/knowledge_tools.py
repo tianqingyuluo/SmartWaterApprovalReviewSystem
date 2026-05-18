@@ -206,7 +206,7 @@ class SmartWaterKnowledgeTools:
 
         return items
 
-    def knowledge_search(self, query: str, top_k: int = 5) -> dict[str, Any]:
+    def knowledge_search(self, query: str, top_k: int | str = 5) -> dict[str, Any]:
         normalized_query = query.strip()
         query_tokens = _tokenize(normalized_query)
         requested_top_k = top_k
@@ -330,8 +330,14 @@ class SmartWaterKnowledgeTools:
         if materials is None:
             material_items = []
         elif isinstance(materials, Mapping):
-            if "materials" in materials and isinstance(materials["materials"], list):
-                material_items = list(materials["materials"])
+            if "materials" in materials:
+                inner = materials["materials"]
+                if isinstance(inner, list):
+                    material_items = list(inner)
+                elif isinstance(inner, Mapping) and all(isinstance(v, bool) for v in inner.values()):
+                    material_items = [k for k, v in inner.items() if v]
+                else:
+                    material_items = [inner] if not isinstance(inner, Mapping) else []
             elif all(isinstance(v, bool) for v in materials.values()):
                 material_items = [k for k, v in materials.items() if v]
             else:

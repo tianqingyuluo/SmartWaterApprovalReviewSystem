@@ -81,26 +81,27 @@ class IngestPipeline:
             logger.warning("No chunks generated - nothing to embed or store")
             return stats
 
-        chunk_texts = [c.content for c in all_chunks]
         batch_size = 16
-        all_embeddings: list[list[float]] = []
+        stored_chunks: list[ChunkResult] = []
+        stored_embeddings: list[list[float]] = []
 
-        for i in range(0, len(chunk_texts), batch_size):
-            batch = chunk_texts[i : i + batch_size]
+        for i in range(0, len(all_chunks), batch_size):
+            batch_chunks = all_chunks[i : i + batch_size]
+            batch_texts = [c.content for c in batch_chunks]
             try:
-                batch_embeddings = self._embedder.embed(batch)
-                all_embeddings.extend(batch_embeddings)
+                batch_embeddings = self._embedder.embed(batch_texts)
+                stored_chunks.extend(batch_chunks[: len(batch_embeddings)])
+                stored_embeddings.extend(batch_embeddings)
             except Exception as e:
                 error_msg = f"Embedding failed at batch {i // batch_size}: {e}"
                 logger.error(error_msg)
                 stats.errors.append(error_msg)
-                continue
 
-        if not all_embeddings:
+        if not stored_embeddings:
             logger.warning("No embeddings generated")
             return stats
 
-        stored = self._store.store_chunks(all_chunks[: len(all_embeddings)], all_embeddings)
+        stored = self._store.store_chunks(stored_chunks, stored_embeddings)
         stats.vector_count = stored
 
         logger.info(

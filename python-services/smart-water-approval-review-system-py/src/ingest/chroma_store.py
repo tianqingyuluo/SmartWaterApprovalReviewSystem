@@ -99,7 +99,7 @@ class ChromaStore:
 
     def count(self) -> int:
         collection = self._get_or_create_collection()
-        return collection.count()
+        return int(collection.count())
 
     def rebuild(self) -> None:
         persist_dir = Path(config.CHROMA_PERSIST_DIR)
