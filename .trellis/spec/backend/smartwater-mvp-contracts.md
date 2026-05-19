@@ -458,6 +458,127 @@ def check_completeness(materials: list | dict | str | None = None) -> dict:
 
 ---
 
+## Java AI Ops Contract
+
+Java exposes CP2 operational visibility for the Python AI/MCP service without pretending that a Python REST ingest API exists before it is implemented.
+
+### 1. Scope / Trigger
+
+- Trigger: Java-side AI service configuration, health visibility, MCP endpoint documentation, ingest trigger/evidence support, or future Java integration with Python AI service.
+- Java package: `java-services/water-approval/src/main/java/com/tianqingyuluo/waterapproval/ai/`.
+- Controller: `GET /api/ai/health`, `POST /api/ai/ingest`.
+- Python current surface: MCP native transport and ingest CLI, not a formal REST ingest endpoint.
+
+### 2. Signatures
+
+Java config keys:
+
+```yaml
+water-approval:
+  ai-service:
+    base-url: http://localhost:8000
+    health-path: /health
+    internal-token: ""
+    timeout: 3s
+    mcp-transport: streamable-http
+    mcp-path: /mcp
+    ingest:
+      workdir: ../python-services/smart-water-approval-review-system-py
+      source-dir: docs/参考资料
+      chunk-size: 512
+      chunk-overlap: 64
+      rebuild: false
+```
+
+Java endpoints:
+
+```http
+GET /api/ai/health
+POST /api/ai/ingest
+```
+
+Python ingest command emitted by Java:
+
+```bash
+uv run python -m src.ingest.cli --source-dir <source-dir> --chunk-size <n> --chunk-overlap <n> [--rebuild]
+```
+
+### 3. Contracts
+
+`GET /api/ai/health` response fields:
+
+| Field | Contract |
+|---|---|
+| `baseUrl` | Normalized Python AI base URL with trailing slash removed. |
+| `healthUrl` | `baseUrl + healthPath`. |
+| `reachable` | `true` only when the configured health endpoint returns a non-error HTTP response. |
+| `statusCode` | HTTP status when available, else `null`. |
+| `message` | Short operational summary; must not include token values. |
+| `responseBody` | Truncated response body for evidence/debugging. |
+| `mcpTransport` | Configured MCP transport label such as `streamable-http`. |
+| `mcpUrl` | Configured MCP URL for documentation/evidence. |
+| `internalTokenConfigured` | Boolean only; never echo the secret. |
+| `checkedAt` | Java server time of the check. |
+
+`POST /api/ai/ingest` response fields:
+
+| Field | Contract |
+|---|---|
+| `mode` | Must be `ops-command` until Python exposes a formal REST ingest API. |
+| `workdir` | Directory where the command should be run. |
+| `command[]` | Tokenized CLI command. |
+| `verificationCommand` | MCP demo command for post-ingest verification. |
+| `note` | Explicitly states Java does not execute Python ingest in-process. |
+
+### 4. Validation & Error Matrix
+
+| Condition | Expected behavior |
+|---|---|
+| Python health endpoint reachable | Return `code=200`, `data.reachable=true`, and status summary. |
+| Python health endpoint returns 4xx/5xx | Return `code=200`, `data.reachable=false`, `data.statusCode=<status>`. |
+| Python health endpoint unavailable/timeouts | Return `code=200`, `data.reachable=false`, short error class in `message`. |
+| Internal token configured | Send `X-Internal-Token` on health probe; response only shows `internalTokenConfigured=true`. |
+| Python REST ingest not available | `/api/ai/ingest` returns ops command, not a fake success of remote execution. |
+
+### 5. Good/Base/Bad Cases
+
+- Good: Java health check returns a structured degraded response when Python is offline, so CP2 operators can diagnose config without crashing Java.
+- Good: `/api/ai/ingest` shows the exact `uv run python -m src.ingest.cli ...` command and MCP verification command.
+- Base: MCP URL/transport are displayed as configured evidence fields.
+- Bad: Java starts a local Python process on a web request or claims ingest ran successfully without Python confirmation.
+- Bad: Java logs or echoes `AI_SERVICE_INTERNAL_TOKEN`.
+
+### 6. Tests Required
+
+- Controller tests for `/ai/health` and `/ai/ingest` response shape.
+- Unit test for URL/path normalization and token configured flag.
+- Unit test that ingest command includes chunk settings and only includes `--rebuild` when configured.
+- Java verification command:
+
+```bash
+./mvnw test
+```
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```java
+return R.ok(Map.of("ingestTriggered", true));
+```
+
+when Python only has a CLI and no REST ingest endpoint.
+
+#### Correct
+
+```java
+return R.ok(aiOpsService.getIngestOperation());
+```
+
+The response contains `mode=ops-command`, `command[]`, and `verificationCommand`.
+
+---
+
 ## Forbidden Patterns
 
 - Do not introduce alternate enum names such as `WATER_INTAKE_APPLICATION` unless the contract is updated everywhere.

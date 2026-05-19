@@ -45,6 +45,22 @@ water-approval:
   worker:
     # Worker API 鉴权令牌，生产环境必须设置，本地开发可留空
     token: ${WORKER_TOKEN:}
+  ai-service:
+    # Python AI/MCP 服务地址。当前 Python MCP 支持 stdio/sse/streamable-http transport。
+    base-url: ${AI_SERVICE_BASE_URL:http://localhost:8000}
+    health-path: ${AI_SERVICE_HEALTH_PATH:/health}
+    # Java 探活 Python HTTP 适配服务时携带的内部令牌；未配置时不发送。
+    internal-token: ${AI_SERVICE_INTERNAL_TOKEN:}
+    timeout: ${AI_SERVICE_TIMEOUT:3s}
+    mcp-transport: ${AI_SERVICE_MCP_TRANSPORT:streamable-http}
+    mcp-path: ${AI_SERVICE_MCP_PATH:/mcp}
+    ingest:
+      # 当前 Python 提供 ingest CLI；Java /ai/ingest 输出运维触发命令，不在 Java 进程内执行。
+      workdir: ${AI_INGEST_WORKDIR:../python-services/smart-water-approval-review-system-py}
+      source-dir: ${AI_INGEST_SOURCE_DIR:docs/参考资料}
+      chunk-size: ${AI_INGEST_CHUNK_SIZE:512}
+      chunk-overlap: ${AI_INGEST_CHUNK_OVERLAP:64}
+      rebuild: ${AI_INGEST_REBUILD:false}
 
 server:
   port: 8080

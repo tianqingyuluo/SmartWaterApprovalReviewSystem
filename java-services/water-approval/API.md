@@ -302,6 +302,87 @@ curl http://localhost:8080/api/task/SWA1B2C3D4E5F6G7H/result/reviewer
 
 ---
 
+## 5. AI 服务健康检查
+
+**GET** `/ai/health`
+
+Java 侧读取 `water-approval.ai-service.*` 配置，探活 Python AI/MCP HTTP 适配服务，并返回 MCP transport 与内部 token 配置状态。
+
+### curl 示例
+
+```bash
+curl http://localhost:8080/api/ai/health
+```
+
+### 响应示例
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "baseUrl": "http://localhost:8000",
+    "healthUrl": "http://localhost:8000/health",
+    "reachable": true,
+    "statusCode": 200,
+    "message": "AI service health endpoint is reachable",
+    "mcpTransport": "streamable-http",
+    "mcpUrl": "http://localhost:8000/mcp",
+    "internalTokenConfigured": true,
+    "checkedAt": "2026-05-19T16:00:00"
+  }
+}
+```
+
+服务不可达时，接口仍返回 `code=200`，但 `data.reachable=false`，`data.message` 会说明连接失败类型，便于 CP2 验收排查配置。
+
+---
+
+## 6. 知识库 ingest 运维触发约定
+
+**POST** `/ai/ingest`
+
+当前 Python 侧提供 ingest CLI 与 MCP 原生 transport，尚未提供正式 REST ingest API。因此 Java 侧不在进程内执行 Python ingest，而是输出可复现的运维命令和验证命令。
+
+### curl 示例
+
+```bash
+curl -X POST http://localhost:8080/api/ai/ingest
+```
+
+### 响应示例
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "mode": "ops-command",
+    "workdir": "../python-services/smart-water-approval-review-system-py",
+    "sourceDir": "docs/参考资料",
+    "chunkSize": 512,
+    "chunkOverlap": 64,
+    "rebuild": false,
+    "command": [
+      "uv",
+      "run",
+      "python",
+      "-m",
+      "src.ingest.cli",
+      "--source-dir",
+      "docs/参考资料",
+      "--chunk-size",
+      "512",
+      "--chunk-overlap",
+      "64"
+    ],
+    "verificationCommand": "uv run python -m src.mcp_server.demo --run-samples"
+  }
+}
+```
+
+---
+
 ## 快速测试流程
 
 ```bash
