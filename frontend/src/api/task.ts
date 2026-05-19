@@ -65,6 +65,7 @@ export function toReviewerResultView(
 ): ReviewerResultView {
   const { failureCategory, failureReason } = extractFailureInfo(resultDto)
   const hasBlocker = resultDto.issues.some((f) => f.severity === 'BLOCKER')
+  const manualReviewNotice = resultDto.manualReviewNotice ?? ''
 
   return {
     status: resultDto.status,
@@ -76,21 +77,14 @@ export function toReviewerResultView(
     findings: resultDto.issues.map(toReviewerFinding),
     riskHints: resultDto.riskHints.map(formatRiskHint),
     draftOpinion: resultDto.draftOpinion,
-    manualReviewNotice: resultDto.manualReviewNotice ?? '',
+    manualReviewNotice,
     failureCategory,
     failureReason,
-    requiresManualReview: failureCategory !== null || hasBlocker || (resultDto.manualReviewNotice ?? '') !== '',
+    requiresManualReview: failureCategory !== null || hasBlocker || manualReviewNotice !== '',
   }
 }
 
 function extractFailureInfo(resultDto: ReviewerResultResponse): { failureCategory: FailureCategory; failureReason: string | null } {
-  if (resultDto.failureCategory) {
-    return {
-      failureCategory: resultDto.failureCategory,
-      failureReason: resultDto.failureReason || resultDto.summary || null,
-    }
-  }
-
   const issueCategory = resultDto.issues
     .map((issue) => toFailureCategory(issue.code))
     .find((category): category is NonNullable<FailureCategory> => category !== null)

@@ -52,7 +52,6 @@ describe('task API adapters', () => {
       summary: '审核辅助结果已生成',
       missingMaterials: [],
       draftOpinion: '建议人工复核后继续办理。',
-      manualReviewNotice: '请人工复核证照一致性。',
       extractedFields: {
         applicantName: '某公司',
         annualWaterUse: 1200,
@@ -61,7 +60,7 @@ describe('task API adapters', () => {
         {
           code: 'WATER_AMOUNT_REVIEW_REQUIRED',
           severity: 'WARNING',
-          message: '取水量需人工复核',
+          message: '取水量需要人工复核',
           basisRefs: ['water-permit:mvp:process'],
           applicantVisible: false,
         },
@@ -74,6 +73,7 @@ describe('task API adapters', () => {
           requiresManualReview: true,
         },
       ],
+      manualReviewNotice: '请人工复核证照一致性。',
     }
 
     const view = toReviewerResultView(statusDto, resultDto)
@@ -90,11 +90,12 @@ describe('task API adapters', () => {
     })
     expect(view.findings[0]).toMatchObject({
       findingType: 'WATER_AMOUNT_REVIEW_REQUIRED',
-      description: '取水量需人工复核',
+      description: '取水量需要人工复核',
       basis: 'water-permit:mvp:process',
     })
     expect(view.riskHints[0]).toContain('取水量字段与材料描述需要复核')
     expect(view.manualReviewNotice).toBe('请人工复核证照一致性。')
+    expect(view.requiresManualReview).toBe(true)
   })
 
   it('maps FAILED status to failure category and reason', () => {
@@ -111,7 +112,6 @@ describe('task API adapters', () => {
       summary: '模型返回格式错误',
       missingMaterials: [],
       draftOpinion: '',
-      manualReviewNotice: '',
       extractedFields: {},
       issues: [],
       riskHints: [],
@@ -140,13 +140,12 @@ describe('task API adapters', () => {
       summary: '审核辅助结果已生成',
       missingMaterials: [],
       draftOpinion: '建议人工复核后继续办理。',
-      manualReviewNotice: '',
       extractedFields: {},
       issues: [
         {
           code: 'INCONSISTENT_IDENTITY',
           severity: 'BLOCKER',
-          message: '身份不一致需人工复核',
+          message: '身份信息不一致需人工复核',
           applicantVisible: true,
         },
       ],
@@ -175,13 +174,12 @@ describe('task API adapters', () => {
       summary: 'AI审核输出格式校验失败',
       missingMaterials: [],
       draftOpinion: '',
-      manualReviewNotice: 'AI审核输出格式校验失败，请人工审核所有材料。',
       extractedFields: {},
       issues: [
         {
           code: 'SCHEMA_MISMATCH',
           severity: 'BLOCKER',
-          message: '审核推理输出格式不符合预期，需要人工复核。',
+          message: '审核输出格式不符合预期，需要人工复核。',
           applicantVisible: false,
         },
       ],
@@ -210,7 +208,6 @@ describe('task API adapters', () => {
       summary: '审核辅助结果已生成',
       missingMaterials: [],
       draftOpinion: '建议通过。',
-      manualReviewNotice: '',
       extractedFields: {},
       issues: [
         {
@@ -241,10 +238,9 @@ describe('task API adapters', () => {
     const resultDto: ReviewerResultResponse = {
       taskId: 'task-1',
       status: 'PROCESSING',
-      summary: '审核结果处理中，请稍后查询',
+      summary: '审核结果处理中，请稍后查询。',
       missingMaterials: [],
       draftOpinion: '',
-      manualReviewNotice: '',
       extractedFields: undefined,
       issues: [],
       riskHints: [],
