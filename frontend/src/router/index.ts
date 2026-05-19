@@ -25,6 +25,12 @@ const router = createRouter({
           meta: { title: 'AI 智能审核结果' },
           component: () => import('@/pages/ReviewResultPage.vue'),
         },
+        {
+          path: '/mcp-demo',
+          name: 'mcp-demo',
+          meta: { title: 'AI 知识库与 MCP 演示' },
+          component: () => import('@/pages/McpDemoPage.vue'),
+        },
       ],
     },
   ],
