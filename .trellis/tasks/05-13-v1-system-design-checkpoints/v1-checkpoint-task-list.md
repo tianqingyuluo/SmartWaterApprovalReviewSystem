@@ -87,11 +87,25 @@
 
 ## CP2：知识库与 MCP Server
 
-目标：完成课程资料 ingest、ChromaDB、Embedding、MCP Server 和工具演示。
+目标：完成课程资料 ingest、ChromaDB、Embedding、MCP Server 与可答辩的前端演示台。
+
+### CP2 本轮派发信息（统一基线分支：`v1`）
+
+| 任务 | 负责人 | 建议分支 | PR 标题示例 | commit 标题示例 |
+|---|---|---|---|---|
+| CP2-A Java 配置与知识库触发入口 | `ymx545` | `task/v1-cp2-java-ai-config-health` | `feat: 接入AI服务配置与健康检查` | `feat: 接入AI服务配置与健康检查` |
+| CP2-B Python ingest、ChromaDB、Embedding（收尾） | `6newuser6` | `task/v1-cp2-python-demo-evidence` | `feat: 补齐Python知识库演示证据` | `feat: 补齐Python知识库演示证据` |
+| CP2-C 前端 AI 知识库与 MCP 演示台（新增） | `yuexianwei3699` | `task/v1-cp2-frontend-ai-mcp-demo` | `feat: 完成前端AI知识库与MCP演示台` | `feat: 完成前端AI知识库与MCP演示台` |
+| CP2-D CP2 文档预验收与演示材料 | `tianqingyuluo` | `docs/v1-cp2-acceptance-demo` | `docs: 整理检查点2验收材料` | `docs: 整理检查点2验收材料` |
+
+标题格式约束：
+
+* PR 与 commit 都使用“英文前缀 + 中文说明”。
+* 本轮 CP2 推荐前缀：功能类使用 `feat`，文档类使用 `docs`。
 
 ### CP2-A Java 配置与知识库触发入口
 
-负责人类型：Java 后端。
+负责人：`ymx545`。
 
 交付物：
 
@@ -104,9 +118,9 @@
 * Java 能配置 Python AI 服务地址。
 * Java 能展示 AI 服务健康状态或至少在部署文档中说明检查方式。
 
-### CP2-B Python ingest、ChromaDB、Embedding
+### CP2-B Python ingest、ChromaDB、Embedding（收尾）
 
-负责人类型：Python AI。
+负责人：`6newuser6`。
 
 交付物：
 
@@ -115,6 +129,7 @@
 * 外部 Embedding 配置。
 * 文档结构优先切分。
 * ingest 统计输出。
+* CP2 答辩可复现的收尾证据（日志、截图或样例输出）。
 
 验收标准：
 
@@ -122,38 +137,39 @@
 * 输出文档数、chunk 数、向量条目数。
 * 能检索到办理流程、填报说明和行业分类相关依据。
 
-### CP2-C MCP Server 工具实现与演示
+### CP2-C 前端 AI 知识库与 MCP 演示台（新增/调整）
 
-负责人类型：Python AI / 前端辅助。
+负责人：`yuexianwei3699`。
 
 交付物：
 
-* 独立 MCP Server 启动入口。
-* `knowledge_search` 工具。
-* `check_completeness` 工具。
-* 工具调用演示样例。
+* 独立前端演示台页面，展示 AI 知识库状态与 MCP 状态面板。
+* `knowledge_search` 调用区：参数输入、结果列表、依据片段展示。
+* `check_completeness` 调用区：材料输入、完整性结果与问题提示展示。
+* 两个工具调用的加载态、空结果态、失败态展示。
+* 演示模式标识与接口契约输出（请求/响应 JSON 样例与字段说明）。
 
 验收标准：
 
-* MCP Server 能单独启动。
-* 工具列表可展示。
-* 两个工具能返回结构化结果和依据片段。
+* 不进入 CP3 完整审批流程也能独立演示知识检索与完整性检查。
+* `knowledge_search` 与 `check_completeness` 能稳定返回并在页面显示结构化结果。
+* 页面明确标识“演示模式/非正式审批结论”，避免与 CP3 审批结论混淆。
 
-### CP2-D CP2 文档、测试与演示脚本
+### CP2-D CP2 文档预验收与演示材料
 
-负责人类型：文档/测试/演示。
+负责人：`tianqingyuluo`。
 
 交付物：
 
 * CP2 README。
 * ingest 演示脚本。
-* MCP 工具演示截图。
-* 知识库资料范围说明。
+* MCP 工具与前端演示台截图。
+* 知识库资料范围说明与预验收记录。
 
 验收标准：
 
 * 能按文档从空 ChromaDB 重建知识库。
-* 能在答辩时演示 MCP 工具查询。
+* 能在答辩时演示 MCP 工具查询与前端演示台主流程。
 
 ## CP3：初审 Agent 与系统集成
 

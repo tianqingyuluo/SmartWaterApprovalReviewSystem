@@ -3,7 +3,7 @@
   "name": "v1-cp2-docs-tests-demo",
   "title": "CP2-D CP2 文档、测试与演示脚本",
   "description": "沉淀 CP2 运行文档、测试记录与答辩演示脚本。",
-  "status": "locked",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,
@@ -12,8 +12,8 @@
   "assignee": "tianqingyuluo",
   "createdAt": "2026-05-14",
   "completedAt": null,
-  "branch": null,
-  "base_branch": "mvp/smartwater",
+  "branch": "docs/v1-cp2-acceptance-demo",
+  "base_branch": "v1",
   "worktree_path": null,
   "commit": null,
   "pr_url": null,
@@ -21,7 +21,7 @@
   "children": [],
   "parent": "05-13-v1-system-design-checkpoints",
   "relatedFiles": [],
-  "notes": "",
+  "notes": "docs: 整理检查点2验收材料。该任务已派发给 tianqingyuluo，聚焦 CP2 文档预验收、演示脚本与截图证据整合，基于 v1 分支推进。",
   "meta": {
     "checkpoint": "CP2",
     "lane": "docs-tests",
@@ -32,6 +32,8 @@
       "v1-cp2-mcp-server-tools"
     ],
     "unlockCriteria": "CP2 implementation tasks completed and parent approves Wave 2 docs pack.",
-    "gatePolicy": "Do not start locked tasks until dependencies are completed and parent task approves next wave."
+    "gatePolicy": "Do not start locked tasks until dependencies are completed and parent task approves next wave.",
+    "assignedBy": "tianqingyuluo",
+    "assignedAt": "2026-05-19"
   }
 }
