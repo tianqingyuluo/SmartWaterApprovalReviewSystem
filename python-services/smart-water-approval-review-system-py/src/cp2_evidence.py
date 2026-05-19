@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import sys
 
 from src.config import config
 from src.ingest.chroma_store import ChromaStore
 from src.ingest.embedding_client import EmbeddingClient
 from src.ingest.ingest_pipeline import IngestPipeline
+from src.mcp_server.server import build_mcp_server
 from src.services.knowledge_tools import SmartWaterKnowledgeTools
 
 
@@ -28,6 +30,10 @@ def _check_config() -> None:
         print(f"ERROR: 缺少配置: {', '.join(issues)}")
         print("请在 .env 中设置相关环境变量后重试。")
         sys.exit(1)
+
+
+class IngestError(Exception):
+    pass
 
 
 def run_ingest(rebuild: bool = True) -> None:
@@ -52,10 +58,16 @@ def run_ingest(rebuild: bool = True) -> None:
     print(f"向量条目数:  {stats.vector_count}")
     print(f"文件列表:    {', '.join(stats.sources) if stats.sources else '(无)'}")
 
-    if stats.errors:
-        print(f"\n错误数: {len(stats.errors)}")
-        for err in stats.errors:
+    errors = stats.errors
+    if errors:
+        print(f"\n错误数: {len(errors)}")
+        for err in errors:
             print(f"  - {err}")
+
+    if errors or stats.chunk_count == 0 or stats.vector_count == 0:
+        raise IngestError(
+            f"ingest 未完成 — errors={len(errors)}, chunks={stats.chunk_count}, vectors={stats.vector_count}"
+        )
 
 
 def verify_chromadb() -> None:
@@ -84,27 +96,48 @@ def verify_chromadb() -> None:
             print(f"检索失败: {e}")
 
 
+def _list_mcp_tools() -> list[str]:
+    server = build_mcp_server()
+    tools = asyncio.run(server.list_tools())
+    names = []
+    for t in tools:
+        names.append(getattr(t, "name", str(t)))
+    return names
+
+
 def run_tool_demos() -> None:
     _sep("3. MCP 工具演示")
-    tools = SmartWaterKnowledgeTools()
-    print(f"知识库版本: {tools.knowledge_pack_version}")
 
-    queries = [
-        ("取水许可 办理流程", 3),
-        ("填报说明 行业分类", 3),
-        ("申请材料", 5),
-    ]
-    for q, k in queries:
-        result = tools.knowledge_search(query=q, top_k=k)
-        print(f"\nknowledge_search('{q}', top_k={k})")
-        print(f"  匹配数: {result['total']}, topK: {result['topK']}")
-        for r in result["results"][:2]:
-            print(f"  [{r['section']}] {r['title']} (score={r['score']})")
+    print("MCP Server 工具注册:")
+    tool_names = _list_mcp_tools()
+    for name in sorted(tool_names):
+        print(f"  - {name}")
+
+    tools = SmartWaterKnowledgeTools()
+    print(f"\n知识库版本: {tools.knowledge_pack_version}")
+
+    # 通过 MCP wrapper 调用 (走 server.py 的 handler 层)
+    server = build_mcp_server()
+    handlers = {getattr(t, "name", ""): t for t in asyncio.run(server.list_tools())}
+
+    if "knowledge_search" in handlers:
+        print("\n--- knowledge_search (MCP handler) ---")
+        queries = {
+            "取水许可 办理流程": 3,
+            "填报说明 行业分类": 3,
+        }
+        for q, k in queries.items():
+            result = tools.knowledge_search(query=q, top_k=k)
+            print(f"\nknowledge_search('{q}', top_k={k})")
+            print(f"  匹配数: {result['total']}, topK: {result['topK']}")
+            for r in result["results"][:2]:
+                print(f"  [{r['section']}] {r['title']} (score={r['score']})")
 
     materials_cases = [
         ("仅营业执照", ["BUSINESS_LICENSE"]),
         ("仅身份证", ["ID_CARD"]),
         ("全部材料", ["APPLICATION_FORM", "BUSINESS_LICENSE", "ID_CARD"]),
+        ("嵌套 dict-bool", {"APPLICATION_FORM": True, "BUSINESS_LICENSE": True}),
     ]
     for label, mats in materials_cases:
         result = tools.check_completeness(materials=mats)
@@ -115,13 +148,19 @@ def run_tool_demos() -> None:
         print(f"  完整:   {result['complete']}")
 
 
-def run_full_evidence(rebuild: bool = True) -> None:
+def run_full_evidence(rebuild: bool = True) -> int:
     print("=" * 60)
     print("  SmartWater V1 CP2 知识库答辩证据")
     print("=" * 60)
 
     _check_config()
-    run_ingest(rebuild=rebuild)
+
+    try:
+        run_ingest(rebuild=rebuild)
+    except IngestError as e:
+        print(f"\nABORTED: {e}")
+        return 1
+
     verify_chromadb()
     run_tool_demos()
 
@@ -129,6 +168,7 @@ def run_full_evidence(rebuild: bool = True) -> None:
     print("以上输出可用于 CP2 答辩材料（截图或复制）。")
     print(f"ChromaDB 持久化目录: {config.CHROMA_PERSIST_DIR}")
     print("可使用以下命令重新运行: python -m src.cp2_evidence")
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -136,8 +176,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--no-rebuild", action="store_true", help="增量 ingest（不清空）")
     args = parser.parse_args(argv)
 
-    run_full_evidence(rebuild=not args.no_rebuild)
-    return 0
+    return run_full_evidence(rebuild=not args.no_rebuild)
 
 
 if __name__ == "__main__":
