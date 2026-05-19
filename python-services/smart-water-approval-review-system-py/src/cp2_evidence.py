@@ -105,6 +105,23 @@ def _list_mcp_tools() -> list[str]:
     return names
 
 
+def _call_mcp_tool(name: str, arguments: dict) -> dict:
+    async def _call() -> dict:
+        server = build_mcp_server()
+        result = await server.call_tool(name, arguments)
+        content = getattr(result, "content", result)
+        if isinstance(content, list):
+            for item in content:
+                text = getattr(item, "text", None)
+                if text:
+                    import json
+
+                    return json.loads(text)
+        return result
+
+    return asyncio.run(_call())
+
+
 def run_tool_demos() -> None:
     _sep("3. MCP 工具演示")
 
@@ -116,23 +133,19 @@ def run_tool_demos() -> None:
     tools = SmartWaterKnowledgeTools()
     print(f"\n知识库版本: {tools.knowledge_pack_version}")
 
-    # 通过 MCP wrapper 调用 (走 server.py 的 handler 层)
-    server = build_mcp_server()
-    handlers = {getattr(t, "name", ""): t for t in asyncio.run(server.list_tools())}
+    print("\n--- knowledge_search (MCP call_tool) ---")
+    queries = {
+        "取水许可 办理流程": 3,
+        "填报说明 行业分类": 3,
+    }
+    for q, k in queries.items():
+        result = _call_mcp_tool("knowledge_search", {"query": q, "top_k": k})
+        print(f"\nknowledge_search('{q}', top_k={k})")
+        print(f"  匹配数: {result.get('total', 0)}, topK: {result.get('topK', '?')}")
+        for r in result.get("results", [])[:2]:
+            print(f"  [{r.get('section', '?')}] {r.get('title', '?')} (score={r.get('score', '?')})")
 
-    if "knowledge_search" in handlers:
-        print("\n--- knowledge_search (MCP handler) ---")
-        queries = {
-            "取水许可 办理流程": 3,
-            "填报说明 行业分类": 3,
-        }
-        for q, k in queries.items():
-            result = tools.knowledge_search(query=q, top_k=k)
-            print(f"\nknowledge_search('{q}', top_k={k})")
-            print(f"  匹配数: {result['total']}, topK: {result['topK']}")
-            for r in result["results"][:2]:
-                print(f"  [{r['section']}] {r['title']} (score={r['score']})")
-
+    print("\n--- check_completeness (MCP call_tool) ---")
     materials_cases = [
         ("仅营业执照", ["BUSINESS_LICENSE"]),
         ("仅身份证", ["ID_CARD"]),
@@ -140,12 +153,12 @@ def run_tool_demos() -> None:
         ("嵌套 dict-bool", {"APPLICATION_FORM": True, "BUSINESS_LICENSE": True}),
     ]
     for label, mats in materials_cases:
-        result = tools.check_completeness(materials=mats)
+        result = _call_mcp_tool("check_completeness", {"materials": mats})
         print(f"\ncheck_completeness('{label}')")
-        print(f"  已提交: {result['submitted']}")
-        print(f"  必需:   {result['required']}")
-        print(f"  缺失:   {result['missing']}")
-        print(f"  完整:   {result['complete']}")
+        print(f"  已提交: {result.get('submitted', '?')}")
+        print(f"  必需:   {result.get('required', '?')}")
+        print(f"  缺失:   {result.get('missing', '?')}")
+        print(f"  完整:   {result.get('complete', '?')}")
 
 
 def run_full_evidence(rebuild: bool = True) -> int:
