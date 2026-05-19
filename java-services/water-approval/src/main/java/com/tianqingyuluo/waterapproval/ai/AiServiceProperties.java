@@ -64,8 +64,8 @@ public class AiServiceProperties {
 
     @Data
     public static class Ingest {
-        private String workdir = "../python-services/smart-water-approval-review-system-py";
-        private String sourceDir = "docs/参考资料";
+        private String workdir = "../../python-services/smart-water-approval-review-system-py";
+        private String sourceDir = "../../docs/参考资料";
         private int chunkSize = 512;
         private int chunkOverlap = 64;
         private boolean rebuild = false;

@@ -96,8 +96,8 @@ Java 侧通过 `water-approval.ai-service.*` 配置 Python AI/MCP 服务地址�
 | `water-approval.ai-service.timeout` | `3s` | 探活连接和读取超时。 |
 | `water-approval.ai-service.mcp-transport` | `streamable-http` | Python MCP Server transport 说明。 |
 | `water-approval.ai-service.mcp-path` | `/mcp` | MCP HTTP transport 入口路径说明。 |
-| `water-approval.ai-service.ingest.workdir` | `../python-services/smart-water-approval-review-system-py` | ingest 运维命令执行目录。 |
-| `water-approval.ai-service.ingest.source-dir` | `docs/参考资料` | 知识库源资料目录。 |
+| `water-approval.ai-service.ingest.workdir` | `../../python-services/smart-water-approval-review-system-py` | 从 `java-services/water-approval` 出发的 ingest 运维命令执行目录。 |
+| `water-approval.ai-service.ingest.source-dir` | `../../docs/参考资料` | 进入 Python 服务目录后的知识库源资料目录。 |
 | `water-approval.ai-service.ingest.chunk-size` | `512` | ingest 分块长度。 |
 | `water-approval.ai-service.ingest.chunk-overlap` | `64` | ingest 分块重叠长度。 |
 | `water-approval.ai-service.ingest.rebuild` | `false` | 是否输出 `--rebuild` 重建参数。 |

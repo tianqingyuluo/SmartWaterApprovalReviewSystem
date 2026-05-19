@@ -56,8 +56,8 @@ water-approval:
     mcp-path: ${AI_SERVICE_MCP_PATH:/mcp}
     ingest:
       # 当前 Python 提供 ingest CLI；Java /ai/ingest 输出运维触发命令，不在 Java 进程内执行。
-      workdir: ${AI_INGEST_WORKDIR:../python-services/smart-water-approval-review-system-py}
-      source-dir: ${AI_INGEST_SOURCE_DIR:docs/参考资料}
+      workdir: ${AI_INGEST_WORKDIR:../../python-services/smart-water-approval-review-system-py}
+      source-dir: ${AI_INGEST_SOURCE_DIR:../../docs/参考资料}
       chunk-size: ${AI_INGEST_CHUNK_SIZE:512}
       chunk-overlap: ${AI_INGEST_CHUNK_OVERLAP:64}
       rebuild: ${AI_INGEST_REBUILD:false}

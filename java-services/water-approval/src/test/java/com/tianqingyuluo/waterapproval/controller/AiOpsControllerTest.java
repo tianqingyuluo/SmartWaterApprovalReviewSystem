@@ -59,14 +59,14 @@ class AiOpsControllerTest {
     void postAiIngestShouldReturnOpsCommandContract() throws Exception {
         AiIngestOperationResponse response = new AiIngestOperationResponse();
         response.setMode("ops-command");
-        response.setWorkdir("../python-services/smart-water-approval-review-system-py");
-        response.setSourceDir("docs/参考资料");
+        response.setWorkdir("../../python-services/smart-water-approval-review-system-py");
+        response.setSourceDir("../../docs/参考资料");
         response.setChunkSize(512);
         response.setChunkOverlap(64);
         response.setRebuild(true);
         response.setCommand(List.of(
                 "uv", "run", "python", "-m", "src.ingest.cli",
-                "--source-dir", "docs/参考资料",
+                "--source-dir", "../../docs/参考资料",
                 "--chunk-size", "512",
                 "--chunk-overlap", "64",
                 "--rebuild"
