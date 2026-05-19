@@ -76,12 +76,25 @@ async function handleLogin() {
   errorMessage.value = ''
   try {
     setAuthToken(`${username.value.trim()}-${Date.now()}`)
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
+    const redirect = resolveSafeRedirect(route.query.redirect)
     await router.replace(redirect)
   } catch {
     errorMessage.value = '登录失败，请重试。'
   } finally {
     loading.value = false
   }
+}
+
+function resolveSafeRedirect(value: unknown): string {
+  if (typeof value !== 'string') {
+    return '/'
+  }
+
+  const redirect = value.trim()
+  if (!redirect || !redirect.startsWith('/') || redirect.startsWith('//')) {
+    return '/'
+  }
+
+  return redirect
 }
 </script>
