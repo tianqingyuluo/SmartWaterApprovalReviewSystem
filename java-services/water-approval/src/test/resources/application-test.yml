@@ -26,6 +26,19 @@ storage:
 water-approval:
   worker:
     token: test-worker-token
+  ai-service:
+    base-url: http://localhost:8000
+    health-path: /health
+    internal-token: test-ai-token
+    timeout: 1s
+    mcp-transport: streamable-http
+    mcp-path: /mcp
+    ingest:
+      workdir: ../../python-services/smart-water-approval-review-system-py
+      source-dir: ../../docs/参考资料
+      chunk-size: 512
+      chunk-overlap: 64
+      rebuild: false
 
 logging:
   level:

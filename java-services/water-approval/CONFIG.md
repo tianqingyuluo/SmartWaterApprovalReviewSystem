@@ -35,6 +35,10 @@ storage:
   s3:
     access-key: your-s3-access-key
     secret-key: your-s3-secret-key
+
+water-approval:
+  ai-service:
+    internal-token: your-ai-service-internal-token
 ```
 
 ### 2. 初始化数据库
@@ -76,7 +80,36 @@ $env:S3_SECRET_KEY="your-secret-key"
 export MYSQL_PASSWORD="your-password"
 export S3_ACCESS_KEY="your-access-key"
 export S3_SECRET_KEY="your-secret-key"
+export AI_SERVICE_BASE_URL="http://localhost:8000"
+export AI_SERVICE_INTERNAL_TOKEN="your-ai-service-internal-token"
 ```
+
+## AI 服务与知识库配置
+
+Java 侧通过 `water-approval.ai-service.*` 配置 Python AI/MCP 服务地址、探活路径、MCP transport 和 ingest 运维命令参数。
+
+| 配置 | 默认值 | 说明 |
+|---|---|---|
+| `water-approval.ai-service.base-url` | `http://localhost:8000` | Python AI/MCP HTTP 适配服务地址。 |
+| `water-approval.ai-service.health-path` | `/health` | Java 探活路径。 |
+| `water-approval.ai-service.internal-token` | 空 | 探活请求携带的 `X-Internal-Token`，建议放入 `application-secrets.yaml`。 |
+| `water-approval.ai-service.timeout` | `3s` | 探活连接和读取超时。 |
+| `water-approval.ai-service.mcp-transport` | `streamable-http` | Python MCP Server transport 说明。 |
+| `water-approval.ai-service.mcp-path` | `/mcp` | MCP HTTP transport 入口路径说明。 |
+| `water-approval.ai-service.ingest.workdir` | `../../python-services/smart-water-approval-review-system-py` | 从 `java-services/water-approval` 出发的 ingest 运维命令执行目录。 |
+| `water-approval.ai-service.ingest.source-dir` | `../../docs/参考资料` | 进入 Python 服务目录后的知识库源资料目录。 |
+| `water-approval.ai-service.ingest.chunk-size` | `512` | ingest 分块长度。 |
+| `water-approval.ai-service.ingest.chunk-overlap` | `64` | ingest 分块重叠长度。 |
+| `water-approval.ai-service.ingest.rebuild` | `false` | 是否输出 `--rebuild` 重建参数。 |
+
+验证命令：
+
+```bash
+curl http://localhost:8080/api/ai/health
+curl -X POST http://localhost:8080/api/ai/ingest
+```
+
+`/api/ai/ingest` 当前返回可复现运维命令，不在 Java 进程内启动 Python ingest。Python 侧正式 REST ingest API 补齐后，再把该入口升级为远程触发。
 
 ## 安全提醒
 

@@ -132,6 +132,14 @@ cd java-services/water-approval
 curl http://localhost:8080/api/task/submit -X POST
 # 预期返回：任务提交成功，包含 taskId
 
+# 检查 Java 侧 AI 服务配置与 Python 探活结果
+curl http://localhost:8080/api/ai/health
+# 预期返回：code=200；data.reachable=true 表示 Python HTTP 健康端点可达
+
+# 查看知识库 ingest 运维触发命令
+curl -X POST http://localhost:8080/api/ai/ingest
+# 预期返回：uv run python -m src.ingest.cli ... 命令和 MCP demo 验证命令
+
 # 或查看启动日志中以下关键字：
 # - "Started WaterApprovalApplication"
 # - "HikariPool-1 - Start completed"（数据库连接成功）
@@ -171,7 +179,28 @@ WORKER_POLL_INTERVAL=5
 LOG_LEVEL=INFO
 ```
 
-### 4.2 安装依赖
+### 4.2 知识库 ingest 与 MCP 验证
+
+CP2 知识库 ingest 当前由 Python CLI 执行：
+
+```bash
+cd python-services/smart-water-approval-review-system-py
+uv run python -m src.ingest.cli --source-dir ../../docs/参考资料 --chunk-size 512 --chunk-overlap 64
+```
+
+需要清空重建时追加：
+
+```bash
+--rebuild
+```
+
+MCP 工具验证：
+
+```bash
+uv run python -m src.mcp_server.demo --run-samples
+```
+
+### 4.3 安装依赖
 
 ```bash
 cd python-services/smart-water-approval-review-system-py
@@ -183,7 +212,7 @@ uv sync
 pip install httpx pydantic python-dotenv openai
 ```
 
-### 4.3 启动 Worker
+### 4.4 启动 Worker
 
 ```bash
 # 使用 uv
@@ -193,7 +222,7 @@ uv run python main.py
 python main.py
 ```
 
-### 4.4 健康检查
+### 4.5 健康检查
 
 启动后应看到类似输出：
 
