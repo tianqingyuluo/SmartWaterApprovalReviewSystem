@@ -59,6 +59,7 @@
           <strong>{{ currentTitle }}</strong>
         </div>
         <div class="flex items-center gap-4 max-[980px]:w-full max-[980px]:justify-between">
+          <button type="button" class="sw-btn sw-btn-ghost max-[980px]:w-auto" @click="handleLogout">退出</button>
           <label
             class="flex h-9 w-[238px] items-center gap-2 rounded-[18px] border border-sw-line-strong bg-white px-[14px] text-[#8a99ad] max-[980px]:hidden"
           >
@@ -93,9 +94,12 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useRoute } from 'vue-router'
+import { clearAuthToken } from '@/utils/auth'
 
 const route = useRoute()
+const router = useRouter()
 
 const menuItems = [
   {
@@ -113,6 +117,11 @@ const menuItems = [
     label: 'AI 初审结果',
     icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>',
   },
+  {
+    path: '/knowledge-mcp',
+    label: 'AI 知识库 MCP',
+    icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"/><path d="M19 12h2"/><path d="M3 12h2"/></svg>',
+  },
 ]
 
 const currentTitle = computed(() => route.meta.title?.toString() || '申请列表')
@@ -122,5 +131,10 @@ function isActive(path: string) {
     return route.path === '/'
   }
   return route.path.startsWith(path)
+}
+
+function handleLogout() {
+  clearAuthToken()
+  router.push('/login')
 }
 </script>

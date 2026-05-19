@@ -67,9 +67,6 @@ export interface MaterialSlot {
   materialType: MaterialType
   originalFileName: string | null
   uploaded: boolean
-  fileExtension?: string | null
-  fileSize?: number | null
-  uploadedAt?: string | null
 }
 
 export interface Finding {
@@ -126,7 +123,6 @@ export interface TaskStatusResponse {
   submittedAt: string
   updatedAt: string
   materials: MaterialSlot[]
-  message?: string
 }
 
 /** GET /task/{taskId}/result/applicant */
@@ -146,11 +142,8 @@ export interface ReviewerResultResponse {
   issues: ReviewerIssueDto[]
   riskHints: RiskHintDto[]
   draftOpinion: string
-  manualReviewNotice?: string | null
   missingMaterials: MaterialType[]
   extractedFields: unknown
-  failureCategory?: FailureCategory
-  failureReason?: string | null
   modelMetadata?: string | null
 }
 
