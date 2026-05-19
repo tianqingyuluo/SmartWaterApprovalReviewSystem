@@ -101,6 +101,15 @@ Worker 通过 HTTP 调用 Java 后端，需要以下端点：
     ],
     "draftOpinion": "建议补充身份证扫描件",
     "materialCompleteness": { "received": ["APPLICATION_FORM"], "missing": ["ID_CARD", "BUSINESS_LICENSE"], "unrecognized": [] },
+    "extractedFields": [
+      {
+        "fieldKey": "applicant.name",
+        "fieldValue": "某某科技有限公司",
+        "confidence": 0.93,
+        "sourceMaterial": "APPLICATION_FORM",
+        "evidence": "申请人：某某科技有限公司"
+      }
+    ],
     "basisRefs": ["BASIS_MATERIAL_INITIAL_LIST"],
     "manualReviewNotice": "AI审核结果为辅助建议，不构成最终审批意见。",
     "modelMetadata": {
@@ -220,3 +229,5 @@ Worker 启动时加载 `knowledge_pack/water_permit_mvp.json`，并把其中的 
 GLM OCR 适配器会调用 `POST {OCR_GLM_BASE_URL}/layout_parsing`，请求体使用顶层 `model: "glm-ocr"` 和 `file`。Worker 使用官方 GLM OCR 版面解析接口，不再走旧版多模态聊天字段抽取路径。
 
 Worker 回写结果时必须携带 `knowledgePackVersion`，Java 后端将该值保存到 `review_task.knowledge_pack_version`，用于后续追溯本次审核使用的知识包版本。
+
+Worker 回写字段快照时只放入 `reviewerResult.extractedFields`。Java 后端会把该字段作为审批人员结果 JSON 的一部分持久化，并在 `GET /api/task/{taskId}/result/reviewer` 中原样返回；`applicantResult` 不携带该字段，避免申请人视图暴露 OCR 字段细节。重复回写同一任务结果时，Java 端按 `taskId + resultType` 更新已有 `APPLICANT` / `REVIEWER` 行，不新增重复结果。

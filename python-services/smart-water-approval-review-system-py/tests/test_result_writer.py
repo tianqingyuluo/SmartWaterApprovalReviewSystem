@@ -3,8 +3,8 @@ from unittest.mock import patch
 
 import httpx
 
-from src.models import ProcessingResult
-from src.services.result_writer import ResultWriter, _parse_backend_response
+from src.models import ExtractedField, ProcessingResult, ReviewResult
+from src.services.result_writer import ResultWriter, _parse_backend_response, _result_to_dict
 
 
 class ResultWriterResponseTest(unittest.TestCase):
@@ -98,6 +98,36 @@ class ResultWriterResponseTest(unittest.TestCase):
         self.assertTrue(success)
         payload = client.put.call_args.kwargs["json"]
         self.assertEqual("water-permit-mvp-2026-04-27", payload["knowledgePackVersion"])
+
+    def test_result_to_dict_should_serialize_extracted_field_snapshot(self) -> None:
+        result = ReviewResult(
+            summary="done",
+            extracted_fields=[
+                ExtractedField(
+                    field_key="applicant.name",
+                    field_value="某某科技有限公司",
+                    confidence=0.93,
+                    source_material="APPLICATION_FORM",
+                    evidence="申请人：某某科技有限公司",
+                )
+            ],
+        )
+
+        payload = _result_to_dict(result)
+
+        self.assertIsNotNone(payload)
+        self.assertEqual(
+            [
+                {
+                    "fieldKey": "applicant.name",
+                    "fieldValue": "某某科技有限公司",
+                    "confidence": 0.93,
+                    "sourceMaterial": "APPLICATION_FORM",
+                    "evidence": "申请人：某某科技有限公司",
+                }
+            ],
+            payload["extractedFields"],
+        )
 
 
 if __name__ == "__main__":

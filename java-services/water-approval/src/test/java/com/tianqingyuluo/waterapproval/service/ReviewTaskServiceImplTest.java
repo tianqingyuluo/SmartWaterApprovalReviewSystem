@@ -1,10 +1,13 @@
 package com.tianqingyuluo.waterapproval.service;
 
 import com.tianqingyuluo.waterapproval.dto.ResultWriteRequest;
+import com.tianqingyuluo.waterapproval.dto.ReviewerResultResponse;
 import com.tianqingyuluo.waterapproval.dto.TaskListResponse;
 import com.tianqingyuluo.waterapproval.entity.MaterialSlot;
+import com.tianqingyuluo.waterapproval.entity.ReviewResult;
 import com.tianqingyuluo.waterapproval.entity.ReviewTask;
 import com.tianqingyuluo.waterapproval.mapper.MaterialSlotMapper;
+import com.tianqingyuluo.waterapproval.mapper.ReviewResultMapper;
 import com.tianqingyuluo.waterapproval.mapper.ReviewTaskMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +15,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -29,6 +34,9 @@ class ReviewTaskServiceImplTest {
 
     @Autowired
     private MaterialSlotMapper materialSlotMapper;
+
+    @Autowired
+    private ReviewResultMapper resultMapper;
 
     @Test
     void writeResultShouldPersistKnowledgePackVersion() {
@@ -50,6 +58,64 @@ class ReviewTaskServiceImplTest {
         ReviewTask updated = taskMapper.selectById(task.getId());
         assertEquals("COMPLETED", updated.getStatus());
         assertEquals("water-permit-mvp-2026-04-27", updated.getKnowledgePackVersion());
+    }
+
+    @Test
+    void repeatedWriteResultShouldUpdateExistingRowsWithoutDuplicatingResults() {
+        String taskId = "task-idempotent-" + System.nanoTime();
+        ReviewTask task = newReviewTask(taskId, "session-idempotent", "PROCESSING");
+        taskMapper.insert(task);
+
+        ResultWriteRequest first = new ResultWriteRequest();
+        first.setStatus("COMPLETED");
+        first.setApplicantResult(Map.of("summary", "首次申请人结果"));
+        first.setReviewerResult(Map.of("summary", "首次审批结果"));
+
+        ResultWriteRequest second = new ResultWriteRequest();
+        second.setStatus("COMPLETED");
+        second.setApplicantResult(Map.of("summary", "重复回调后的申请人结果"));
+        second.setReviewerResult(Map.of("summary", "重复回调后的审批结果"));
+
+        reviewTaskService.writeResult(taskId, first);
+        reviewTaskService.writeResult(taskId, second);
+
+        List<ReviewResult> rows = resultMapper.selectList(null).stream()
+                .filter(row -> row.getTaskId().equals(taskId))
+                .toList();
+        assertEquals(2, rows.size(), "applicant/reviewer results should be upserted, not duplicated");
+
+        ReviewerResultResponse response = reviewTaskService.getReviewerResult(taskId, "session-idempotent");
+        assertEquals("COMPLETED", response.getStatus());
+        assertEquals("重复回调后的审批结果", response.getSummary());
+    }
+
+    @Test
+    void getReviewerResultShouldExposeExtractedFieldSnapshotFromCallback() {
+        String taskId = "task-fields-" + System.nanoTime();
+        ReviewTask task = newReviewTask(taskId, "session-fields", "PROCESSING");
+        taskMapper.insert(task);
+
+        ResultWriteRequest request = new ResultWriteRequest();
+        request.setStatus("COMPLETED");
+        request.setReviewerResult(Map.of(
+                "summary", "字段快照已生成",
+                "extractedFields", List.of(Map.of(
+                        "fieldKey", "applicant.name",
+                        "fieldValue", "某某科技有限公司",
+                        "confidence", 0.93,
+                        "sourceMaterial", "APPLICATION_FORM"
+                ))
+        ));
+
+        reviewTaskService.writeResult(taskId, request);
+
+        ReviewerResultResponse response = reviewTaskService.getReviewerResult(taskId, "session-fields");
+
+        assertEquals("字段快照已生成", response.getSummary());
+        assertNotNull(response.getExtractedFields());
+        List<Map<String, Object>> fields = (List<Map<String, Object>>) response.getExtractedFields();
+        assertEquals("applicant.name", fields.get(0).get("fieldKey"));
+        assertEquals("某某科技有限公司", fields.get(0).get("fieldValue"));
     }
 
     @Test
@@ -169,5 +235,16 @@ class ReviewTaskServiceImplTest {
         assertEquals(Boolean.FALSE, item.getMaterials().get(1).getUploaded());
         assertEquals("ID_CARD", item.getMaterials().get(2).getMaterialType());
         assertEquals(Boolean.FALSE, item.getMaterials().get(2).getUploaded());
+    }
+
+    private ReviewTask newReviewTask(String taskId, String sessionId, String status) {
+        ReviewTask task = new ReviewTask();
+        task.setTaskId(taskId);
+        task.setSessionId(sessionId);
+        task.setStatus(status);
+        task.setSubmittedAt(LocalDateTime.now());
+        task.setCreatedAt(LocalDateTime.now());
+        task.setUpdatedAt(LocalDateTime.now());
+        return task;
     }
 }

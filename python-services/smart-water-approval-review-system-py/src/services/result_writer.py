@@ -47,6 +47,17 @@ def _result_to_dict(result: ReviewResult | None) -> dict | None:
             "missing": result.material_completeness.missing,
             "unrecognized": result.material_completeness.unrecognized,
         }
+    if result.extracted_fields:
+        d["extractedFields"] = [
+            {
+                "fieldKey": field.field_key,
+                "fieldValue": field.field_value,
+                "confidence": field.confidence,
+                "sourceMaterial": field.source_material,
+                "evidence": field.evidence,
+            }
+            for field in result.extracted_fields
+        ]
     if result.basis_refs:
         d["basisRefs"] = result.basis_refs
     if result.manual_review_notice:

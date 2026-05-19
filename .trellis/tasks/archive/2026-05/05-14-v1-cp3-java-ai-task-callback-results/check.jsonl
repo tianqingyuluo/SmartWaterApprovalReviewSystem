@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/backend/smartwater-mvp-contracts.md", "reason": "Verify status, task aggregate, applicant/reviewer visibility, and cross-service result contract."}
+{"file": ".trellis/spec/backend/review-reasoning-adapter.md", "reason": "Verify Worker result writeback shape, reviewer-only extractedFields, and callback idempotency expectations."}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Verify Worker token, business error, status transition, and result parsing behavior."}
+{"file": ".trellis/spec/backend/database-guidelines.md", "reason": "Verify review_result upsert behavior remains aligned with unique result type persistence."}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Verify Java/Python tests, lint/type-check, and regression assertions required by the task."}
