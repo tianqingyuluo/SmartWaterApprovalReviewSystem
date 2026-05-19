@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { toApplicantResultView, toReviewerResultView } from './task'
 import type { ApplicantResultResponse, ReviewerResultResponse, TaskStatusResponse } from '@/types'
 
@@ -73,6 +73,7 @@ describe('task API adapters', () => {
           requiresManualReview: true,
         },
       ],
+      manualReviewNotice: '请人工复核证照一致性。',
     }
 
     const view = toReviewerResultView(statusDto, resultDto)
@@ -93,7 +94,8 @@ describe('task API adapters', () => {
       basis: 'water-permit:mvp:process',
     })
     expect(view.riskHints[0]).toContain('取水量字段与材料描述需要复核')
-    expect(view.manualReviewNotice).toBe('')
+    expect(view.manualReviewNotice).toBe('请人工复核证照一致性。')
+    expect(view.requiresManualReview).toBe(true)
   })
 
   it('maps FAILED status to failure category and reason', () => {

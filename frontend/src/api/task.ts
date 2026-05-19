@@ -65,6 +65,7 @@ export function toReviewerResultView(
 ): ReviewerResultView {
   const { failureCategory, failureReason } = extractFailureInfo(resultDto)
   const hasBlocker = resultDto.issues.some((f) => f.severity === 'BLOCKER')
+  const manualReviewNotice = resultDto.manualReviewNotice ?? ''
 
   return {
     status: resultDto.status,
@@ -76,10 +77,10 @@ export function toReviewerResultView(
     findings: resultDto.issues.map(toReviewerFinding),
     riskHints: resultDto.riskHints.map(formatRiskHint),
     draftOpinion: resultDto.draftOpinion,
-    manualReviewNotice: '',
+    manualReviewNotice,
     failureCategory,
     failureReason,
-    requiresManualReview: failureCategory !== null || hasBlocker,
+    requiresManualReview: failureCategory !== null || hasBlocker || manualReviewNotice !== '',
   }
 }
 

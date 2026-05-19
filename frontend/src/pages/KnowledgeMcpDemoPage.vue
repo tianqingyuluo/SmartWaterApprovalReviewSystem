@@ -48,6 +48,15 @@
           </button>
         </div>
 
+        <div class="mt-3 flex flex-wrap gap-3 text-sm">
+          <button type="button" class="font-bold text-sw-primary underline" :disabled="searchLoading" @click="runEmptyKnowledgeSearch">
+            演示空结果
+          </button>
+          <button type="button" class="font-bold text-sw-danger underline" :disabled="searchLoading" @click="runFailedKnowledgeSearch">
+            演示失败
+          </button>
+        </div>
+
         <div v-if="searchError" class="sw-alert sw-alert-danger mt-4">
           {{ searchError }}
           <button type="button" class="ml-3 font-bold text-sw-danger underline" @click="runKnowledgeSearch">重试</button>
@@ -106,6 +115,15 @@
           </button>
         </div>
 
+        <div class="mt-3 flex flex-wrap gap-3 text-sm">
+          <button type="button" class="font-bold text-sw-primary underline" :disabled="completenessLoading" @click="runEmptyCompletenessCheck">
+            演示空结果
+          </button>
+          <button type="button" class="font-bold text-sw-danger underline" :disabled="completenessLoading" @click="runFailedCompletenessCheck">
+            演示失败
+          </button>
+        </div>
+
         <div v-if="completenessError" class="sw-alert sw-alert-danger mt-4">
           {{ completenessError }}
           <button type="button" class="ml-3 font-bold text-sw-danger underline" @click="runCompletenessCheck">重试</button>
@@ -138,7 +156,13 @@
             </div>
           </div>
 
-          <div v-if="completenessResult.findings.length" class="grid gap-2">
+          <EmptyState
+            v-if="completenessResult.findings.length === 0"
+            title="没有完整性问题"
+            description="已提交材料覆盖当前 MVP 必需项，check_completeness 没有返回缺失项。"
+          />
+
+          <div v-else class="grid gap-2">
             <article
               v-for="finding in completenessResult.findings"
               :key="`${finding.materialType}-${finding.code}`"
@@ -243,24 +267,77 @@ onMounted(() => {
 function loadStatus() {
   statusLoading.value = true
   status.value = buildDemoStatus(status.value.lastToolName, '演示台状态已刷新为本地数据。')
-  statusLoading.value = false
+  window.setTimeout(() => {
+    statusLoading.value = false
+  }, 250)
 }
 
-function runKnowledgeSearch() {
-  const params = { query: searchQuery.value, topK: searchTopK.value }
+async function runKnowledgeSearch() {
   searchLoading.value = true
   searchError.value = ''
-  searchResult.value = buildDemoKnowledgeSearch(params)
-  markToolCall('knowledge_search', '当前使用演示数据，等待后端 MCP HTTP 代理接入。', 'demo')
-  searchLoading.value = false
+  searchResult.value = null
+  try {
+    await demoDelay()
+    const params = buildKnowledgeSearchParams()
+    searchResult.value = buildDemoKnowledgeSearch(params)
+    markToolCall('knowledge_search', '当前使用演示数据，等待后端 MCP HTTP 代理接入。', 'demo')
+  } catch (error) {
+    searchError.value = error instanceof Error ? error.message : 'knowledge_search 调用失败，请重试。'
+  } finally {
+    searchLoading.value = false
+  }
 }
 
-function runCompletenessCheck() {
+async function runCompletenessCheck() {
   completenessLoading.value = true
   completenessError.value = ''
-  completenessResult.value = buildDemoCompleteness(selectedMaterials.value)
-  markToolCall('check_completeness', '当前使用演示数据，等待后端 MCP HTTP 代理接入。', 'demo')
-  completenessLoading.value = false
+  completenessResult.value = null
+  try {
+    await demoDelay()
+    if (selectedMaterials.value.length === 0) {
+      throw new Error('check_completeness 模拟失败：至少选择一项材料后重试。')
+    }
+    completenessResult.value = buildDemoCompleteness(selectedMaterials.value)
+    markToolCall('check_completeness', '当前使用演示数据，等待后端 MCP HTTP 代理接入。', 'demo')
+  } catch (error) {
+    completenessError.value = error instanceof Error ? error.message : 'check_completeness 调用失败，请重试。'
+  } finally {
+    completenessLoading.value = false
+  }
+}
+
+function runEmptyKnowledgeSearch() {
+  searchQuery.value = '无匹配演示查询'
+  runKnowledgeSearch()
+}
+
+function runFailedKnowledgeSearch() {
+  searchQuery.value = 'simulate-error'
+  runKnowledgeSearch()
+}
+
+function runEmptyCompletenessCheck() {
+  selectedMaterials.value = [...MATERIAL_SLOTS]
+  runCompletenessCheck()
+}
+
+function runFailedCompletenessCheck() {
+  selectedMaterials.value = []
+  runCompletenessCheck()
+}
+
+function buildKnowledgeSearchParams() {
+  if (!Number.isFinite(searchTopK.value) || searchTopK.value < 1 || searchTopK.value > 50) {
+    throw new Error('topK 需要在 1-50 之间，请修改后重试。')
+  }
+  if (searchQuery.value.trim().toLowerCase() === 'simulate-error') {
+    throw new Error('knowledge_search 模拟失败，请点击重试。')
+  }
+  return { query: searchQuery.value, topK: searchTopK.value }
+}
+
+function demoDelay() {
+  return new Promise((resolve) => window.setTimeout(resolve, 350))
 }
 
 function markToolCall(toolName: McpToolName, message: string, source: 'api' | 'demo') {

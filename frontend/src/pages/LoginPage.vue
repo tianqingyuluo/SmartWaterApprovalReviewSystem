@@ -55,9 +55,10 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { setAuthToken } from '@/utils/auth'
 
+const route = useRoute()
 const router = useRouter()
 
 const username = ref('')
@@ -75,7 +76,8 @@ async function handleLogin() {
   errorMessage.value = ''
   try {
     setAuthToken(`${username.value.trim()}-${Date.now()}`)
-    await router.replace('/')
+    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
+    await router.replace(redirect)
   } catch {
     errorMessage.value = '登录失败，请重试。'
   } finally {

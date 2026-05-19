@@ -13,8 +13,8 @@
       <tbody>
         <tr v-for="slot in sortedSlots" :key="slot.materialType">
           <td>{{ MATERIAL_LABELS[slot.materialType] || slot.materialType }}</td>
-          <td>{{ slot.originalFileName || '—' }}</td>
-          <td>—</td>
+          <td>{{ slot.originalFileName || '-' }}</td>
+          <td>{{ formatSize(slot.fileSize) }}</td>
           <td>
             <span v-if="slot.originalFileName" class="tag-uploaded">已上传</span>
             <span v-else class="tag-missing">缺失</span>
@@ -43,6 +43,18 @@ const sortedSlots = computed(() => {
   )
 })
 
+function formatSize(bytes?: number | null): string {
+  if (!bytes || bytes <= 0) {
+    return '-'
+  }
+  if (bytes < 1024) {
+    return `${bytes} B`
+  }
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`
+  }
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+}
 </script>
 
 <style scoped>

@@ -67,6 +67,9 @@ export interface MaterialSlot {
   materialType: MaterialType
   originalFileName: string | null
   uploaded: boolean
+  fileSize?: number | null
+  fileExtension?: string | null
+  uploadedAt?: string | null
 }
 
 export interface Finding {
@@ -144,6 +147,7 @@ export interface ReviewerResultResponse {
   draftOpinion: string
   missingMaterials: MaterialType[]
   extractedFields: unknown
+  manualReviewNotice?: string | null
   modelMetadata?: string | null
 }
 
