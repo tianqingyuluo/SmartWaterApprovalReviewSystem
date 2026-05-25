@@ -1,0 +1,42 @@
+{
+  "id": "v1-cp3-reviewer-actions-applicant-result",
+  "name": "v1-cp3-reviewer-actions-applicant-result",
+  "title": "CP3-F 审核员初审动作与申请人结果回显",
+  "description": "实现审核员通过初审、退回补正、转人工复核与备注，并向申请人回显初审处理结果。",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P1",
+  "creator": "tianqingyuluo",
+  "assignee": "tianqingyuluo",
+  "createdAt": "2026-05-26",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "mvp/smartwater",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "05-13-v1-system-design-checkpoints",
+  "relatedFiles": [],
+  "notes": "Added after CP2-D archive to close the CP3 real-flow gap. Covers reviewer initial-review actions and applicant-facing handling result; leave correction resubmission, material version diff, and export for CP4.",
+  "meta": {
+    "checkpoint": "CP3",
+    "lane": "fullstack",
+    "wave": 3,
+    "dependsOn": [
+      "v1-cp3-java-ai-task-callback-results",
+      "v1-cp3-minimal-rbac-task-visibility",
+      "v1-cp3-python-fastapi-rules-agent"
+    ],
+    "unblocks": [
+      "v1-cp3-frontend-review-workbench",
+      "v1-cp3-integration-stability-tests",
+      "v1-cp4-frontend-correction-version-diff"
+    ],
+    "unlockCriteria": "Minimum RBAC and AI result callback path are available.",
+    "gatePolicy": "Implement initial-review decisions only; CP4 owns correction upload loop, version diff, Word report export, and richer admin workbench."
+  }
+}

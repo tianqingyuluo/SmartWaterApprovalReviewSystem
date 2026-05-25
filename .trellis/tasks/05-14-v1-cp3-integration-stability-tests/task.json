@@ -29,6 +29,8 @@
     "dependsOn": [
       "v1-cp3-java-ai-task-callback-results",
       "v1-cp3-python-fastapi-rules-agent",
+      "v1-cp3-minimal-rbac-task-visibility",
+      "v1-cp3-reviewer-actions-applicant-result",
       "v1-cp3-frontend-review-workbench"
     ],
     "unlockCriteria": "CP3 core chain delivered and parent approves Wave 3 acceptance.",

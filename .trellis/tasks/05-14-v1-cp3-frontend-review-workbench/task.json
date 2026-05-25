@@ -28,7 +28,9 @@
     "wave": 3,
     "dependsOn": [
       "v1-cp3-java-ai-task-callback-results",
-      "v1-cp3-python-fastapi-rules-agent"
+      "v1-cp3-python-fastapi-rules-agent",
+      "v1-cp3-minimal-rbac-task-visibility",
+      "v1-cp3-reviewer-actions-applicant-result"
     ],
     "unlockCriteria": "CP3 backend + python review chain completed and parent approves Wave 3.",
     "gatePolicy": "Do not start locked tasks until dependencies are completed and parent task approves next wave."

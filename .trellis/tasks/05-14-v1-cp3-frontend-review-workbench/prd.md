@@ -11,6 +11,8 @@
 ## Dependencies
 - `v1-cp3-java-ai-task-callback-results`
 - `v1-cp3-python-fastapi-rules-agent`
+- `v1-cp3-minimal-rbac-task-visibility`
+- `v1-cp3-reviewer-actions-applicant-result`
 
 ## Acceptance Criteria
 - 审批人员可完整执行三类动作

@@ -32,6 +32,8 @@
     "05-14-v1-cp3-python-fastapi-rules-agent",
     "05-14-v1-cp3-frontend-review-workbench",
     "05-14-v1-cp3-integration-stability-tests",
+    "05-26-v1-cp3-minimal-rbac-task-visibility",
+    "05-26-v1-cp3-reviewer-actions-applicant-result",
     "05-14-v1-cp4-java-report-export-admin",
     "05-14-v1-cp4-python-deploy-degrade-demo",
     "05-14-v1-cp4-frontend-correction-version-diff",
