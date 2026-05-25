@@ -579,6 +579,116 @@ The response contains `mode=ops-command`, `command[]`, and `verificationCommand`
 
 ---
 
+## CP2 Python Ingest And ChromaDB Contract
+
+Python CP2 ingest must be able to rebuild a knowledge base from an empty ChromaDB
+directory using an OpenAI-compatible embedding endpoint.
+
+### 1. Scope / Trigger
+
+- Trigger: Python ingest CLI, ChromaDB persistence, embedding provider wiring, or
+  CP2 evidence scripts.
+- Python package: `python-services/smart-water-approval-review-system-py`.
+- Primary command: `uv run python -m src.ingest.cli`.
+
+### 2. Signatures
+
+Ingest CLI:
+
+```bash
+uv run python -m src.ingest.cli \
+  --source-dir <source-dir> \
+  --chunk-size <n> \
+  --chunk-overlap <n> \
+  [--rebuild]
+```
+
+Evidence CLI:
+
+```bash
+uv run python -m src.cp2_evidence [--no-rebuild]
+```
+
+Embedding environment:
+
+```env
+EMBEDDING_PROVIDER=openai-compatible
+EMBEDDING_MODEL=Qwen/Qwen3-Embedding-4B
+EMBEDDING_BASE_URL=https://router.tumuer.me/v1
+EMBEDDING_API_KEY=<secret>
+CHROMA_PERSIST_DIR=./data/chroma
+CHROMA_COLLECTION_NAME=knowledge_base
+KNOWLEDGE_SOURCE_DIR=<source-dir>
+```
+
+### 3. Contracts
+
+| Item | Contract |
+|---|---|
+| `EMBEDDING_BASE_URL` | OpenAI-compatible API root only, not a full `/embeddings` path. |
+| `EMBEDDING_API_KEY` | Required for real ingest/evidence; never committed or logged. |
+| `--rebuild` | Clear the Chroma persist directory before opening a Chroma `PersistentClient`. |
+| Chroma IDs | Stable per source file, block index, and chunk index so repeat ingest can upsert without duplicates. |
+| Output stats | Print document count, text block count, chunk count, vector count, and source file list. |
+
+### 4. Validation & Error Matrix
+
+| Condition | Expected behavior |
+|---|---|
+| `source-dir` missing | Return non-zero or stats with `Source directory not found`. |
+| `EMBEDDING_API_KEY` missing in `cp2_evidence` | Abort before ingest and name the missing key. |
+| Embedding provider unavailable | Record embedding batch errors and produce `0` vectors; evidence must not claim success. |
+| `--rebuild` requested | Chroma persist directory is removed and recreated before client creation. |
+| Chroma write fails | Test must expose the failure; do not hide it as a successful ingest. |
+
+### 5. Good/Base/Bad Cases
+
+- Good: `--rebuild` from a fresh or existing Chroma directory stores a positive
+  vector count and prints all CP2 source files.
+- Good: OpenAI-compatible router base URL is `https://router.tumuer.me/v1`, while
+  the SDK call appends `/embeddings` internally.
+- Base: image-only source samples can produce zero chunks when OCR is not part of
+  CP2 ingest; this is acceptable if document/PDF sources generate vectors.
+- Bad: set `EMBEDDING_BASE_URL=https://router.tumuer.me/v1/embeddings`, causing
+  the SDK to construct an invalid endpoint.
+- Bad: instantiate `chromadb.PersistentClient` and then delete its persist
+  directory during `--rebuild`; this can leave SQLite handles in a read-only or
+  invalid state.
+
+### 6. Tests Required
+
+- Unit test that `rebuild=True` clears the Chroma persist directory before
+  constructing `ChromaStore`.
+- Unit test that repeat ingest/upsert does not duplicate vectors.
+- Unit test that embedding batch failures keep chunk/embedding pairs aligned.
+- CP2 verification commands:
+
+```bash
+uv run python -m pytest -q tests/test_ingest_pipeline.py tests/test_chroma_store.py tests/test_embedding_client.py tests/test_cp2_evidence.py
+uv run python -m src.ingest.cli --source-dir <source-dir> --chunk-size 512 --chunk-overlap 64 --rebuild
+uv run python -m src.cp2_evidence --no-rebuild
+```
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```python
+store = ChromaStore()
+if rebuild:
+    store.rebuild()  # deletes the directory after the PersistentClient opened it
+```
+
+#### Correct
+
+```python
+if rebuild:
+    ChromaStore.clear_persist_dir()
+store = ChromaStore()
+```
+
+---
+
 ## Forbidden Patterns
 
 - Do not introduce alternate enum names such as `WATER_INTAKE_APPLICATION` unless the contract is updated everywhere.
