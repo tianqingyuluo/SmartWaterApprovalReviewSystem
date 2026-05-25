@@ -3,7 +3,7 @@
   "name": "v1-cp3-integration-stability-tests",
   "title": "CP3-D 集成测试与稳定性验收",
   "description": "形成 Java-Python 全链路测试与稳定性验收证据。",
-  "status": "locked",
+  "status": "planning",
   "dev_type": null,
   "scope": null,
   "package": null,
@@ -21,7 +21,7 @@
   "children": [],
   "parent": "05-13-v1-system-design-checkpoints",
   "relatedFiles": [],
-  "notes": "",
+  "notes": "Unlocked after CP2-D archive and parent approval for CP3 Wave 3. Execute after CP3 Python and frontend core chain are implemented.",
   "meta": {
     "checkpoint": "CP3",
     "lane": "docs-tests",

@@ -3,7 +3,7 @@
   "name": "v1-cp3-frontend-review-workbench",
   "title": "CP3-C 前端 AI 结果、待办和审核动作",
   "description": "交付审批人员待办、AI 结果展示和三类审核动作页面。",
-  "status": "locked",
+  "status": "planning",
   "dev_type": null,
   "scope": null,
   "package": null,
@@ -21,7 +21,7 @@
   "children": [],
   "parent": "05-13-v1-system-design-checkpoints",
   "relatedFiles": [],
-  "notes": "",
+  "notes": "Unlocked after CP2-D archive and parent approval for CP3 Wave 3. Execute after CP3 Python review chain is stable enough for UI integration.",
   "meta": {
     "checkpoint": "CP3",
     "lane": "frontend",

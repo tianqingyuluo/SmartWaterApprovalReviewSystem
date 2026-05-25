@@ -3,7 +3,7 @@
   "name": "v1-cp3-python-fastapi-rules-agent",
   "title": "CP3-B Python FastAPI、解析、规则与 Agent",
   "description": "实现 FastAPI 审查任务主线，打通解析、规则、RAG 与 Agent 汇总。",
-  "status": "locked",
+  "status": "planning",
   "dev_type": null,
   "scope": null,
   "package": null,
@@ -21,7 +21,7 @@
   "children": [],
   "parent": "05-13-v1-system-design-checkpoints",
   "relatedFiles": [],
-  "notes": "",
+  "notes": "Unlocked after CP2-D archive and parent approval for CP3 Wave 3. Start this task before frontend and integration CP3 tasks.",
   "meta": {
     "checkpoint": "CP3",
     "lane": "python",
