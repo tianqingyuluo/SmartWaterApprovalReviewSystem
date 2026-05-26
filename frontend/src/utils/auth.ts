@@ -32,7 +32,8 @@ export function getCurrentUser(): UserProfile | null {
   const value = localStorage.getItem(AUTH_USER_KEY)
   if (!value) return null
   try {
-    return JSON.parse(value) as UserProfile
+    const parsed: unknown = JSON.parse(value)
+    return isUserProfile(parsed) ? parsed : null
   } catch {
     return null
   }
@@ -50,4 +51,20 @@ export function clearAuthState(): void {
 
 export function getCurrentRole(): UserRole | null {
   return getCurrentUser()?.role ?? null
+}
+
+function isUserProfile(value: unknown): value is UserProfile {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return false
+  }
+
+  const candidate = value as Record<string, unknown>
+  return typeof candidate.userId === 'number'
+    && typeof candidate.username === 'string'
+    && typeof candidate.displayName === 'string'
+    && isUserRole(candidate.role)
+}
+
+function isUserRole(value: unknown): value is UserRole {
+  return value === 'APPLICANT' || value === 'REVIEWER' || value === 'ADMIN'
 }

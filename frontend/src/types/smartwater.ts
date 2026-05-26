@@ -12,6 +12,8 @@ export type Severity = 'INFO' | 'WARNING' | 'BLOCKER'
 
 export type Audience = 'APPLICANT' | 'REVIEWER' | 'SYSTEM'
 export type UserRole = 'APPLICANT' | 'REVIEWER' | 'ADMIN'
+export type ReviewerActionCode = 'APPROVE_INITIAL_REVIEW' | 'RETURN_FOR_CORRECTION' | 'TRANSFER_MANUAL_REVIEW'
+export type HandlingStatus = 'INITIAL_REVIEW_PASSED' | 'CORRECTION_REQUIRED' | 'MANUAL_REVIEW_REQUIRED' | null
 
 export const MATERIAL_LABELS: Record<MaterialType, string> = {
   APPLICATION_FORM: '取水许可申请书',
@@ -22,6 +24,18 @@ export const MATERIAL_LABELS: Record<MaterialType, string> = {
 export const MATERIAL_SLOTS: MaterialType[] = ['APPLICATION_FORM', 'BUSINESS_LICENSE', 'ID_CARD']
 
 export const ACCEPTED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'pdf']
+
+export const REVIEWER_ACTION_LABELS: Record<ReviewerActionCode, string> = {
+  APPROVE_INITIAL_REVIEW: '通过初审',
+  RETURN_FOR_CORRECTION: '退回补正',
+  TRANSFER_MANUAL_REVIEW: '转人工复核',
+}
+
+export const HANDLING_STATUS_LABELS: Record<Exclude<HandlingStatus, null>, string> = {
+  INITIAL_REVIEW_PASSED: '通过初审',
+  CORRECTION_REQUIRED: '退回补正',
+  MANUAL_REVIEW_REQUIRED: '转人工复核',
+}
 
 export type FailureCategory =
   | 'SYSTEM_ERROR'
@@ -108,6 +122,17 @@ export interface RiskHintDto {
   requiresManualReview?: boolean | null
 }
 
+export interface ReviewActionLogDto {
+  actionCode: string
+  actionLabel?: string | null
+  reviewerRemark?: string | null
+  operatorUserId?: number | null
+  operatorDisplayName?: string | null
+  fromHandlingStatus?: string | null
+  toHandlingStatus?: string | null
+  operatedAt?: string | null
+}
+
 // ── Submit ──
 
 export interface SubmitResponse {
@@ -136,6 +161,9 @@ export interface LoginResponse {
 export interface TaskStatusResponse {
   taskId: string
   status: ProcessingStatus
+  handlingStatus?: HandlingStatus
+  handlingStatusLabel?: string | null
+  reviewerRemark?: string | null
   submittedAt: string
   updatedAt: string
   materials: MaterialSlot[]
@@ -145,6 +173,10 @@ export interface TaskStatusResponse {
 export interface ApplicantResultResponse {
   taskId: string
   status: ProcessingStatus
+  handlingStatus?: HandlingStatus
+  handlingStatusLabel?: string | null
+  reviewerRemark?: string | null
+  reviewerActionAt?: string | null
   summary: string
   issues: ApplicantIssueDto[]
   missingMaterials: MaterialType[]
@@ -154,6 +186,15 @@ export interface ApplicantResultResponse {
 export interface ReviewerResultResponse {
   taskId: string
   status: ProcessingStatus
+  handlingStatus?: HandlingStatus
+  handlingStatusLabel?: string | null
+  reviewerRemark?: string | null
+  reviewerActionCode?: ReviewerActionCode | null
+  reviewerUserId?: number | null
+  reviewerDisplayName?: string | null
+  reviewerActionAt?: string | null
+  actionLogs?: ReviewActionLogDto[] | null
+  reviewActionLogs?: ReviewActionLogDto[] | null
   summary: string
   issues: ReviewerIssueDto[]
   riskHints: RiskHintDto[]
@@ -170,6 +211,11 @@ export interface TaskListItem {
   taskId: string
   sessionId?: string | null
   status: ProcessingStatus
+  handlingStatus?: HandlingStatus
+  handlingStatusLabel?: string | null
+  reviewerRemark?: string | null
+  reviewerDisplayName?: string | null
+  reviewerActionAt?: string | null
   submittedAt: string
   updatedAt: string
   knowledgePackVersion: string | null
@@ -190,10 +236,33 @@ export interface ApplicantResultView {
   missingMaterials: MaterialType[]
   fieldIssues: Finding[]
   suggestions: string[]
+  handlingStatus: HandlingStatus
+  handlingStatusLabel: string
+  reviewerRemark: string
+  reviewerActionAt: string | null
+}
+
+export interface ReviewActionLogView {
+  actionCode: string
+  actionLabel: string
+  reviewerRemark: string
+  operatorUserId: number | null
+  operatorDisplayName: string
+  fromHandlingStatus: string | null
+  toHandlingStatus: string | null
+  operatedAt: string | null
 }
 
 export interface ReviewerResultView {
   status: ProcessingStatus
+  handlingStatus: HandlingStatus
+  handlingStatusLabel: string
+  reviewerRemark: string
+  reviewerActionCode: ReviewerActionCode | null
+  reviewerUserId: number | null
+  reviewerDisplayName: string
+  reviewerActionAt: string | null
+  reviewActionLogs: ReviewActionLogView[]
   materials: MaterialSlot[]
   summary: ResultSummary | null
   extractedFields: Record<string, string>
@@ -210,6 +279,23 @@ export interface ReviewerResultView {
 
 export interface TaskResultView extends ReviewerResultView {
   viewMode: 'APPLICANT' | 'REVIEWER'
+}
+
+export interface ReviewerActionSubmitRequest {
+  actionCode: ReviewerActionCode
+  reviewerRemark?: string
+}
+
+export interface ReviewerActionResponse {
+  taskId: string
+  actionCode: ReviewerActionCode
+  actionLabel?: string | null
+  handlingStatus: HandlingStatus
+  handlingStatusLabel?: string | null
+  reviewerRemark?: string | null
+  operatorUserId?: number | null
+  operatorDisplayName?: string | null
+  operatedAt?: string | null
 }
 
 // ── Status labels ──

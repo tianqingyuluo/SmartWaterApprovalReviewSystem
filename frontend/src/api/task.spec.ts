@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { toApplicantResultView, toReviewerResultView } from './task'
+import { isReviewerActionCompleted, toApplicantResultView, toApplicantTaskResultView, toReviewerResultView } from './task'
 import type { ApplicantResultResponse, ReviewerResultResponse, TaskStatusResponse } from '@/types'
 
 describe('task API adapters', () => {
@@ -62,10 +62,63 @@ describe('task API adapters', () => {
         },
       ],
       suggestions: ['材料预检查已完成，审批人员将进行进一步审核。'],
+      handlingStatus: null,
+      handlingStatusLabel: '',
+      reviewerRemark: '',
+      reviewerActionAt: null,
     })
     expect('riskHints' in view).toBe(false)
     expect('draftOpinion' in view).toBe(false)
     expect('extractedFields' in view).toBe(false)
+  })
+
+  it('builds applicant task result view from applicant projection and status snapshot only', () => {
+    const statusDto: TaskStatusResponse = {
+      taskId: 'task-1',
+      status: 'COMPLETED',
+      handlingStatus: 'CORRECTION_REQUIRED',
+      handlingStatusLabel: '退回补正',
+      reviewerRemark: '请补充营业执照副本',
+      submittedAt: '2026-05-08T10:00:00',
+      updatedAt: '2026-05-08T10:01:00',
+      materials: [
+        {
+          materialType: 'BUSINESS_LICENSE',
+          originalFileName: null,
+          uploaded: false,
+        },
+      ],
+    }
+    const resultDto: ApplicantResultResponse = {
+      taskId: 'task-1',
+      status: 'COMPLETED',
+      handlingStatus: 'CORRECTION_REQUIRED',
+      handlingStatusLabel: '退回补正',
+      reviewerRemark: '请补充营业执照副本',
+      reviewerActionAt: '2026-05-08T10:02:00',
+      summary: '申请人可见结果',
+      missingMaterials: ['BUSINESS_LICENSE'],
+      issues: [
+        {
+          code: 'MISSING_MATERIAL',
+          severity: 'BLOCKER',
+          message: '营业执照缺失',
+        },
+      ],
+    }
+
+    const view = toApplicantTaskResultView(statusDto, toApplicantResultView(resultDto))
+
+    expect(view.viewMode).toBe('APPLICANT')
+    expect(view.handlingStatus).toBe('CORRECTION_REQUIRED')
+    expect(view.handlingStatusLabel).toBe('退回补正')
+    expect(view.reviewerRemark).toBe('请补充营业执照副本')
+    expect(view.reviewActionLogs).toEqual([])
+    expect(view.extractedFields).toEqual({})
+    expect(view.riskHints).toEqual([])
+    expect(view.draftOpinion).toBe('')
+    expect(view.materials).toEqual(statusDto.materials)
+    expect(view.requiresManualReview).toBe(true)
   })
 
   it('maps reviewer Java DTO objects to displayable view fields', () => {
@@ -110,6 +163,26 @@ describe('task API adapters', () => {
         },
       ],
       manualReviewNotice: '请人工复核证照一致性。',
+      handlingStatus: 'MANUAL_REVIEW_REQUIRED',
+      handlingStatusLabel: '转人工复核',
+      reviewerRemark: '需要核对证照一致性',
+      reviewerActionCode: 'TRANSFER_MANUAL_REVIEW',
+      reviewerUserId: 2001,
+      reviewerDisplayName: '审批员甲',
+      reviewerActionAt: '2026-05-08T10:02:00',
+      actionLogs: [
+        {
+          actionCode: 'TRANSFER_MANUAL_REVIEW',
+          actionLabel: '转人工复核',
+          reviewerRemark: '需要核对证照一致性',
+          operatorUserId: 2001,
+          operatorDisplayName: '审批员甲',
+          fromHandlingStatus: null,
+          toHandlingStatus: 'MANUAL_REVIEW_REQUIRED',
+          operatedAt: '2026-05-08T10:02:00',
+        },
+      ],
+      modelMetadata: null,
     }
 
     const view = toReviewerResultView(statusDto, resultDto)
@@ -131,7 +204,101 @@ describe('task API adapters', () => {
     })
     expect(view.riskHints[0]).toContain('取水量字段与材料描述需要复核')
     expect(view.manualReviewNotice).toBe('请人工复核证照一致性。')
+    expect(view.handlingStatus).toBe('MANUAL_REVIEW_REQUIRED')
+    expect(view.handlingStatusLabel).toBe('转人工复核')
+    expect(view.reviewerRemark).toBe('需要核对证照一致性')
+    expect(view.reviewerActionCode).toBe('TRANSFER_MANUAL_REVIEW')
+    expect(view.reviewActionLogs).toHaveLength(1)
+    expect(view.reviewActionLogs[0]).toMatchObject({
+      actionCode: 'TRANSFER_MANUAL_REVIEW',
+      actionLabel: '转人工复核',
+      toHandlingStatus: 'MANUAL_REVIEW_REQUIRED',
+    })
     expect(view.requiresManualReview).toBe(true)
+  })
+
+  it('accepts legacy reviewActionLogs alias when actionLogs is empty', () => {
+    const statusDto: TaskStatusResponse = {
+      taskId: 'task-1',
+      status: 'COMPLETED',
+      submittedAt: '2026-05-08T10:00:00',
+      updatedAt: '2026-05-08T10:01:00',
+      materials: [],
+    }
+    const resultDto: ReviewerResultResponse = {
+      taskId: 'task-1',
+      status: 'COMPLETED',
+      summary: '审核辅助结果已生成',
+      missingMaterials: [],
+      draftOpinion: '',
+      extractedFields: {},
+      issues: [],
+      riskHints: [],
+      actionLogs: [],
+      reviewActionLogs: [
+        {
+          actionCode: 'APPROVE_INITIAL_REVIEW',
+          reviewerRemark: '已通过',
+          operatorUserId: 2002,
+          operatorDisplayName: '审批员乙',
+          toHandlingStatus: 'INITIAL_REVIEW_PASSED',
+          operatedAt: '2026-05-08T10:05:00',
+        },
+      ],
+      modelMetadata: null,
+    }
+
+    const view = toReviewerResultView(statusDto, resultDto)
+
+    expect(view.reviewActionLogs).toHaveLength(1)
+    expect(view.reviewActionLogs[0]).toMatchObject({
+      actionCode: 'APPROVE_INITIAL_REVIEW',
+      actionLabel: '通过初审',
+      reviewerRemark: '已通过',
+      operatorDisplayName: '审批员乙',
+      toHandlingStatus: 'INITIAL_REVIEW_PASSED',
+    })
+  })
+
+  it('falls back to shared action labels for action logs without backend labels', () => {
+    const statusDto: TaskStatusResponse = {
+      taskId: 'task-1',
+      status: 'COMPLETED',
+      submittedAt: '2026-05-08T10:00:00',
+      updatedAt: '2026-05-08T10:01:00',
+      materials: [],
+    }
+    const resultDto: ReviewerResultResponse = {
+      taskId: 'task-1',
+      status: 'COMPLETED',
+      summary: '审核辅助结果已生成',
+      missingMaterials: [],
+      draftOpinion: '',
+      extractedFields: {},
+      issues: [],
+      riskHints: [],
+      actionLogs: [
+        {
+          actionCode: 'RETURN_FOR_CORRECTION',
+          reviewerRemark: '补正材料',
+          operatorUserId: 2002,
+          operatorDisplayName: '审批员乙',
+          toHandlingStatus: 'CORRECTION_REQUIRED',
+          operatedAt: '2026-05-08T10:05:00',
+        },
+      ],
+    }
+
+    const view = toReviewerResultView(statusDto, resultDto)
+
+    expect(view.reviewActionLogs[0].actionLabel).toBe('退回补正')
+  })
+
+  it('detects completed initial-review handling statuses', () => {
+    expect(isReviewerActionCompleted(null)).toBe(false)
+    expect(isReviewerActionCompleted('INITIAL_REVIEW_PASSED')).toBe(true)
+    expect(isReviewerActionCompleted('CORRECTION_REQUIRED')).toBe(true)
+    expect(isReviewerActionCompleted('MANUAL_REVIEW_REQUIRED')).toBe(true)
   })
 
   it('normalizes reviewer extracted field snapshots from worker array payloads', () => {

@@ -3,7 +3,7 @@
     <div class="flex items-start justify-between gap-5 max-md:block">
       <div>
         <h1 class="sw-page-title">AI 智能审核结果</h1>
-        <p class="mb-[22px] mt-[-12px] leading-[1.7] text-sw-muted">AI 结果用于审批辅助；存在失败、阻断项或人工复核提示时，不视为完整通过。</p>
+        <p class="mb-[22px] mt-[-12px] leading-[1.7] text-sw-muted">AI 结果用于审批辅助建议，不构成正式审批决定。最终结论以审批人员处理结果为准。</p>
       </div>
       <router-link class="sw-btn sw-btn-ghost" to="/">返回申请列表</router-link>
     </div>
@@ -63,10 +63,22 @@
           <dl class="m-0 grid [grid-template-columns:86px_1fr] gap-x-4 gap-y-[13px]">
             <dt class="font-bold text-sw-muted">任务状态</dt>
             <dd class="m-0 min-w-0"><StatusTag :status="task.status" /></dd>
+            <template v-if="task.handlingStatusLabel">
+              <dt class="font-bold text-sw-muted">处理结果</dt>
+              <dd class="m-0 min-w-0">
+                <span class="inline-flex items-center rounded-full border border-sw-line-strong bg-[#f6f9fd] px-2.5 py-1 text-xs font-bold text-[#2b4362]">
+                  {{ task.handlingStatusLabel }}
+                </span>
+              </dd>
+            </template>
             <dt class="font-bold text-sw-muted">任务 ID</dt>
             <dd class="m-0 min-w-0"><code>{{ inputTaskId }}</code></dd>
             <dt class="font-bold text-sw-muted">材料提交情况</dt>
             <dd class="m-0 min-w-0"><TaskMaterialSummary :slots="task.materials" variant="stacked" /></dd>
+            <template v-if="task.reviewerRemark">
+              <dt class="font-bold text-sw-muted">审批备注</dt>
+              <dd class="m-0 min-w-0 leading-[1.7] text-[#2b4362]">{{ task.reviewerRemark }}</dd>
+            </template>
           </dl>
         </PageCard>
       </section>
@@ -148,6 +160,83 @@
             <p class="whitespace-pre-wrap rounded-[10px] bg-[#f6f9fd] p-[14px] leading-[1.8] text-slate-700">{{ task.draftOpinion }}</p>
             <small class="mt-2 inline-block text-sw-warning">草稿仅供审批人员参考，不构成最终审批决定。</small>
           </div>
+
+          <div v-if="canShowReviewerActionPanel" class="mt-[18px] border-t border-sw-line pt-[18px]">
+            <h3 class="mb-3 text-base font-black text-[#16233b]">审核处理</h3>
+            <p class="mb-3 leading-[1.7] text-sw-muted">请选择处理动作并填写备注（可选）。若任务已处理，将展示历史处理结果并禁用重复提交。</p>
+
+            <div v-if="actionErrorMessage" class="sw-alert sw-alert-danger mb-3">
+              {{ actionErrorMessage }}
+            </div>
+            <div v-if="actionSuccessMessage" class="sw-alert sw-alert-info mb-3">
+              {{ actionSuccessMessage }}
+            </div>
+            <div v-if="reviewerActionCompleted" class="sw-alert sw-alert-warning mb-3">
+              当前任务已完成处理：{{ task.handlingStatusLabel || '已处理' }}，不可重复提交。
+            </div>
+
+            <label class="mb-3 grid gap-2">
+              <span class="font-extrabold text-[#26364f]">处理备注（选填）</span>
+              <textarea
+                v-model="reviewerRemarkInput"
+                class="sw-input min-h-[98px] py-2"
+                placeholder="例如：请补充缺失材料并重新提交。"
+                :disabled="reviewerActionSubmitting || reviewerActionCompleted"
+                maxlength="1000"
+              />
+            </label>
+
+            <div class="grid gap-3 [grid-template-columns:repeat(3,minmax(0,1fr))] max-md:grid-cols-1">
+              <button
+                type="button"
+                class="sw-btn sw-btn-primary"
+                :disabled="reviewerActionSubmitting || reviewerActionCompleted || !reviewerActionAllowed"
+                @click="submitAction('APPROVE_INITIAL_REVIEW')"
+              >
+                {{ reviewerActionSubmitting ? '提交中...' : '通过初审' }}
+              </button>
+              <button
+                type="button"
+                class="sw-btn sw-btn-ghost"
+                :disabled="reviewerActionSubmitting || reviewerActionCompleted || !reviewerActionAllowed"
+                @click="submitAction('RETURN_FOR_CORRECTION')"
+              >
+                退回补正
+              </button>
+              <button
+                type="button"
+                class="sw-btn sw-btn-ghost"
+                :disabled="reviewerActionSubmitting || reviewerActionCompleted || !reviewerActionAllowed"
+                @click="submitAction('TRANSFER_MANUAL_REVIEW')"
+              >
+                转人工复核
+              </button>
+            </div>
+            <p v-if="!reviewerActionAllowed" class="mt-2 text-xs text-sw-muted">
+              当前任务状态为 {{ task.status }}，仅 `PARTIAL_SUCCESS` 或 `COMPLETED` 允许提交处理动作。
+            </p>
+          </div>
+
+          <div v-if="task.viewMode === 'REVIEWER'" class="mt-[18px] border-t border-sw-line pt-[18px]">
+            <h3 class="mb-3 text-base font-black text-[#16233b]">处理日志</h3>
+            <ul v-if="task.reviewActionLogs.length" class="m-0 grid list-none gap-2.5 p-0">
+              <li
+                v-for="log in task.reviewActionLogs"
+                :key="`${log.actionCode}-${log.operatedAt || 'na'}-${log.operatorUserId || 'na'}`"
+                class="rounded-[10px] border border-sw-line bg-[#f8fbff] p-3 leading-[1.7] text-[#2b4362]"
+              >
+                <div class="flex items-center justify-between gap-3 max-md:block">
+                  <strong>{{ log.actionLabel || log.actionCode }}</strong>
+                  <span class="text-xs text-sw-muted">{{ formatDateTime(log.operatedAt) }}</span>
+                </div>
+                <div class="mt-1 text-sm text-sw-muted">
+                  操作人：{{ log.operatorDisplayName || `用户#${log.operatorUserId ?? '未知'}` }}
+                </div>
+                <div v-if="log.reviewerRemark" class="mt-1">备注：{{ log.reviewerRemark }}</div>
+              </li>
+            </ul>
+            <EmptyState v-else title="暂无处理日志" description="当前任务尚未提交审核动作。" />
+          </div>
         </PageCard>
 
         <div class="grid gap-4 [grid-template-columns:repeat(2,minmax(0,1fr))] max-md:grid-cols-1">
@@ -167,9 +256,23 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { getApplicantResult, getReviewerResult, getTaskStatus, toApplicantResultView, toReviewerResultView } from '@/api/task'
+import {
+  getApplicantResult,
+  getReviewerResult,
+  getTaskStatus,
+  submitReviewerAction,
+  toApplicantTaskResultView,
+  toApplicantResultView,
+  toReviewerResultView,
+  isReviewerActionCompleted,
+} from '@/api/task'
 import { getCurrentRole } from '@/utils/auth'
-import type { ApplicantResultView, MaterialSlot, MaterialType, Severity, TaskResultView } from '@/types'
+import type {
+  MaterialType,
+  ReviewerActionCode,
+  Severity,
+  TaskResultView,
+} from '@/types'
 import { MATERIAL_LABELS } from '@/types'
 import PageCard from '@/components/common/PageCard.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
@@ -184,9 +287,18 @@ const inputTaskId = ref((route.query.taskId as string) || '')
 const task = ref<TaskResultView | null>(null)
 const loading = ref(false)
 const lookupError = ref('')
+const reviewerRemarkInput = ref('')
+const reviewerActionSubmitting = ref(false)
+const actionErrorMessage = ref('')
+const actionSuccessMessage = ref('')
 
 const uploadedCount = computed(() => task.value?.materials.filter((slot) => slot.uploaded).length ?? 0)
 const isApplicantView = computed(() => task.value?.viewMode === 'APPLICANT')
+const canShowReviewerActionPanel = computed(() => task.value?.viewMode === 'REVIEWER')
+const reviewerActionCompleted = computed(() => task.value ? isReviewerActionCompleted(task.value.handlingStatus) : false)
+const reviewerActionAllowed = computed(() =>
+  task.value?.status === 'PARTIAL_SUCCESS' || task.value?.status === 'COMPLETED',
+)
 
 const summaryText = computed(() => {
   if (!task.value) return ''
@@ -211,7 +323,7 @@ async function lookup() {
     if (getCurrentRole() === 'APPLICANT') {
       const resultRes = await getApplicantResult(taskId)
       task.value = toApplicantTaskResultView(
-        statusRes.data.data.materials,
+        statusRes.data.data,
         toApplicantResultView(resultRes.data.data),
       )
     } else {
@@ -221,6 +333,9 @@ async function lookup() {
         ...toReviewerResultView(statusRes.data.data, resultRes.data.data),
       }
     }
+    actionErrorMessage.value = ''
+    actionSuccessMessage.value = ''
+    reviewerRemarkInput.value = task.value?.reviewerRemark ?? ''
   } catch (error) {
     lookupError.value = error instanceof Error ? error.message : '查询失败，请确认任务 ID。'
     task.value = null
@@ -229,34 +344,46 @@ async function lookup() {
   }
 }
 
-function toApplicantTaskResultView(materials: MaterialSlot[], result: ApplicantResultView): TaskResultView {
-  const summary = {
-    totalFindings: result.fieldIssues.length,
-    blockerCount: result.fieldIssues.filter((finding) => finding.severity === 'BLOCKER').length,
-    warningCount: result.fieldIssues.filter((finding) => finding.severity === 'WARNING').length,
-    infoCount: result.fieldIssues.filter((finding) => finding.severity === 'INFO').length,
-  }
+async function submitAction(actionCode: ReviewerActionCode) {
+  if (!task.value || task.value.viewMode !== 'REVIEWER') return
+  if (reviewerActionCompleted.value) return
+  if (!reviewerActionAllowed.value) return
 
-  return {
-    viewMode: 'APPLICANT',
-    status: result.status,
-    materials,
-    summary,
-    extractedFields: {},
-    fieldConfidence: null,
-    materialSummaries: {},
-    findings: result.fieldIssues,
-    riskHints: [],
-    draftOpinion: '',
-    manualReviewNotice: result.suggestions.join(' '),
-    failureCategory: result.status === 'FAILED' ? 'SYSTEM_ERROR' : null,
-    failureReason: result.status === 'FAILED' ? '暂无法生成结果，请检查材料文件是否可读，或重新提交新的任务。' : null,
-    requiresManualReview: result.status === 'FAILED' || summary.blockerCount > 0 || result.missingMaterials.length > 0,
+  reviewerActionSubmitting.value = true
+  actionErrorMessage.value = ''
+  actionSuccessMessage.value = ''
+  try {
+    const payload = {
+      actionCode,
+      reviewerRemark: reviewerRemarkInput.value.trim(),
+    }
+    const res = await submitReviewerAction(inputTaskId.value.trim(), payload)
+    await lookup()
+    actionSuccessMessage.value = `处理动作已提交：${res.data.data.handlingStatusLabel || res.data.data.actionLabel || actionCode}`
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '处理动作提交失败，请稍后重试。'
+    actionErrorMessage.value = message
+    if (message.includes('已提交过审核动作') || message.includes('状态已变化')) {
+      await lookup()
+      actionErrorMessage.value = message
+    }
+  } finally {
+    reviewerActionSubmitting.value = false
   }
 }
 
 function materialShortName(type: MaterialType): string {
   return MATERIAL_LABELS[type].slice(0, 2)
+}
+
+function formatDateTime(value: string | null | undefined): string {
+  if (!value) return '未返回'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
 function severityDotClass(severity: Severity): string {

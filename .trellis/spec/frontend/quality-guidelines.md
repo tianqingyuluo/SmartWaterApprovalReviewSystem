@@ -69,7 +69,9 @@ vue-tsc -b && vite build
   - `getTaskStatus`
   - `getApplicantResult`
   - `getReviewerResult`
+  - `submitReviewerAction`
   - `toApplicantResultView`
+  - `toApplicantTaskResultView`
   - `toReviewerResultView`
 - Test:
   - `api/task.spec.ts`
@@ -89,6 +91,8 @@ vue-tsc -b && vite build
 | `manualReviewNotice` 没有透传 | 测试应失败。 |
 | `MATERIAL_FORM_FIELDS` 和后端字段名不一致 | 测试应失败。 |
 | reviewer result 的 `extractedFields` 仍是未知结构 | 必须先归一化再交给页面。 |
+| 申请人结果页面拼装 reviewer-only DTO | 测试应失败；申请人 view model 必须由申请人 DTO 和 status snapshot 生成。 |
+| 初审动作日志缺少 label | adapter 应使用共享 action label 回退。 |
 
 ### 5. Good/Base/Bad Cases
 
@@ -103,6 +107,9 @@ vue-tsc -b && vite build
   - risk hint 格式化
   - applicant suggestion 生成
   - material form field 映射
+  - CP3 初审处理快照与 action log 映射
+  - applicant projection 不包含 reviewer-only 字段
+- `utils/auth.spec.ts` 覆盖畸形本地用户资料不会被信任为有效角色。
 
 ### 7. Wrong vs Correct
 

@@ -6,8 +6,14 @@ import type {
   ApplicantResultResponse,
   ReviewerResultResponse,
   TaskListResponse,
+  ReviewerActionSubmitRequest,
+  ReviewerActionResponse,
   ApplicantResultView,
   ReviewerResultView,
+  TaskResultView,
+  ReviewActionLogDto,
+  ReviewActionLogView,
+  HandlingStatus,
   FailureCategory,
   ApplicantIssueDto,
   ReviewerIssueDto,
@@ -15,6 +21,7 @@ import type {
   Finding,
   ResultSummary,
 } from '@/types'
+import { REVIEWER_ACTION_LABELS } from '@/types'
 
 // ── API functions ──
 
@@ -48,6 +55,10 @@ export function getTaskList(page = 1, size = 20) {
   })
 }
 
+export function submitReviewerAction(taskId: string, payload: ReviewerActionSubmitRequest) {
+  return request.post<R<ReviewerActionResponse>>(`/task/${taskId}/reviewer-action`, payload)
+}
+
 // ── Adapters: backend DTO → page view model ──
 
 export function toApplicantResultView(dto: ApplicantResultResponse): ApplicantResultView {
@@ -56,6 +67,47 @@ export function toApplicantResultView(dto: ApplicantResultResponse): ApplicantRe
     missingMaterials: dto.missingMaterials,
     fieldIssues: dto.issues.map(toApplicantFinding),
     suggestions: buildApplicantSuggestions(dto),
+    handlingStatus: dto.handlingStatus ?? null,
+    handlingStatusLabel: dto.handlingStatusLabel ?? '',
+    reviewerRemark: dto.reviewerRemark ?? '',
+    reviewerActionAt: dto.reviewerActionAt ?? null,
+  }
+}
+
+export function toApplicantTaskResultView(
+  statusDto: TaskStatusResponse,
+  resultView: ApplicantResultView,
+): TaskResultView {
+  const summary = summarizeIssues(resultView.fieldIssues)
+
+  return {
+    viewMode: 'APPLICANT',
+    status: resultView.status,
+    handlingStatus: resultView.handlingStatus ?? statusDto.handlingStatus ?? null,
+    handlingStatusLabel: resultView.handlingStatusLabel || statusDto.handlingStatusLabel || '',
+    reviewerRemark: resultView.reviewerRemark || statusDto.reviewerRemark || '',
+    reviewerActionCode: null,
+    reviewerUserId: null,
+    reviewerDisplayName: '',
+    reviewerActionAt: resultView.reviewerActionAt,
+    reviewActionLogs: [],
+    materials: statusDto.materials,
+    summary,
+    extractedFields: {},
+    fieldConfidence: null,
+    materialSummaries: {},
+    findings: resultView.fieldIssues,
+    riskHints: [],
+    draftOpinion: '',
+    manualReviewNotice: resultView.suggestions.join(' '),
+    failureCategory: resultView.status === 'FAILED' ? 'SYSTEM_ERROR' : null,
+    failureReason: resultView.status === 'FAILED'
+      ? '暂无法生成结果，请检查材料文件是否可读，或重新提交新的任务。'
+      : null,
+    requiresManualReview:
+      resultView.status === 'FAILED'
+      || summary.blockerCount > 0
+      || resultView.missingMaterials.length > 0,
   }
 }
 
@@ -69,6 +121,14 @@ export function toReviewerResultView(
 
   return {
     status: resultDto.status,
+    handlingStatus: resultDto.handlingStatus ?? statusDto.handlingStatus ?? null,
+    handlingStatusLabel: resultDto.handlingStatusLabel ?? statusDto.handlingStatusLabel ?? '',
+    reviewerRemark: resultDto.reviewerRemark ?? statusDto.reviewerRemark ?? '',
+    reviewerActionCode: resultDto.reviewerActionCode ?? null,
+    reviewerUserId: resultDto.reviewerUserId ?? null,
+    reviewerDisplayName: resultDto.reviewerDisplayName ?? '',
+    reviewerActionAt: resultDto.reviewerActionAt ?? null,
+    reviewActionLogs: normalizeReviewActionLogs(resultDto.actionLogs, resultDto.reviewActionLogs),
     materials: statusDto.materials,
     summary: summarizeIssues(resultDto.issues),
     extractedFields: normalizeExtractedFields(resultDto.extractedFields),
@@ -80,8 +140,39 @@ export function toReviewerResultView(
     manualReviewNotice,
     failureCategory,
     failureReason,
-    requiresManualReview: failureCategory !== null || hasBlocker || manualReviewNotice !== '',
+    requiresManualReview:
+      failureCategory !== null
+      || hasBlocker
+      || manualReviewNotice !== ''
+      || (resultDto.handlingStatus ?? statusDto.handlingStatus ?? null) === 'MANUAL_REVIEW_REQUIRED',
   }
+}
+
+function normalizeReviewActionLogs(
+  actionLogs: ReviewActionLogDto[] | null | undefined,
+  reviewActionLogs: ReviewActionLogDto[] | null | undefined,
+): ReviewActionLogView[] {
+  const logs = actionLogs && actionLogs.length > 0
+    ? actionLogs
+    : (reviewActionLogs ?? [])
+  if (!Array.isArray(logs)) {
+    return []
+  }
+
+  return logs.map((log) => ({
+    actionCode: log.actionCode,
+    actionLabel: log.actionLabel ?? inferActionLabel(log.actionCode),
+    reviewerRemark: log.reviewerRemark ?? '',
+    operatorUserId: typeof log.operatorUserId === 'number' ? log.operatorUserId : null,
+    operatorDisplayName: log.operatorDisplayName ?? '',
+    fromHandlingStatus: log.fromHandlingStatus ?? null,
+    toHandlingStatus: log.toHandlingStatus ?? null,
+    operatedAt: log.operatedAt ?? null,
+  }))
+}
+
+function inferActionLabel(actionCode: string): string {
+  return isReviewerActionCode(actionCode) ? REVIEWER_ACTION_LABELS[actionCode] : actionCode
 }
 
 function extractFailureInfo(resultDto: ReviewerResultResponse): { failureCategory: FailureCategory; failureReason: string | null } {
@@ -157,6 +248,16 @@ function summarizeIssues(issues: Array<{ severity: string }>): ResultSummary {
     warningCount: issues.filter((f) => f.severity === 'WARNING').length,
     infoCount: issues.filter((f) => f.severity === 'INFO').length,
   }
+}
+
+function isReviewerActionCode(value: string): value is keyof typeof REVIEWER_ACTION_LABELS {
+  return value in REVIEWER_ACTION_LABELS
+}
+
+export function isReviewerActionCompleted(status: HandlingStatus): boolean {
+  return status === 'INITIAL_REVIEW_PASSED'
+    || status === 'CORRECTION_REQUIRED'
+    || status === 'MANUAL_REVIEW_REQUIRED'
 }
 
 function normalizeExtractedFields(value: unknown): Record<string, string> {

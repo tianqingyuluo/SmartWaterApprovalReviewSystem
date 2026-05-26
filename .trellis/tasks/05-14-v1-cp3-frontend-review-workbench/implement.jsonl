@@ -1,1 +1,7 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/tasks/05-13-v1-system-design-checkpoints/prd.md", "reason": "V1 CP3 AI assistive result, reviewer todo, action and CP4 boundary decisions"}
+{"file": ".trellis/spec/frontend/type-safety.md", "reason": "DTO/view model separation and canonical frontend union types"}
+{"file": ".trellis/spec/frontend/smartwater-mvp-visibility.md", "reason": "Role-scoped frontend visibility, applicant/reviewer result APIs, reviewer action display rules"}
+{"file": ".trellis/spec/frontend/component-guidelines.md", "reason": "Presentational business components and page orchestration boundary"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "Frontend adapter/test/build quality gate"}
+{"file": ".trellis/spec/frontend/styling-guidelines.md", "reason": "Tailwind SmartWater UI tokens and page styling rules"}
+{"file": ".trellis/spec/backend/smartwater-mvp-contracts.md", "reason": "Backend DTO/action/result contract consumed by frontend"}
