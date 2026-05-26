@@ -1,5 +1,81 @@
 # Python Worker 接口文档与启动指南
 
+## 零、FastAPI 审查任务入口（CP3-B）
+
+Python 服务新增 FastAPI 审查任务主线，供 Java 通过内部调用触发后台审核：
+
+- **GET** `/health`
+- **POST** `/api/review/tasks`
+- **GET** `/api/review/tasks/{aiTaskId}`
+
+### 创建审查任务
+
+**POST** `/api/review/tasks`
+
+请求头（可选）：
+
+```http
+X-Internal-Token: <INTERNAL_API_TOKEN>
+```
+
+> 当 `INTERNAL_API_TOKEN` 配置非空时必须携带；为空时不校验该请求头。
+
+请求体示例：
+
+```json
+{
+  "taskId": "SWA1B2C3D4E5F6G7H",
+  "sessionId": "a1b2c3d4e5f6789012345678abcdef01",
+  "materials": [
+    {
+      "materialType": "APPLICATION_FORM",
+      "originalFileName": "test.pdf",
+      "storageKey": "SWA1B2/APPLICATION_FORM/uuid.pdf",
+      "fileExtension": "pdf",
+      "uploaded": true
+    }
+  ]
+}
+```
+
+响应示例：
+
+```json
+{
+  "aiTaskId": "SWA1B2C3D4E5F6G7H",
+  "status": "QUEUED",
+  "createdAt": "2026-05-26T03:00:00Z"
+}
+```
+
+FastAPI 返回 `202` 后会在后台执行与 Worker 同一条处理链路：
+
+1. 调用 Java `/api/task/{taskId}/status` 更新为 `PROCESSING`
+2. 下载材料 + OCR + 字段抽取
+3. 规则检查 + RAG 检索 + Agent 汇总
+4. Agent 失败时降级为规则结果并标记人工复核
+5. 回调 Java `/api/task/{taskId}/result`
+
+### 查询 FastAPI 侧任务状态
+
+**GET** `/api/review/tasks/{aiTaskId}`
+
+响应示例：
+
+```json
+{
+  "aiTaskId": "SWA1B2C3D4E5F6G7H",
+  "status": "PARTIAL_SUCCESS",
+  "createdAt": "2026-05-26T03:00:00Z",
+  "updatedAt": "2026-05-26T03:00:10Z",
+  "result": {
+    "status": "PARTIAL_SUCCESS",
+    "resultSummary": "规则检查完成，Agent汇总不可用，已降级为规则结果 (已降级为规则结果，建议人工复核)"
+  },
+  "errorMessage": null
+}
+```
+
 ## 一、Worker 依赖的 Java 后端接口
 
 Worker 通过 HTTP 调用 Java 后端，需要以下端点：

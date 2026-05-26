@@ -8,6 +8,7 @@ load_dotenv()
 class Config:
     BACKEND_API_BASE: str = os.getenv("BACKEND_API_BASE", "http://localhost:8080/api")
     WORKER_TOKEN: str = os.getenv("WORKER_TOKEN", "")
+    INTERNAL_API_TOKEN: str = os.getenv("INTERNAL_API_TOKEN", "")
 
     OCR_PROVIDER: str = os.getenv("OCR_PROVIDER", "glm")
     OCR_GLM_API_KEY: str = os.getenv("OCR_GLM_API_KEY", "")

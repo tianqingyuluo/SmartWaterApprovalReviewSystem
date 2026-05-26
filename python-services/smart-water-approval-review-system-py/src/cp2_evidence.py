@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import sys
+from typing import Any
 
 from src.config import config
 from src.ingest.chroma_store import ChromaStore
@@ -105,8 +107,8 @@ def _list_mcp_tools() -> list[str]:
     return names
 
 
-def _call_mcp_tool(name: str, arguments: dict) -> dict:
-    async def _call() -> dict:
+def _call_mcp_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+    async def _call() -> dict[str, Any]:
         server = build_mcp_server()
         result = await server.call_tool(name, arguments)
         content = getattr(result, "content", result)
@@ -114,10 +116,9 @@ def _call_mcp_tool(name: str, arguments: dict) -> dict:
             for item in content:
                 text = getattr(item, "text", None)
                 if text:
-                    import json
-
-                    return json.loads(text)
-        return result
+                    parsed = json.loads(text)
+                    return parsed if isinstance(parsed, dict) else {"result": parsed}
+        return result if isinstance(result, dict) else {"result": result}
 
     return asyncio.run(_call())
 

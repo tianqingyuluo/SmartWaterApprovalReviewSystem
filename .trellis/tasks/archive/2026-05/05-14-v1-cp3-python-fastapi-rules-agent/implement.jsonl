@@ -1,0 +1,7 @@
+{"file": ".trellis/tasks/05-14-v1-cp3-python-fastapi-rules-agent/prd.md", "reason": "CP3-B FastAPI, parsing, rules, RAG, Agent, and Java callback acceptance scope"}
+{"file": ".trellis/spec/backend/smartwater-mvp-contracts.md", "reason": "Cross-service task states, Worker polling/writeback, CP3 RBAC boundary, CP2 ingest and Chroma contracts"}
+{"file": ".trellis/spec/backend/review-reasoning-adapter.md", "reason": "Review result schema, provider adapter behavior, extractedFields, applicant/reviewer writeback contract"}
+{"file": ".trellis/spec/backend/ocr-adapter.md", "reason": "GLM OCR layout_parsing contract and OCR failure handling"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Java R<T>, Worker token, status transitions, and controlled failure behavior"}
+{"file": ".trellis/spec/backend/logging-guidelines.md", "reason": "Python Worker logging and secret/redaction guardrails"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Python unit/integration test expectations and external dependency mocking"}

@@ -830,6 +830,150 @@ and the service rejects non-reviewer/non-admin users with `403`.
 
 ---
 
+## CP3 Python FastAPI Review Task Contract
+
+CP3-B adds a FastAPI task entry while keeping the existing Worker polling and
+Java callback contract as the source of truth.
+
+### 1. Scope / Trigger
+
+- Trigger: Python FastAPI routes, `INTERNAL_API_TOKEN`, review task DTOs,
+  background processing, shared Worker/FastAPI orchestration, or Java-to-Python
+  task dispatch.
+- Python package: `python-services/smart-water-approval-review-system-py`.
+
+### 2. Signatures
+
+FastAPI service:
+
+```bash
+uv run uvicorn src.api.app:app --host 0.0.0.0 --port 8000
+```
+
+Health:
+
+```http
+GET /health
+```
+
+Create task:
+
+```http
+POST /api/review/tasks
+X-Internal-Token: <INTERNAL_API_TOKEN, if configured>
+Content-Type: application/json
+```
+
+```json
+{
+  "taskId": "SW123",
+  "sessionId": "session-token",
+  "materials": [
+    {
+      "materialType": "APPLICATION_FORM",
+      "originalFileName": "apply.pdf",
+      "storageKey": "SW123/APPLICATION_FORM/file.pdf",
+      "fileExtension": "pdf",
+      "uploaded": true
+    }
+  ],
+  "idempotencyKey": "optional"
+}
+```
+
+```json
+{
+  "aiTaskId": "SW123",
+  "status": "QUEUED",
+  "createdAt": "2026-05-26T03:00:00Z"
+}
+```
+
+Query task:
+
+```http
+GET /api/review/tasks/{aiTaskId}
+X-Internal-Token: <INTERNAL_API_TOKEN, if configured>
+```
+
+### 3. Contracts
+
+| Item | Contract |
+|---|---|
+| `INTERNAL_API_TOKEN` | Optional internal token for FastAPI review-task APIs; when empty, only local/dev unauthenticated calls are allowed. |
+| `X-Internal-Token` | Required only when `INTERNAL_API_TOKEN` is non-empty. |
+| JSON casing | FastAPI wire contract uses camelCase; Python internals may use snake_case with Pydantic aliases. |
+| `aiTaskId` | CP3 uses Java `taskId` as the FastAPI task ID for traceability. |
+| Task store | In-memory only for CP3; Java persistence remains authoritative. |
+| Background work | `POST /api/review/tasks` returns `202` after queuing processing. |
+| Status sync | Background processing first tries Java `/task/{taskId}/status` -> `PROCESSING`. |
+| Result writeback | Final result still goes through Java `/task/{taskId}/result` with `X-Worker-Token`. |
+| Worker polling | Existing `SmartWaterWorker` keeps `/task/pending` polling and reuses the same orchestrator. |
+| Knowledge pack | FastAPI loads the static MVP knowledge pack and copies its version into result callbacks. |
+
+### 4. Validation & Error Matrix
+
+| Condition | Expected behavior |
+|---|---|
+| Wrong `X-Internal-Token` when configured | FastAPI returns HTTP `403`; do not start background processing. |
+| Unknown `aiTaskId` on query | FastAPI returns HTTP `404`. |
+| Knowledge pack missing on `/health` | Return `status=degraded`; do not crash the service process. |
+| Java status sync fails | Continue processing but log a warning; final callback may still succeed. |
+| Java result callback fails after retries | Mark FastAPI in-memory task `FAILED` and attempt Java status `FAILED`. |
+| Agent/LLM returns failure category or throws | Return `PARTIAL_SUCCESS` with rules fallback and reviewer-only manual-review notice. |
+
+### 5. Good/Base/Bad Cases
+
+- Good: Java can dispatch a task to FastAPI, while frontend still polls Java and
+  never calls Python directly.
+- Good: Worker polling and FastAPI dispatch share `ReviewTaskOrchestrator`, so
+  fallback and callback behavior do not diverge.
+- Base: FastAPI task state is process-local; restart loses FastAPI query history
+  but Java remains authoritative.
+- Bad: create a separate FastAPI result schema that cannot be written to Java
+  `/task/{taskId}/result`.
+- Bad: let ordinary tests require a live OCR/LLM/backend service.
+
+### 6. Tests Required
+
+- FastAPI tests for health, task creation, status query, camelCase aliases,
+  `403` token rejection, and `404` unknown task.
+- Orchestrator tests for rule issue merge, Agent failure fallback, applicant vs
+  reviewer result separation, and `knowledgePackVersion` propagation.
+- Worker/result writer tests remain green after reusing the orchestrator.
+- Lock and dependency check after adding FastAPI/uvicorn:
+
+```bash
+uv lock --check
+uv run ruff check src tests
+uv run mypy src
+uv run python -m compileall src main.py
+uv run pytest -q tests/test_fastapi_app.py tests/test_review_orchestrator.py tests/test_result_writer.py tests/test_review_adapter.py tests/test_ocr_adapter.py
+```
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```python
+class CreateReviewTaskRequest(BaseModel):
+    task_id: str
+```
+
+and require Java to send `task_id`.
+
+#### Correct
+
+```python
+class CreateReviewTaskRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    task_id: str = Field(alias="taskId")
+```
+
+so the wire contract remains camelCase.
+
+---
+
 ## Forbidden Patterns
 
 - Do not introduce alternate enum names such as `WATER_INTAKE_APPLICATION` unless the contract is updated everywhere.
