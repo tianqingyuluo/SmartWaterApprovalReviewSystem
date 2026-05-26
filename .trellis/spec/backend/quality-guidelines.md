@@ -150,6 +150,7 @@ Minimum tests for backend/Worker PRs:
 | Change | Required assertions |
 |---|---|
 | Material submission | 0-3 fixed slots create a task; invalid extension returns a controlled error; storage upload is mocked. |
+| CP3 acceptance trigger | Submitted material tasks must be claimable through the implemented AI trigger path. If Java direct FastAPI dispatch is not wired, acceptance evidence must explicitly use the Worker polling path: `SUBMITTED`/`QUEUED` -> pending claim -> `PROCESSING` -> result writeback/query. |
 | Access control | wrong or missing `sessionId` cannot read task/result; Worker API rejects missing/wrong token. |
 | Status updates | valid transitions pass; invalid transitions fail deterministically. |
 | Result writeback | applicant/reviewer payloads are saved separately; `materialCompleteness.missing` appears as API `missingMaterials`. |

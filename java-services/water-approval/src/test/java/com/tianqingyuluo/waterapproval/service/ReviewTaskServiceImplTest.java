@@ -2,11 +2,13 @@ package com.tianqingyuluo.waterapproval.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tianqingyuluo.waterapproval.common.BusinessException;
+import com.tianqingyuluo.waterapproval.dto.PendingTaskResponse;
 import com.tianqingyuluo.waterapproval.dto.ResultWriteRequest;
 import com.tianqingyuluo.waterapproval.dto.ReviewerActionResponse;
 import com.tianqingyuluo.waterapproval.dto.ReviewerActionSubmitRequest;
 import com.tianqingyuluo.waterapproval.dto.ReviewerResultResponse;
 import com.tianqingyuluo.waterapproval.dto.SubmitRequest;
+import com.tianqingyuluo.waterapproval.dto.SubmitResponse;
 import com.tianqingyuluo.waterapproval.dto.TaskListResponse;
 import com.tianqingyuluo.waterapproval.dto.UserProfileResponse;
 import com.tianqingyuluo.waterapproval.entity.MaterialSlot;
@@ -22,8 +24,10 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -83,6 +87,100 @@ class ReviewTaskServiceImplTest {
         user.setDisplayName("管理员");
         user.setRole("ADMIN");
         return user;
+    }
+
+    @Test
+    void submittedMaterialsShouldBeClaimedByWorkerAndAcceptResultWriteback() {
+        UserProfileResponse applicant = applicantUser(8101L);
+        SubmitRequest request = new SubmitRequest();
+        request.setApplicationForm(new MockMultipartFile(
+                "applicationForm",
+                "application.pdf",
+                "application/pdf",
+                "申请书内容".getBytes(StandardCharsets.UTF_8)
+        ));
+        request.setBusinessLicense(new MockMultipartFile(
+                "businessLicense",
+                "license.jpg",
+                "image/jpeg",
+                "营业执照内容".getBytes(StandardCharsets.UTF_8)
+        ));
+        request.setIdCard(new MockMultipartFile(
+                "idCard",
+                "id-card.png",
+                "image/png",
+                "身份证内容".getBytes(StandardCharsets.UTF_8)
+        ));
+
+        SubmitResponse submitResponse = reviewTaskService.submit(request, applicant);
+
+        assertEquals("SUBMITTED", submitResponse.getStatus());
+        assertNotNull(submitResponse.getTaskId());
+        assertNotNull(submitResponse.getSessionId());
+        assertEquals(3, submitResponse.getMaterials().size());
+        assertTrue(submitResponse.getMaterials().stream().allMatch(SubmitResponse.MaterialInfo::getUploaded));
+
+        ReviewTask created = taskMapper.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ReviewTask>()
+                        .eq(ReviewTask::getTaskId, submitResponse.getTaskId())
+        );
+        assertNotNull(created);
+        assertEquals(8101L, created.getOwnerUserId());
+
+        created.setSubmittedAt(LocalDateTime.now().minusYears(1));
+        taskMapper.updateById(created);
+
+        List<PendingTaskResponse> pendingTasks = reviewTaskService.getPendingTasks();
+        PendingTaskResponse claimedTask = pendingTasks.stream()
+                .filter(item -> item.getTaskId().equals(submitResponse.getTaskId()))
+                .findFirst()
+                .orElseThrow();
+
+        assertEquals("PROCESSING", claimedTask.getStatus());
+        assertEquals(3, claimedTask.getMaterials().size());
+        PendingTaskResponse.PendingMaterial applicationForm =
+                findPendingMaterial(claimedTask.getMaterials(), "APPLICATION_FORM");
+        assertEquals(Boolean.TRUE, applicationForm.getUploaded());
+        assertEquals("application.pdf", applicationForm.getOriginalFileName());
+        assertNotNull(applicationForm.getStorageKey());
+        assertEquals("pdf", applicationForm.getFileExtension());
+
+        ReviewTask processing = taskMapper.selectById(created.getId());
+        assertEquals("PROCESSING", processing.getStatus());
+
+        ResultWriteRequest result = new ResultWriteRequest();
+        result.setStatus("COMPLETED");
+        result.setApplicantResult(Map.of(
+                "summary", "申请人可见结果已生成",
+                "materialCompleteness", Map.of("missing", List.of())
+        ));
+        result.setReviewerResult(Map.of(
+                "summary", "审批人员结构化结果已生成",
+                "extractedFields", List.of(Map.of(
+                        "fieldKey", "applicant.name",
+                        "fieldValue", "某某科技有限公司",
+                        "sourceMaterial", "APPLICATION_FORM"
+                ))
+        ));
+
+        reviewTaskService.writeResult(submitResponse.getTaskId(), result);
+
+        assertEquals(
+                "申请人可见结果已生成",
+                reviewTaskService.getApplicantResult(
+                        submitResponse.getTaskId(),
+                        submitResponse.getSessionId(),
+                        applicant
+                ).getSummary()
+        );
+        assertEquals(
+                "审批人员结构化结果已生成",
+                reviewTaskService.getReviewerResult(
+                        submitResponse.getTaskId(),
+                        null,
+                        reviewerUser()
+                ).getSummary()
+        );
     }
 
     @Test
@@ -601,5 +699,14 @@ class ReviewTaskServiceImplTest {
         reviewResult.setCreatedAt(LocalDateTime.now());
         reviewResult.setUpdatedAt(LocalDateTime.now());
         resultMapper.insert(reviewResult);
+    }
+
+    private PendingTaskResponse.PendingMaterial findPendingMaterial(
+            List<PendingTaskResponse.PendingMaterial> materials,
+            String materialType) {
+        return materials.stream()
+                .filter(item -> materialType.equals(item.getMaterialType()))
+                .findFirst()
+                .orElseThrow();
     }
 }
