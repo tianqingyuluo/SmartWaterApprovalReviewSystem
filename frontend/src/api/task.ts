@@ -24,21 +24,21 @@ export function submitTask(formData: FormData) {
   })
 }
 
-export function getTaskStatus(taskId: string, sessionId: string) {
+export function getTaskStatus(taskId: string, sessionId?: string | null) {
   return request.get<R<TaskStatusResponse>>(`/task/${taskId}/status`, {
-    params: { sessionId },
+    params: sessionId ? { sessionId } : undefined,
   })
 }
 
-export function getApplicantResult(taskId: string, sessionId: string) {
+export function getApplicantResult(taskId: string, sessionId?: string | null) {
   return request.get<R<ApplicantResultResponse>>(`/task/${taskId}/result/applicant`, {
-    params: { sessionId },
+    params: sessionId ? { sessionId } : undefined,
   })
 }
 
-export function getReviewerResult(taskId: string, sessionId: string) {
+export function getReviewerResult(taskId: string, sessionId?: string | null) {
   return request.get<R<ReviewerResultResponse>>(`/task/${taskId}/result/reviewer`, {
-    params: { sessionId },
+    params: sessionId ? { sessionId } : undefined,
   })
 }
 
@@ -72,7 +72,7 @@ export function toReviewerResultView(
     materials: statusDto.materials,
     summary: summarizeIssues(resultDto.issues),
     extractedFields: normalizeExtractedFields(resultDto.extractedFields),
-    fieldConfidence: null,
+    fieldConfidence: normalizeFieldConfidence(resultDto.extractedFields),
     materialSummaries: {},
     findings: resultDto.issues.map(toReviewerFinding),
     riskHints: resultDto.riskHints.map(formatRiskHint),
@@ -160,13 +160,43 @@ function summarizeIssues(issues: Array<{ severity: string }>): ResultSummary {
 }
 
 function normalizeExtractedFields(value: unknown): Record<string, string> {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+  if (Array.isArray(value)) {
+    return Object.fromEntries(
+      value.flatMap((field) => {
+        if (!isRecord(field) || typeof field.fieldKey !== 'string') {
+          return []
+        }
+        return [[field.fieldKey, String(field.fieldValue ?? '')]]
+      }),
+    )
+  }
+
+  if (!isRecord(value)) {
     return {}
   }
 
   return Object.fromEntries(
     Object.entries(value).map(([key, fieldValue]) => [key, String(fieldValue ?? '')]),
   )
+}
+
+function normalizeFieldConfidence(value: unknown): Record<string, number> | null {
+  if (!Array.isArray(value)) {
+    return null
+  }
+
+  const entries = value.flatMap((field) => {
+    if (!isRecord(field) || typeof field.fieldKey !== 'string' || typeof field.confidence !== 'number') {
+      return []
+    }
+    return [[field.fieldKey, field.confidence]]
+  })
+
+  return entries.length > 0 ? Object.fromEntries(entries) : null
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 }
 
 function buildApplicantSuggestions(dto: ApplicantResultResponse): string[] {

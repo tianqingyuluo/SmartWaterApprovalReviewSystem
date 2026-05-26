@@ -8,10 +8,9 @@
       <router-link class="sw-btn sw-btn-ghost" to="/">返回申请列表</router-link>
     </div>
 
-    <PageCard v-if="!task" title="查询任务" subtitle="请输入任务 ID 和会话 ID。MVP 无账号体系，因此不能声明已按用户权限隔离。" compact>
-      <div class="grid gap-3 [grid-template-columns:minmax(220px,1fr)_minmax(220px,1fr)_auto] max-md:grid-cols-1">
+    <PageCard v-if="!task" title="查询任务" subtitle="请输入任务 ID。系统会按登录角色进行后端权限校验。" compact>
+      <div class="grid gap-3 [grid-template-columns:minmax(220px,1fr)_auto] max-md:grid-cols-1">
         <input v-model="inputTaskId" class="sw-input" placeholder="任务 ID" @keyup.enter="lookup" />
-        <input v-model="inputSessionId" class="sw-input" placeholder="会话 ID" @keyup.enter="lookup" />
         <button type="button" class="sw-btn sw-btn-primary" :disabled="loading" @click="lookup">
           {{ loading ? '查询中...' : '查询' }}
         </button>
@@ -66,8 +65,6 @@
             <dd class="m-0 min-w-0"><StatusTag :status="task.status" /></dd>
             <dt class="font-bold text-sw-muted">任务 ID</dt>
             <dd class="m-0 min-w-0"><code>{{ inputTaskId }}</code></dd>
-            <dt class="font-bold text-sw-muted">会话 ID</dt>
-            <dd class="m-0 min-w-0"><code>{{ inputSessionId }}</code></dd>
             <dt class="font-bold text-sw-muted">材料提交情况</dt>
             <dd class="m-0 min-w-0"><TaskMaterialSummary :slots="task.materials" variant="stacked" /></dd>
           </dl>
@@ -90,6 +87,7 @@
             :status="task.status"
             :resultSummary="task.summary"
             :requiresManualReview="task.requiresManualReview"
+            :audience="task.viewMode"
           />
 
           <div v-if="task.requiresManualReview" class="sw-alert sw-alert-warning mb-4">
@@ -102,7 +100,7 @@
             :failureReason="task.failureReason"
           />
 
-          <div v-if="Object.keys(task.extractedFields).length" class="mt-[18px] border-t border-sw-line pt-[18px]">
+          <div v-if="task.viewMode === 'REVIEWER' && Object.keys(task.extractedFields).length" class="mt-[18px] border-t border-sw-line pt-[18px]">
             <h3 class="mb-3 text-base font-black text-[#16233b]">抽取字段</h3>
             <div class="grid gap-3 [grid-template-columns:repeat(2,minmax(0,1fr))] max-md:grid-cols-1">
               <div v-for="(value, key) in task.extractedFields" :key="key" class="grid gap-1.5 rounded-[10px] bg-[#f6f9fd] p-3">
@@ -136,7 +134,7 @@
             <EmptyState v-else title="暂无问题清单" description="后端未返回问题项，仍需以人工审批结论为准。" />
           </div>
 
-          <div v-if="task.riskHints.length" class="mt-[18px] border-t border-sw-line pt-[18px]">
+          <div v-if="task.viewMode === 'REVIEWER' && task.riskHints.length" class="mt-[18px] border-t border-sw-line pt-[18px]">
             <h3 class="mb-3 text-base font-black text-[#16233b]">风险提示</h3>
             <ul class="m-0 grid list-none gap-2.5 p-0">
               <li v-for="hint in task.riskHints" :key="hint" class="rounded-lg border-l-4 border-sw-warning bg-[#fff8e8] px-3 py-2.5 leading-[1.7] text-[#714b00]">
@@ -145,7 +143,7 @@
             </ul>
           </div>
 
-          <div v-if="task.draftOpinion" class="mt-[18px] border-t border-sw-line pt-[18px]">
+          <div v-if="task.viewMode === 'REVIEWER' && task.draftOpinion" class="mt-[18px] border-t border-sw-line pt-[18px]">
             <h3 class="mb-3 text-base font-black text-[#16233b]">审核意见草稿</h3>
             <p class="whitespace-pre-wrap rounded-[10px] bg-[#f6f9fd] p-[14px] leading-[1.8] text-slate-700">{{ task.draftOpinion }}</p>
             <small class="mt-2 inline-block text-sw-warning">草稿仅供审批人员参考，不构成最终审批决定。</small>
@@ -153,7 +151,8 @@
         </PageCard>
 
         <div class="grid gap-4 [grid-template-columns:repeat(2,minmax(0,1fr))] max-md:grid-cols-1">
-          <router-link class="sw-btn sw-btn-ghost" to="/apply">返回申请</router-link>
+          <router-link v-if="isApplicantView" class="sw-btn sw-btn-ghost" to="/apply">返回申请</router-link>
+          <router-link v-else class="sw-btn sw-btn-ghost" to="/">返回待办</router-link>
           <button type="button" class="sw-btn sw-btn-ghost" @click="lookup" :disabled="loading">
             {{ loading ? '刷新中...' : '重新查询' }}
           </button>
@@ -168,8 +167,9 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { getReviewerResult, getTaskStatus, toReviewerResultView } from '@/api/task'
-import type { MaterialType, ReviewerResultView, Severity } from '@/types'
+import { getApplicantResult, getReviewerResult, getTaskStatus, toApplicantResultView, toReviewerResultView } from '@/api/task'
+import { getCurrentRole } from '@/utils/auth'
+import type { ApplicantResultView, MaterialSlot, MaterialType, Severity, TaskResultView } from '@/types'
 import { MATERIAL_LABELS } from '@/types'
 import PageCard from '@/components/common/PageCard.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
@@ -181,12 +181,12 @@ import TaskMaterialSummary from '@/components/business/TaskMaterialSummary.vue'
 const route = useRoute()
 
 const inputTaskId = ref((route.query.taskId as string) || '')
-const inputSessionId = ref((route.query.sessionId as string) || '')
-const task = ref<ReviewerResultView | null>(null)
+const task = ref<TaskResultView | null>(null)
 const loading = ref(false)
 const lookupError = ref('')
 
 const uploadedCount = computed(() => task.value?.materials.filter((slot) => slot.uploaded).length ?? 0)
+const isApplicantView = computed(() => task.value?.viewMode === 'APPLICANT')
 
 const summaryText = computed(() => {
   if (!task.value) return ''
@@ -198,24 +198,60 @@ const summaryText = computed(() => {
 })
 
 async function lookup() {
-  if (!inputTaskId.value.trim() || !inputSessionId.value.trim()) {
-    lookupError.value = '请输入任务 ID 和会话 ID。'
+  if (!inputTaskId.value.trim()) {
+    lookupError.value = '请输入任务 ID。'
     return
   }
 
   lookupError.value = ''
   loading.value = true
   try {
-    const [statusRes, resultRes] = await Promise.all([
-      getTaskStatus(inputTaskId.value.trim(), inputSessionId.value.trim()),
-      getReviewerResult(inputTaskId.value.trim(), inputSessionId.value.trim()),
-    ])
-    task.value = toReviewerResultView(statusRes.data.data, resultRes.data.data)
+    const taskId = inputTaskId.value.trim()
+    const statusRes = await getTaskStatus(taskId)
+    if (getCurrentRole() === 'APPLICANT') {
+      const resultRes = await getApplicantResult(taskId)
+      task.value = toApplicantTaskResultView(
+        statusRes.data.data.materials,
+        toApplicantResultView(resultRes.data.data),
+      )
+    } else {
+      const resultRes = await getReviewerResult(taskId)
+      task.value = {
+        viewMode: 'REVIEWER',
+        ...toReviewerResultView(statusRes.data.data, resultRes.data.data),
+      }
+    }
   } catch (error) {
-    lookupError.value = error instanceof Error ? error.message : '查询失败，请确认任务 ID 和会话 ID。'
+    lookupError.value = error instanceof Error ? error.message : '查询失败，请确认任务 ID。'
     task.value = null
   } finally {
     loading.value = false
+  }
+}
+
+function toApplicantTaskResultView(materials: MaterialSlot[], result: ApplicantResultView): TaskResultView {
+  const summary = {
+    totalFindings: result.fieldIssues.length,
+    blockerCount: result.fieldIssues.filter((finding) => finding.severity === 'BLOCKER').length,
+    warningCount: result.fieldIssues.filter((finding) => finding.severity === 'WARNING').length,
+    infoCount: result.fieldIssues.filter((finding) => finding.severity === 'INFO').length,
+  }
+
+  return {
+    viewMode: 'APPLICANT',
+    status: result.status,
+    materials,
+    summary,
+    extractedFields: {},
+    fieldConfidence: null,
+    materialSummaries: {},
+    findings: result.fieldIssues,
+    riskHints: [],
+    draftOpinion: '',
+    manualReviewNotice: result.suggestions.join(' '),
+    failureCategory: result.status === 'FAILED' ? 'SYSTEM_ERROR' : null,
+    failureReason: result.status === 'FAILED' ? '暂无法生成结果，请检查材料文件是否可读，或重新提交新的任务。' : null,
+    requiresManualReview: result.status === 'FAILED' || summary.blockerCount > 0 || result.missingMaterials.length > 0,
   }
 }
 
@@ -235,7 +271,7 @@ function severityIcon(severity: Severity): string {
   return 'i'
 }
 
-if (inputTaskId.value && inputSessionId.value) {
+if (inputTaskId.value) {
   lookup()
 }
 </script>

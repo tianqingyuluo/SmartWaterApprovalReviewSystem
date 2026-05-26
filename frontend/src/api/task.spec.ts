@@ -32,6 +32,42 @@ describe('task API adapters', () => {
     expect(view.suggestions).toContain('请补充缺失材料后重新提交，以获取完整的审核辅助结果。')
   })
 
+  it('keeps applicant projection free of reviewer-only fields', () => {
+    const dto: ApplicantResultResponse = {
+      taskId: 'task-1',
+      status: 'COMPLETED',
+      summary: '申请人可见结果',
+      missingMaterials: [],
+      issues: [
+        {
+          code: 'MISSING_FIELD',
+          severity: 'WARNING',
+          message: '请补充联系电话',
+        },
+      ],
+    }
+
+    const view = toApplicantResultView(dto)
+
+    expect(view).toEqual({
+      status: 'COMPLETED',
+      missingMaterials: [],
+      fieldIssues: [
+        {
+          findingType: 'MISSING_FIELD',
+          severity: 'WARNING',
+          audience: 'APPLICANT',
+          description: '请补充联系电话',
+          basis: null,
+        },
+      ],
+      suggestions: ['材料预检查已完成，审批人员将进行进一步审核。'],
+    })
+    expect('riskHints' in view).toBe(false)
+    expect('draftOpinion' in view).toBe(false)
+    expect('extractedFields' in view).toBe(false)
+  })
+
   it('maps reviewer Java DTO objects to displayable view fields', () => {
     const statusDto: TaskStatusResponse = {
       taskId: 'task-1',
@@ -96,6 +132,42 @@ describe('task API adapters', () => {
     expect(view.riskHints[0]).toContain('取水量字段与材料描述需要复核')
     expect(view.manualReviewNotice).toBe('请人工复核证照一致性。')
     expect(view.requiresManualReview).toBe(true)
+  })
+
+  it('normalizes reviewer extracted field snapshots from worker array payloads', () => {
+    const statusDto: TaskStatusResponse = {
+      taskId: 'task-1',
+      status: 'COMPLETED',
+      submittedAt: '2026-05-08T10:00:00',
+      updatedAt: '2026-05-08T10:01:00',
+      materials: [],
+    }
+    const resultDto: ReviewerResultResponse = {
+      taskId: 'task-1',
+      status: 'COMPLETED',
+      summary: '字段快照已生成',
+      missingMaterials: [],
+      draftOpinion: '',
+      extractedFields: [
+        {
+          fieldKey: 'applicant.name',
+          fieldValue: '某某科技有限公司',
+          confidence: 0.93,
+          sourceMaterial: 'APPLICATION_FORM',
+        },
+      ],
+      issues: [],
+      riskHints: [],
+    }
+
+    const view = toReviewerResultView(statusDto, resultDto)
+
+    expect(view.extractedFields).toEqual({
+      'applicant.name': '某某科技有限公司',
+    })
+    expect(view.fieldConfidence).toEqual({
+      'applicant.name': 0.93,
+    })
   })
 
   it('maps FAILED status to failure category and reason', () => {

@@ -689,6 +689,147 @@ store = ChromaStore()
 
 ---
 
+## CP3 Minimal RBAC And Task Visibility Contract
+
+CP3 adds the minimum identity boundary required for a real applicant/reviewer
+flow. This is not a full user-management subsystem.
+
+### 1. Scope / Trigger
+
+- Trigger: Java auth/login APIs, Sa-Token configuration, `user_account`
+  persistence, frontend token state, task submission/list/status/result
+  visibility, or Worker endpoint annotations.
+- Goal: applicants can only operate on their own tasks; reviewers see review
+  work only after AI processing reaches a reviewer-visible state; admins can
+  inspect all tasks for demonstration and troubleshooting.
+
+### 2. Signatures
+
+Auth APIs:
+
+```http
+POST /api/auth/login
+Content-Type: application/json
+
+{"username": "applicant", "password": "<password>"}
+```
+
+```json
+{
+  "code": 200,
+  "data": {
+    "token": "<sa-token>",
+    "user": {
+      "userId": 1,
+      "username": "applicant",
+      "displayName": "默认申请人",
+      "role": "APPLICANT"
+    }
+  }
+}
+```
+
+```http
+GET /api/auth/me
+Authorization: Bearer <sa-token>
+```
+
+Authenticated business APIs:
+
+```http
+Authorization: Bearer <sa-token>
+GET /api/task/list?page=1&size=20
+POST /api/task/submit
+GET /api/task/{taskId}/status
+GET /api/task/{taskId}/result/applicant
+GET /api/task/{taskId}/result/reviewer
+```
+
+Worker APIs remain token-protected and do not require a user session:
+
+```http
+X-Worker-Token: <configured worker token>
+GET /api/task/pending
+PUT /api/task/{taskId}/status
+PUT /api/task/{taskId}/result
+GET /api/material/download?key=<storageKey>
+```
+
+### 3. Contracts
+
+| Item | Contract |
+|---|---|
+| Roles | Canonical values are `APPLICANT`, `REVIEWER`, and `ADMIN`. |
+| Login token | Sa-Token value returned by `/auth/login`; frontend sends it as `Authorization: Bearer <token>`. |
+| Public API | Only endpoints annotated with `@PublicApi`, currently `/auth/login`, bypass login. |
+| Worker API | Endpoints annotated with `@WorkerApi` bypass user login but keep `X-Worker-Token` validation when token is configured. |
+| Task owner | `review_task.owner_user_id` is set from the logged-in applicant/admin submitting the task. |
+| Applicant visibility | Applicant lists and reads only tasks where `owner_user_id` equals the current user ID. |
+| Reviewer visibility | Reviewer task list/status/result access is limited to reviewer-visible statuses: `PARTIAL_SUCCESS`, `COMPLETED`, `FAILED`. |
+| Admin visibility | Admin can list and read all tasks; admin may submit for demo/troubleshooting. |
+| Applicant result | `APPLICANT` result projection only; never expose `reviewerResult.extractedFields`, `riskHints`, or `draftOpinion`. |
+| Reviewer result | Only `REVIEWER` or `ADMIN` can call `/result/reviewer`. |
+
+### 4. Validation & Error Matrix
+
+| Condition | Expected behavior |
+|---|---|
+| Missing or expired user token on business API | Return business `401`, and frontend clears auth state. |
+| Wrong login credentials or disabled account | Return business `401` with a generic credential error. |
+| Applicant A reads applicant B's task | Return `403`. |
+| Applicant calls reviewer result endpoint | Return `403`. |
+| Reviewer opens `SUBMITTED`, `QUEUED`, or `PROCESSING` task directly | Return `403`. |
+| Reviewer submits a new application | Return `403`; frontend must hide the action. |
+| Worker callback without configured/valid worker token when required | Return worker-token auth error; do not require Sa-Token login. |
+
+### 5. Good/Base/Bad Cases
+
+- Good: frontend login stores the backend token and user profile, then routes by
+  role without treating the menu as the authority.
+- Good: backend enforces the same role boundary even when a user crafts direct
+  API calls.
+- Base: seed users are acceptable for CP3 local/demo flow; CP4 can add full
+  admin user management.
+- Bad: let applicants query `/result/reviewer` and rely on frontend hiding
+  fields.
+- Bad: require a human login token for Python Worker polling or result callback.
+
+### 6. Tests Required
+
+- Java controller/service tests for login success/failure and `/auth/me`.
+- Java tests for unauthenticated business API rejection.
+- Java tests that applicant A cannot see applicant B's task/result.
+- Java tests that reviewer sees only reviewer-visible statuses and cannot
+  submit an applicant-owned task.
+- Java tests that Worker endpoints still work with `X-Worker-Token`.
+- Frontend tests that business `401` clears auth state.
+- Frontend adapter/page tests that applicant result flow uses applicant
+  projection and reviewer result preserves `extractedFields[]`.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```java
+@GetMapping("/{taskId}/result/reviewer")
+public R<ReviewerResultResponse> getReviewerResult(...) {
+    return R.ok(reviewTaskService.getReviewerResult(taskId, sessionId));
+}
+```
+
+without checking the current role.
+
+#### Correct
+
+```java
+ReviewerResultResponse response =
+    reviewTaskService.getReviewerResult(taskId, sessionId, authService.currentUser());
+```
+
+and the service rejects non-reviewer/non-admin users with `403`.
+
+---
+
 ## Forbidden Patterns
 
 - Do not introduce alternate enum names such as `WATER_INTAKE_APPLICATION` unless the contract is updated everywhere.

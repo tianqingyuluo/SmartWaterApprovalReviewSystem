@@ -3,6 +3,7 @@ package com.tianqingyuluo.waterapproval.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tianqingyuluo.waterapproval.common.BusinessException;
 import com.tianqingyuluo.waterapproval.dto.ApplicantResultResponse;
+import com.tianqingyuluo.waterapproval.dto.LoginRequest;
 import com.tianqingyuluo.waterapproval.dto.PendingTaskResponse;
 import com.tianqingyuluo.waterapproval.dto.ResultWriteRequest;
 import com.tianqingyuluo.waterapproval.dto.ReviewerResultResponse;
@@ -10,6 +11,7 @@ import com.tianqingyuluo.waterapproval.dto.StatusUpdateRequest;
 import com.tianqingyuluo.waterapproval.dto.TaskListResponse;
 import com.tianqingyuluo.waterapproval.dto.TaskStatusResponse;
 import com.tianqingyuluo.waterapproval.service.ReviewTaskService;
+import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -18,14 +20,17 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -139,9 +144,11 @@ class ReviewTaskControllerTest {
         TaskStatusResponse resp = new TaskStatusResponse();
         resp.setTaskId("task-1");
         resp.setStatus("PROCESSING");
-        when(reviewTaskService.getStatus("task-1", "session-1")).thenReturn(resp);
+        when(reviewTaskService.getStatus(eq("task-1"), eq("session-1"), any())).thenReturn(resp);
+        String token = loginAs("applicant", "applicant123");
 
         mockMvc.perform(get("/task/task-1/status")
+                        .header("Authorization", "Bearer " + token)
                         .param("sessionId", "session-1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
@@ -153,9 +160,11 @@ class ReviewTaskControllerTest {
         ApplicantResultResponse resp = new ApplicantResultResponse();
         resp.setTaskId("task-1");
         resp.setStatus("COMPLETED");
-        when(reviewTaskService.getApplicantResult("task-1", "session-1")).thenReturn(resp);
+        when(reviewTaskService.getApplicantResult(eq("task-1"), eq("session-1"), any())).thenReturn(resp);
+        String token = loginAs("applicant", "applicant123");
 
         mockMvc.perform(get("/task/task-1/result/applicant")
+                        .header("Authorization", "Bearer " + token)
                         .param("sessionId", "session-1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
@@ -167,9 +176,11 @@ class ReviewTaskControllerTest {
         resp.setTaskId("task-1");
         resp.setStatus("COMPLETED");
         resp.setManualReviewNotice("请人工复核证照一致性");
-        when(reviewTaskService.getReviewerResult("task-1", "session-1")).thenReturn(resp);
+        when(reviewTaskService.getReviewerResult(eq("task-1"), eq("session-1"), any())).thenReturn(resp);
+        String token = loginAs("reviewer", "reviewer123");
 
         mockMvc.perform(get("/task/task-1/result/reviewer")
+                        .header("Authorization", "Bearer " + token)
                         .param("sessionId", "session-1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
@@ -182,9 +193,11 @@ class ReviewTaskControllerTest {
         response.setTotal(1);
         response.setPage(1);
         response.setSize(20);
-        when(reviewTaskService.getTaskList(1, 20)).thenReturn(response);
+        when(reviewTaskService.getTaskList(eq(1), eq(20), any())).thenReturn(response);
+        String token = loginAs("applicant", "applicant123");
 
-        mockMvc.perform(get("/task/list"))
+        mockMvc.perform(get("/task/list")
+                        .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.total").value(1));
@@ -196,9 +209,11 @@ class ReviewTaskControllerTest {
         response.setTotal(100);
         response.setPage(2);
         response.setSize(10);
-        when(reviewTaskService.getTaskList(2, 10)).thenReturn(response);
+        when(reviewTaskService.getTaskList(eq(2), eq(10), any())).thenReturn(response);
+        String token = loginAs("reviewer", "reviewer123");
 
         mockMvc.perform(get("/task/list")
+                        .header("Authorization", "Bearer " + token)
                         .param("page", "2")
                         .param("size", "10"))
                 .andExpect(status().isOk())
@@ -213,9 +228,11 @@ class ReviewTaskControllerTest {
         response.setTotal(0);
         response.setPage(1);
         response.setSize(100);
-        when(reviewTaskService.getTaskList(1, 100)).thenReturn(response);
+        when(reviewTaskService.getTaskList(eq(1), eq(100), any())).thenReturn(response);
+        String token = loginAs("admin", "admin123");
 
         mockMvc.perform(get("/task/list")
+                        .header("Authorization", "Bearer " + token)
                         .param("size", "500"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
@@ -227,14 +244,39 @@ class ReviewTaskControllerTest {
         response.setTotal(0);
         response.setPage(1);
         response.setSize(1);
-        when(reviewTaskService.getTaskList(1, 1)).thenReturn(response);
+        when(reviewTaskService.getTaskList(eq(1), eq(1), any())).thenReturn(response);
+        String token = loginAs("applicant", "applicant123");
 
         mockMvc.perform(get("/task/list")
+                        .header("Authorization", "Bearer " + token)
                         .param("page", "0")
                         .param("size", "0"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.page").value(1))
                 .andExpect(jsonPath("$.data.size").value(1));
+    }
+
+    @Test
+    void taskListWithoutLoginShouldBeRejected() throws Exception {
+        mockMvc.perform(get("/task/list"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(401));
+    }
+
+    private String loginAs(String username, String password) throws Exception {
+        LoginRequest request = new LoginRequest();
+        request.setUsername(username);
+        request.setPassword(password);
+
+        MvcResult result = mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andReturn();
+
+        String body = result.getResponse().getContentAsString();
+        return JsonPath.read(body, "$.data.token");
     }
 }

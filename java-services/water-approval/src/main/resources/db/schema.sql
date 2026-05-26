@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS review_task (
     id BIGINT PRIMARY KEY COMMENT '主键ID',
     task_id VARCHAR(64) NOT NULL COMMENT '任务ID',
     session_id VARCHAR(64) NOT NULL COMMENT '会话ID',
+    owner_user_id BIGINT DEFAULT NULL COMMENT '任务归属申请人用户ID',
     status VARCHAR(32) NOT NULL COMMENT '任务状态',
     submitted_at DATETIME NOT NULL COMMENT '提交时间',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -19,6 +20,7 @@ CREATE TABLE IF NOT EXISTS review_task (
     deleted TINYINT(1) DEFAULT 0 COMMENT '逻辑删除 0-未删除 1-已删除',
     UNIQUE INDEX uk_task_id (task_id),
     UNIQUE INDEX uk_session_id (session_id),
+    INDEX idx_owner_user_id (owner_user_id),
     INDEX idx_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='审核任务表';
 
@@ -54,3 +56,17 @@ CREATE TABLE IF NOT EXISTS review_result (
     INDEX idx_task_id (task_id),
     INDEX idx_result_type (result_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='审核结果表';
+
+CREATE TABLE IF NOT EXISTS user_account (
+    id BIGINT PRIMARY KEY COMMENT '主键ID',
+    username VARCHAR(64) NOT NULL COMMENT '登录用户名',
+    display_name VARCHAR(128) NOT NULL COMMENT '显示名称',
+    password_hash VARCHAR(255) NOT NULL COMMENT 'BCrypt密码哈希',
+    role_code VARCHAR(32) NOT NULL COMMENT '角色 APPLICANT/REVIEWER/ADMIN',
+    enabled TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否启用',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted TINYINT(1) DEFAULT 0 COMMENT '逻辑删除 0-未删除 1-已删除',
+    UNIQUE INDEX uk_username (username),
+    INDEX idx_role_code (role_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统账号表';

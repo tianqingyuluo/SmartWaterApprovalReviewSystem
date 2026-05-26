@@ -6,6 +6,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tianqingyuluo.waterapproval.common.BusinessException;
 import com.tianqingyuluo.waterapproval.common.ProcessingStatus;
+import com.tianqingyuluo.waterapproval.common.RoleConstants;
 import com.tianqingyuluo.waterapproval.dto.*;
 import com.tianqingyuluo.waterapproval.entity.MaterialSlot;
 import com.tianqingyuluo.waterapproval.entity.ReviewResult;
@@ -38,16 +39,22 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
 
     private static final List<String> ACCEPTED_FILE_TYPES = Arrays.asList("jpg", "jpeg", "png", "pdf");
     private static final List<String> MATERIAL_TYPES = Arrays.asList("APPLICATION_FORM", "BUSINESS_LICENSE", "ID_CARD");
+    private static final Set<String> REVIEWER_VISIBLE_STATUSES = Set.of("PARTIAL_SUCCESS", "COMPLETED", "FAILED");
 
     @Override
     @Transactional
-    public SubmitResponse submit(SubmitRequest request) {
+    public SubmitResponse submit(SubmitRequest request, UserProfileResponse currentUser) {
+        if (!canSubmit(currentUser)) {
+            throw new BusinessException(403, "当前角色不允许提交申请");
+        }
+
         String taskId = generateTaskId();
         String sessionId = generateSessionId();
 
         ReviewTask task = new ReviewTask();
         task.setTaskId(taskId);
         task.setSessionId(sessionId);
+        task.setOwnerUserId(currentUser.getUserId());
         task.setStatus("SUBMITTED");
         task.setSubmittedAt(LocalDateTime.now());
         task.setCreatedAt(LocalDateTime.now());
@@ -67,7 +74,7 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
         response.setSubmittedAt(task.getSubmittedAt());
         response.setMaterials(materialInfos);
 
-        log.info("Task submitted: taskId={}", taskId);
+        log.info("Task submitted: taskId={}, ownerUserId={}", taskId, currentUser.getUserId());
         return response;
     }
 
@@ -118,8 +125,8 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
     }
 
     @Override
-    public TaskStatusResponse getStatus(String taskId, String sessionId) {
-        ReviewTask task = getTaskWithAccessCheck(taskId, sessionId);
+    public TaskStatusResponse getStatus(String taskId, String sessionId, UserProfileResponse currentUser) {
+        ReviewTask task = getTaskWithAccessCheck(taskId, sessionId, currentUser);
 
         List<MaterialSlot> slots = materialSlotMapper.selectList(
                 new LambdaQueryWrapper<MaterialSlot>().eq(MaterialSlot::getTaskId, taskId)
@@ -156,8 +163,8 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
     }
 
     @Override
-    public ApplicantResultResponse getApplicantResult(String taskId, String sessionId) {
-        ReviewTask task = getTaskWithAccessCheck(taskId, sessionId);
+    public ApplicantResultResponse getApplicantResult(String taskId, String sessionId, UserProfileResponse currentUser) {
+        ReviewTask task = getTaskWithAccessCheck(taskId, sessionId, currentUser);
 
         ReviewResult result = resultMapper.selectOne(
                 new LambdaQueryWrapper<ReviewResult>()
@@ -189,8 +196,12 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
     }
 
     @Override
-    public ReviewerResultResponse getReviewerResult(String taskId, String sessionId) {
-        ReviewTask task = getTaskWithAccessCheck(taskId, sessionId);
+    public ReviewerResultResponse getReviewerResult(String taskId, String sessionId, UserProfileResponse currentUser) {
+        if (!isReviewer(currentUser) && !isAdmin(currentUser)) {
+            throw new BusinessException(403, "当前角色无权查看审批结果");
+        }
+
+        ReviewTask task = getTaskWithAccessCheck(taskId, sessionId, currentUser);
 
         ReviewResult result = resultMapper.selectOne(
                 new LambdaQueryWrapper<ReviewResult>()
@@ -300,13 +311,6 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
         return new ArrayList<>();
     }
 
-    private List<String> parseMissingMaterials(Object missingObj) {
-        if (missingObj instanceof List) {
-            return (List<String>) missingObj;
-        }
-        return new ArrayList<>();
-    }
-
     private String getFileExtension(String fileName) {
         if (fileName == null || !fileName.contains(".")) {
             return "";
@@ -314,7 +318,10 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
         return fileName.substring(fileName.lastIndexOf(".") + 1).toLowerCase();
     }
 
-    private ReviewTask getTaskWithAccessCheck(String taskId, String sessionId) {
+    private ReviewTask getTaskWithAccessCheck(
+            String taskId,
+            String sessionId,
+            UserProfileResponse currentUser) {
         ReviewTask task = taskMapper.selectOne(
                 new LambdaQueryWrapper<ReviewTask>().eq(ReviewTask::getTaskId, taskId)
         );
@@ -323,7 +330,23 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
             throw new BusinessException(404, "任务不存在");
         }
 
-        if (sessionId == null || !sessionId.equals(task.getSessionId())) {
+        if (isAdmin(currentUser)) {
+            return task;
+        }
+
+        if (isReviewer(currentUser)) {
+            if (REVIEWER_VISIBLE_STATUSES.contains(task.getStatus())) {
+                return task;
+            }
+            throw new BusinessException(403, "当前任务不在审批可见范围");
+        }
+
+        if (currentUser.getUserId() == null || task.getOwnerUserId() == null
+                || !Objects.equals(task.getOwnerUserId(), currentUser.getUserId())) {
+            throw new BusinessException(403, "无权访问该任务");
+        }
+
+        if (sessionId != null && !sessionId.isBlank() && !sessionId.equals(task.getSessionId())) {
             throw new BusinessException(403, "无权访问该任务");
         }
 
@@ -339,13 +362,23 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
     }
 
     @Override
-    public TaskListResponse getTaskList(int page, int size) {
+    public TaskListResponse getTaskList(int page, int size, UserProfileResponse currentUser) {
         int safePage = Math.max(page, 1);
         int safeSize = Math.min(Math.max(size, 1), 100);
 
+        LambdaQueryWrapper<ReviewTask> queryWrapper = new LambdaQueryWrapper<>();
+        if (isAdmin(currentUser)) {
+            // admin sees all tasks
+        } else if (isReviewer(currentUser)) {
+            queryWrapper.in(ReviewTask::getStatus, REVIEWER_VISIBLE_STATUSES);
+        } else {
+            queryWrapper.eq(ReviewTask::getOwnerUserId, currentUser.getUserId());
+        }
+        queryWrapper.orderByDesc(ReviewTask::getSubmittedAt);
+
         Page<ReviewTask> taskPage = taskMapper.selectPage(
                 new Page<>(safePage, safeSize),
-                new LambdaQueryWrapper<ReviewTask>().orderByDesc(ReviewTask::getSubmittedAt)
+                queryWrapper
         );
         List<ReviewTask> tasks = taskPage.getRecords();
         long total = taskPage.getTotal();
@@ -365,7 +398,11 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
         for (ReviewTask task : tasks) {
             TaskListResponse.TaskListItem item = new TaskListResponse.TaskListItem();
             item.setTaskId(task.getTaskId());
-            item.setSessionId(task.getSessionId());
+            if (isApplicant(currentUser)) {
+                item.setSessionId(task.getSessionId());
+            } else {
+                item.setSessionId(null);
+            }
             item.setStatus(task.getStatus());
             item.setSubmittedAt(task.getSubmittedAt());
             item.setUpdatedAt(task.getUpdatedAt());
@@ -564,5 +601,21 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
                 new LambdaQueryWrapper<MaterialSlot>().eq(MaterialSlot::getStorageKey, storageKey)
         );
         return slot != null ? slot.getContentType() : "application/octet-stream";
+    }
+
+    private boolean canSubmit(UserProfileResponse currentUser) {
+        return isApplicant(currentUser) || isAdmin(currentUser);
+    }
+
+    private boolean isApplicant(UserProfileResponse currentUser) {
+        return currentUser != null && RoleConstants.APPLICANT.equals(currentUser.getRole());
+    }
+
+    private boolean isReviewer(UserProfileResponse currentUser) {
+        return currentUser != null && RoleConstants.REVIEWER.equals(currentUser.getRole());
+    }
+
+    private boolean isAdmin(UserProfileResponse currentUser) {
+        return currentUser != null && RoleConstants.ADMIN.equals(currentUser.getRole());
     }
 }

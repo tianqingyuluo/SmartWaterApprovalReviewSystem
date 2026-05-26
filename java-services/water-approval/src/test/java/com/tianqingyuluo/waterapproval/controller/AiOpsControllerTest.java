@@ -1,7 +1,10 @@
 package com.tianqingyuluo.waterapproval.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jayway.jsonpath.JsonPath;
 import com.tianqingyuluo.waterapproval.dto.AiHealthResponse;
 import com.tianqingyuluo.waterapproval.dto.AiIngestOperationResponse;
+import com.tianqingyuluo.waterapproval.dto.LoginRequest;
 import com.tianqingyuluo.waterapproval.service.AiOpsService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -17,6 +21,7 @@ import java.util.List;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -30,6 +35,9 @@ class AiOpsControllerTest {
 
     @MockitoBean
     private AiOpsService aiOpsService;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Test
     void getAiHealthShouldExposeConfiguredPythonStatus() throws Exception {
@@ -45,7 +53,8 @@ class AiOpsControllerTest {
         response.setCheckedAt(LocalDateTime.of(2026, 5, 19, 16, 0));
         when(aiOpsService.getHealth()).thenReturn(response);
 
-        mockMvc.perform(get("/ai/health"))
+        String token = loginAs("admin", "admin123");
+        mockMvc.perform(get("/ai/health").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.baseUrl").value("http://localhost:8000"))
@@ -75,7 +84,8 @@ class AiOpsControllerTest {
         response.setNote("Python 当前提供 ingest CLI 和 MCP 原生 transport；Java 侧输出可复现运维命令，不伪造 REST ingest。");
         when(aiOpsService.getIngestOperation()).thenReturn(response);
 
-        mockMvc.perform(post("/ai/ingest"))
+        String token = loginAs("admin", "admin123");
+        mockMvc.perform(post("/ai/ingest").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.mode").value("ops-command"))
@@ -83,5 +93,27 @@ class AiOpsControllerTest {
                 .andExpect(jsonPath("$.data.command[3]").value("-m"))
                 .andExpect(jsonPath("$.data.command[4]").value("src.ingest.cli"))
                 .andExpect(jsonPath("$.data.verificationCommand").value("uv run python -m src.mcp_server.demo --run-samples"));
+    }
+
+    @Test
+    void aiHealthWithoutLoginShouldBeRejected() throws Exception {
+        mockMvc.perform(get("/ai/health"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(401));
+    }
+
+    private String loginAs(String username, String password) throws Exception {
+        LoginRequest request = new LoginRequest();
+        request.setUsername(username);
+        request.setPassword(password);
+
+        MvcResult result = mockMvc.perform(post("/auth/login")
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andReturn();
+
+        return JsonPath.read(result.getResponse().getContentAsString(), "$.data.token");
     }
 }

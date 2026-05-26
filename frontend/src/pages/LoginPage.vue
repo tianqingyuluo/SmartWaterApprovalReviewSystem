@@ -7,7 +7,7 @@
           审批辅助系统
         </h1>
         <p class="mt-5 max-w-[640px] text-base leading-[1.85] text-sw-muted">
-          这是一个前端登录入口，用于进入申请、审核结果与知识库演示页面。当前版本不接真实账号体系，只做本地演示登录。
+          这是一个连接后端认证的登录入口，用于进入申请提交、任务列表、审核结果与知识库演示页面。
         </p>
 
         <div class="mt-8 grid gap-3 text-sm text-[#34516f] sm:grid-cols-2">
@@ -24,7 +24,7 @@
 
       <section class="rounded-[16px] border border-sw-line bg-white p-6 shadow-[0_16px_40px_rgba(15,35,70,0.08)]">
         <h2 class="text-2xl font-black text-[#12213a]">登录</h2>
-        <p class="mt-2 text-sm leading-[1.7] text-sw-muted">输入任意账号即可进入系统演示页。</p>
+        <p class="mt-2 text-sm leading-[1.7] text-sw-muted">使用后端账号登录，按角色进入对应工作台。</p>
 
         <form class="mt-6 grid gap-4" @submit.prevent="handleLogin">
           <label class="grid gap-2">
@@ -46,7 +46,7 @@
         </form>
 
         <div class="mt-6 rounded-[10px] bg-[#f6f9fd] px-4 py-3 text-sm leading-[1.7] text-sw-muted">
-          说明：登录状态仅保存在本地浏览器，不会请求后端认证接口。
+          默认账号：`applicant/applicant123`、`reviewer/reviewer123`、`admin/admin123`。
         </div>
       </section>
     </div>
@@ -56,7 +56,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { setAuthToken } from '@/utils/auth'
+import { login } from '@/api/auth'
+import { clearAuthState, setAuthToken, setCurrentUser } from '@/utils/auth'
+import type { UserRole } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
@@ -75,26 +77,40 @@ async function handleLogin() {
   loading.value = true
   errorMessage.value = ''
   try {
-    setAuthToken(`${username.value.trim()}-${Date.now()}`)
-    const redirect = resolveSafeRedirect(route.query.redirect)
+    const res = await login({
+      username: username.value.trim(),
+      password: password.value,
+    })
+    const payload = res.data.data
+    setAuthToken(payload.token)
+    setCurrentUser(payload.user)
+
+    const redirect = resolveSafeRedirect(route.query.redirect) || defaultPathByRole(payload.user.role)
     await router.replace(redirect)
-  } catch {
-    errorMessage.value = '登录失败，请重试。'
+  } catch (error) {
+    clearAuthState()
+    errorMessage.value = error instanceof Error ? error.message : '登录失败，请重试。'
   } finally {
     loading.value = false
   }
 }
 
-function resolveSafeRedirect(value: unknown): string {
+function resolveSafeRedirect(value: unknown): string | null {
   if (typeof value !== 'string') {
-    return '/'
+    return null
   }
 
   const redirect = value.trim()
   if (!redirect || !redirect.startsWith('/') || redirect.startsWith('//')) {
-    return '/'
+    return null
   }
 
   return redirect
+}
+
+function defaultPathByRole(role: UserRole): string {
+  if (role === 'APPLICANT') return '/apply'
+  if (role === 'REVIEWER') return '/'
+  return '/'
 }
 </script>

@@ -25,13 +25,14 @@
 
 ## 当前表模型
 
-MVP 当前只有三张核心表：
+当前核心表：
 
 | 表 | 实体 | 用途 |
 |---|---|---|
-| `review_task` | `ReviewTask` | 任务主表，保存 `taskId/sessionId/status/knowledgePackVersion` |
+| `review_task` | `ReviewTask` | 任务主表，保存 `taskId/sessionId/ownerUserId/status/knowledgePackVersion` |
 | `material_slot` | `MaterialSlot` | 固定三槽位材料上传记录 |
 | `review_result` | `ReviewResult` | `APPLICANT` / `REVIEWER` 两类结果 JSON |
+| `user_account` | `UserAccount` | CP3 最小登录账号与角色 |
 
 ### 实体约定
 
@@ -62,8 +63,10 @@ resultMapper.selectOne(
 ### 当前真实约束
 
 - `review_task.task_id`、`review_task.session_id` 唯一
+- `review_task.owner_user_id` 可为空以兼容历史数据，但新提交任务必须写入当前用户 ID
 - `material_slot (task_id, material_type)` 唯一，保证每类材料只有一个槽位
 - `review_result (task_id, result_type)` 唯一，保证申请人/审批人员结果各一份
+- `user_account.username` 唯一，`role_code` 只能使用 `APPLICANT` / `REVIEWER` / `ADMIN`
 
 ---
 
@@ -80,6 +83,7 @@ resultMapper.selectOne(
   - `ReviewTask`
   - `MaterialSlot`
   - `ReviewResult`
+  - `UserAccount` when auth/account schema changes
 
 ### 3. Contracts
 
@@ -98,16 +102,20 @@ resultMapper.selectOne(
 | 新增 schema 字段但 service/test 不断言 | 视为 contract 不完整，至少补一个 focused test。 |
 | 为简单单表查询引入 XML | 默认不接受，除非出现无法用 wrapper 表达的复杂查询。 |
 | 未来扩展材料类型时直接把固定槽位逻辑删掉 | 不接受；MVP contract 仍以固定三槽位为前提。 |
+| 登录/角色字段只存在于应用配置或前端 mock | 不接受；必须落到 `user_account` 或明确的测试替身。 |
 
 ### 5. Good/Base/Bad Cases
 
 - Good: `knowledge_pack_version` 增加后，`ReviewTask`、`schema.sql`、service 测试同步更新。
+- Good: `owner_user_id` 增加后，`ReviewTask`、主 schema、H2 schema、任务可见性测试同步更新。
+- Good: `user_account` 使用 BCrypt 密码哈希，不在 schema 或代码中保存明文密码。
 - Base: 继续把 reviewer/applicant 结果 JSON 保存在 `review_result.content` 中。
 - Bad: 只改 entity，不改建表脚本或 H2 测试 schema。
 
 ### 6. Tests Required
 
 - schema/entity 相关变更：至少一个 service 或 controller 测试覆盖新字段读写。
+- 认证/角色表变更：至少覆盖登录、当前用户、角色可见性和未登录拒绝。
 - 唯一约束相关逻辑：要么有显式测试，要么在 PR 说明里记录人工验证命令。
 - 测试 profile 必须继续脱离真实 MySQL。
 

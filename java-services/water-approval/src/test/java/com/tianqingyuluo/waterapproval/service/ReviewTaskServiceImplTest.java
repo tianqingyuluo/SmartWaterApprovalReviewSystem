@@ -1,8 +1,11 @@
 package com.tianqingyuluo.waterapproval.service;
 
+import com.tianqingyuluo.waterapproval.common.BusinessException;
 import com.tianqingyuluo.waterapproval.dto.ResultWriteRequest;
 import com.tianqingyuluo.waterapproval.dto.ReviewerResultResponse;
+import com.tianqingyuluo.waterapproval.dto.SubmitRequest;
 import com.tianqingyuluo.waterapproval.dto.TaskListResponse;
+import com.tianqingyuluo.waterapproval.dto.UserProfileResponse;
 import com.tianqingyuluo.waterapproval.entity.MaterialSlot;
 import com.tianqingyuluo.waterapproval.entity.ReviewResult;
 import com.tianqingyuluo.waterapproval.entity.ReviewTask;
@@ -18,9 +21,11 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -37,6 +42,33 @@ class ReviewTaskServiceImplTest {
 
     @Autowired
     private ReviewResultMapper resultMapper;
+
+    private static UserProfileResponse applicantUser(long id) {
+        UserProfileResponse user = new UserProfileResponse();
+        user.setUserId(id);
+        user.setUsername("applicant-" + id);
+        user.setDisplayName("申请人" + id);
+        user.setRole("APPLICANT");
+        return user;
+    }
+
+    private static UserProfileResponse reviewerUser() {
+        UserProfileResponse user = new UserProfileResponse();
+        user.setUserId(9001L);
+        user.setUsername("reviewer");
+        user.setDisplayName("审批员");
+        user.setRole("REVIEWER");
+        return user;
+    }
+
+    private static UserProfileResponse adminUser() {
+        UserProfileResponse user = new UserProfileResponse();
+        user.setUserId(9002L);
+        user.setUsername("admin");
+        user.setDisplayName("管理员");
+        user.setRole("ADMIN");
+        return user;
+    }
 
     @Test
     void writeResultShouldPersistKnowledgePackVersion() {
@@ -84,7 +116,7 @@ class ReviewTaskServiceImplTest {
                 .toList();
         assertEquals(2, rows.size(), "applicant/reviewer results should be upserted, not duplicated");
 
-        ReviewerResultResponse response = reviewTaskService.getReviewerResult(taskId, "session-idempotent");
+        ReviewerResultResponse response = reviewTaskService.getReviewerResult(taskId, null, reviewerUser());
         assertEquals("COMPLETED", response.getStatus());
         assertEquals("重复回调后的审批结果", response.getSummary());
     }
@@ -109,7 +141,7 @@ class ReviewTaskServiceImplTest {
 
         reviewTaskService.writeResult(taskId, request);
 
-        ReviewerResultResponse response = reviewTaskService.getReviewerResult(taskId, "session-fields");
+        ReviewerResultResponse response = reviewTaskService.getReviewerResult(taskId, null, reviewerUser());
 
         assertEquals("字段快照已生成", response.getSummary());
         assertNotNull(response.getExtractedFields());
@@ -138,7 +170,12 @@ class ReviewTaskServiceImplTest {
         task2.setUpdatedAt(LocalDateTime.now().minusDays(1));
         taskMapper.insert(task2);
 
-        TaskListResponse response = reviewTaskService.getTaskList(1, 20);
+        task1.setOwnerUserId(1001L);
+        taskMapper.updateById(task1);
+        task2.setOwnerUserId(1001L);
+        taskMapper.updateById(task2);
+
+        TaskListResponse response = reviewTaskService.getTaskList(1, 20, adminUser());
 
         assertNotNull(response);
         assertTrue(response.getTotal() >= 2);
@@ -165,7 +202,7 @@ class ReviewTaskServiceImplTest {
         task.setUpdatedAt(LocalDateTime.now());
         taskMapper.insert(task);
 
-        reviewTaskService.getTaskList(1, 20);
+        reviewTaskService.getTaskList(1, 20, adminUser());
 
         ReviewTask after = taskMapper.selectById(task.getId());
         assertEquals("QUEUED", after.getStatus());
@@ -186,15 +223,15 @@ class ReviewTaskServiceImplTest {
             taskMapper.insert(task);
         }
 
-        TaskListResponse page1 = reviewTaskService.getTaskList(1, 2);
+        TaskListResponse page1 = reviewTaskService.getTaskList(1, 2, adminUser());
         assertEquals(beforeCount + 5, page1.getTotal());
         assertTrue(page1.getItems().size() <= 2);
 
-        TaskListResponse page2 = reviewTaskService.getTaskList(2, 2);
+        TaskListResponse page2 = reviewTaskService.getTaskList(2, 2, adminUser());
         assertTrue(page2.getItems().size() <= 2);
 
         // Verify total count is consistent across pages
-        TaskListResponse page3 = reviewTaskService.getTaskList(3, 2);
+        TaskListResponse page3 = reviewTaskService.getTaskList(3, 2, adminUser());
         assertEquals(page1.getTotal(), page3.getTotal());
     }
 
@@ -218,7 +255,9 @@ class ReviewTaskServiceImplTest {
         applicationForm.setUpdatedAt(LocalDateTime.now());
         materialSlotMapper.insert(applicationForm);
 
-        TaskListResponse response = reviewTaskService.getTaskList(0, 0);
+        task.setOwnerUserId(1001L);
+        taskMapper.updateById(task);
+        TaskListResponse response = reviewTaskService.getTaskList(0, 0, applicantUser(1001L));
 
         TaskListResponse.TaskListItem item = response.getItems().stream()
                 .filter(candidate -> candidate.getTaskId().equals(task.getTaskId()))
@@ -235,6 +274,94 @@ class ReviewTaskServiceImplTest {
         assertEquals(Boolean.FALSE, item.getMaterials().get(1).getUploaded());
         assertEquals("ID_CARD", item.getMaterials().get(2).getMaterialType());
         assertEquals(Boolean.FALSE, item.getMaterials().get(2).getUploaded());
+    }
+
+    @Test
+    void applicantShouldOnlySeeOwnTaskInList() {
+        String ownerTaskId = "task-owner-" + System.nanoTime();
+        String otherTaskId = "task-other-" + System.nanoTime();
+        ReviewTask ownerTask = newReviewTask(ownerTaskId, "session-owner", "SUBMITTED");
+        ownerTask.setOwnerUserId(2001L);
+        taskMapper.insert(ownerTask);
+
+        ReviewTask otherTask = newReviewTask(otherTaskId, "session-other", "SUBMITTED");
+        otherTask.setOwnerUserId(2002L);
+        taskMapper.insert(otherTask);
+
+        TaskListResponse response = reviewTaskService.getTaskList(1, 50, applicantUser(2001L));
+
+        assertTrue(response.getItems().stream().anyMatch(item -> item.getTaskId().equals(ownerTaskId)));
+        assertFalse(response.getItems().stream().anyMatch(item -> item.getTaskId().equals(otherTaskId)));
+    }
+
+    @Test
+    void reviewerShouldOnlySeeCompletedLikeTasks() {
+        ReviewTask submitted = newReviewTask("task-submitted-" + System.nanoTime(), "session-1", "SUBMITTED");
+        submitted.setOwnerUserId(3001L);
+        taskMapper.insert(submitted);
+
+        ReviewTask completed = newReviewTask("task-completed-" + System.nanoTime(), "session-2", "COMPLETED");
+        completed.setOwnerUserId(3001L);
+        taskMapper.insert(completed);
+
+        TaskListResponse response = reviewTaskService.getTaskList(1, 50, reviewerUser());
+
+        assertFalse(response.getItems().stream().anyMatch(item -> item.getTaskId().equals(submitted.getTaskId())));
+        assertTrue(response.getItems().stream().anyMatch(item -> item.getTaskId().equals(completed.getTaskId())));
+    }
+
+    @Test
+    void applicantCannotReadOtherApplicantTask() {
+        String taskId = "task-private-" + System.nanoTime();
+        ReviewTask task = newReviewTask(taskId, "session-private", "COMPLETED");
+        task.setOwnerUserId(4001L);
+        taskMapper.insert(task);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> reviewTaskService.getStatus(taskId, "session-private", applicantUser(4002L)));
+        assertEquals(403, ex.getCode());
+    }
+
+    @Test
+    void reviewerCanReadCompletedTaskWithoutSessionId() {
+        String taskId = "task-reviewer-read-" + System.nanoTime();
+        ReviewTask task = newReviewTask(taskId, "session-review", "COMPLETED");
+        task.setOwnerUserId(5001L);
+        taskMapper.insert(task);
+
+        ReviewerResultResponse response = reviewTaskService.getReviewerResult(taskId, null, reviewerUser());
+        assertEquals(taskId, response.getTaskId());
+    }
+
+    @Test
+    void reviewerCannotReadSubmittedTaskDetails() {
+        String taskId = "task-reviewer-deny-" + System.nanoTime();
+        ReviewTask task = newReviewTask(taskId, "session-deny", "SUBMITTED");
+        task.setOwnerUserId(5002L);
+        taskMapper.insert(task);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> reviewTaskService.getStatus(taskId, null, reviewerUser()));
+        assertEquals(403, ex.getCode());
+    }
+
+    @Test
+    void reviewerRoleCannotSubmit() {
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> reviewTaskService.submit(new SubmitRequest(), reviewerUser()));
+        assertEquals(403, ex.getCode());
+    }
+
+    @Test
+    void applicantCannotReadReviewerResult() {
+        String taskId = "task-reviewer-result-private-" + System.nanoTime();
+        ReviewTask task = newReviewTask(taskId, "session-private", "COMPLETED");
+        task.setOwnerUserId(6001L);
+        taskMapper.insert(task);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> reviewTaskService.getReviewerResult(taskId, "session-private", applicantUser(6001L)));
+        assertEquals(403, ex.getCode());
     }
 
     private ReviewTask newReviewTask(String taskId, String sessionId, String status) {

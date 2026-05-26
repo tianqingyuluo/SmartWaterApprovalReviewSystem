@@ -16,6 +16,8 @@ public class ReviewTask {
 
     private String sessionId;
 
+    private Long ownerUserId;
+
     private String status;
 
     @TableField(fill = FieldFill.INSERT)

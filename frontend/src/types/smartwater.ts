@@ -11,6 +11,7 @@ export type ProcessingStatus =
 export type Severity = 'INFO' | 'WARNING' | 'BLOCKER'
 
 export type Audience = 'APPLICANT' | 'REVIEWER' | 'SYSTEM'
+export type UserRole = 'APPLICANT' | 'REVIEWER' | 'ADMIN'
 
 export const MATERIAL_LABELS: Record<MaterialType, string> = {
   APPLICATION_FORM: '取水许可申请书',
@@ -111,10 +112,22 @@ export interface RiskHintDto {
 
 export interface SubmitResponse {
   taskId: string
-  sessionId: string
+  sessionId?: string | null
   status?: ProcessingStatus
   submittedAt?: string
   materials?: MaterialSlot[]
+}
+
+export interface UserProfile {
+  userId: number
+  username: string
+  displayName: string
+  role: UserRole
+}
+
+export interface LoginResponse {
+  token: string
+  user: UserProfile
 }
 
 // ── Backend DTOs (match actual endpoint response shapes) ──
@@ -155,7 +168,7 @@ export interface ReviewerResultResponse {
 
 export interface TaskListItem {
   taskId: string
-  sessionId: string
+  sessionId?: string | null
   status: ProcessingStatus
   submittedAt: string
   updatedAt: string
@@ -193,6 +206,10 @@ export interface ReviewerResultView {
   failureCategory: FailureCategory
   failureReason: string | null
   requiresManualReview: boolean
+}
+
+export interface TaskResultView extends ReviewerResultView {
+  viewMode: 'APPLICANT' | 'REVIEWER'
 }
 
 // ── Status labels ──

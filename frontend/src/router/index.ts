@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { isAuthenticated } from '@/utils/auth'
+import { getCurrentRole, isAuthenticated } from '@/utils/auth'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -50,6 +50,28 @@ router.beforeEach((to) => {
 
   if (!isAuthenticated()) {
     return { name: 'login', query: { redirect: to.fullPath } }
+  }
+
+  const role = getCurrentRole()
+  if (!role) {
+    return { name: 'login', query: { redirect: to.fullPath } }
+  }
+
+  if (role === 'APPLICANT') {
+    if (to.path === '/knowledge-mcp') {
+      return { name: 'application-list' }
+    }
+    return true
+  }
+
+  if (role === 'REVIEWER') {
+    if (to.path === '/apply') {
+      return { name: 'application-list' }
+    }
+    if (to.path === '/knowledge-mcp') {
+      return { name: 'review-result' }
+    }
+    return true
   }
 
   return true
