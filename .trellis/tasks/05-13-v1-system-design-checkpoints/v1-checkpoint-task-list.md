@@ -309,6 +309,25 @@
 * 已上传的 PDF/图片可在结果页查看或以内联方式打开。
 * Java 和前端测试覆盖权限、预览 URL/路径生成、材料缺失和失败态。
 
+### CP3-H 修正 GLM OCR data URI 请求格式
+
+负责人类型：Python AI。
+
+交付物：
+
+* 修正 Python OCR 适配器传给 GLM `layout_parsing` 的 `file` 字段格式。
+* 对 PDF、jpg、jpeg、png 生成正确的 `data:<mime>;base64,<payload>`。
+* 保留扩展名白名单和 OCR 失败降级语义。
+* 补充 Python 单测覆盖 data URI 生成、成功响应解析和不支持格式。
+* 补充 CP3 验收证据，记录修复后真实营业执照样例可 OCR 成功。
+
+验收标准：
+
+* 有效 PDF/JPEG/PNG 不再因为裸 base64 被 GLM OCR 返回 `400`。
+* OCR 成功后 `reviewerResult.extractedFields` 出现真实 `ocr_markdown` 或版式字段。
+* 外部 OCR 失败时仍返回结构化人工复核提示，不泄露 API key 或文件内容。
+* Python 测试通过，CP3 证据记录修复前后差异。
+
 ## CP4：验收、报告与答辩
 
 目标：完成产品闭环、报告导出、部署文档和答辩材料。

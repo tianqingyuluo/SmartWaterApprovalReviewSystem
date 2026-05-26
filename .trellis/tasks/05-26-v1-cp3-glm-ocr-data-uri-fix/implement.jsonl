@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/backend/ocr-adapter.md", "reason": "Project OCR contract, GLM OCR layout_parsing expectations, extracted field semantics, and failure handling."}
+{"file": ".trellis/spec/backend/review-reasoning-adapter.md", "reason": "Downstream review reasoning expectations when OCR fields are present or missing."}
+{"file": ".trellis/spec/backend/smartwater-mvp-contracts.md", "reason": "Material slot types, Worker download boundary, task states, and reviewer result field contracts."}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "How OCR/download/upstream failures should become structured errors without leaking secrets."}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Python Worker test and quality gate expectations."}

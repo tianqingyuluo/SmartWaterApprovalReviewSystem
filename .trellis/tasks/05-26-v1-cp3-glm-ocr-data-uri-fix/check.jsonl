@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/backend/ocr-adapter.md", "reason": "Verify GLM OCR request encoding, parsing, and failure handling match the project OCR contract."}
+{"file": ".trellis/spec/backend/smartwater-mvp-contracts.md", "reason": "Verify OCR fix preserves Worker material flow and reviewer extractedFields contract."}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Verify external OCR 400/5xx/auth failures remain structured and do not leak API keys or file content."}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Verify the Python tests and CP3 acceptance evidence are sufficient."}

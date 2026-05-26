@@ -1,0 +1,40 @@
+{
+  "id": "v1-cp3-glm-ocr-data-uri-fix",
+  "name": "v1-cp3-glm-ocr-data-uri-fix",
+  "title": "CP3-H 修正 GLM OCR data URI 请求格式",
+  "description": "修正 Python OCR 适配器传给 GLM layout_parsing 的 file 参数格式，从裸 base64 改为带 MIME 的 data URI，并补测试与验收证据。",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P1",
+  "creator": "tianqingyuluo",
+  "assignee": "tianqingyuluo",
+  "createdAt": "2026-05-26",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "v1",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "05-13-v1-system-design-checkpoints",
+  "relatedFiles": [],
+  "notes": "Added during CP3 live demo after GLM OCR returned 400 for valid PDF/JPEG uploads. Root cause confirmed: Worker sends raw base64 in the `file` field; GLM layout_parsing accepts public URLs or data URIs such as `data:image/jpeg;base64,...` and `data:application/pdf;base64,...`.",
+  "meta": {
+    "checkpoint": "CP3",
+    "lane": "python",
+    "wave": 3,
+    "dependsOn": [
+      "v1-cp3-python-fastapi-rules-agent",
+      "v1-cp3-integration-stability-tests"
+    ],
+    "unblocks": [
+      "v1-cp3-integration-stability-tests",
+      "v1-cp3-frontend-review-workbench"
+    ],
+    "unlockCriteria": "CP3 Worker can download Java-stored materials and GLM OCR credentials are configured.",
+    "gatePolicy": "Fix OCR request encoding and tests only; do not change review reasoning, RBAC, storage, or frontend preview scope in this task."
+  }
+}
