@@ -77,7 +77,11 @@ async function handleLogin() {
   try {
     setAuthToken(`${username.value.trim()}-${Date.now()}`)
     const redirect = resolveSafeRedirect(route.query.redirect)
-    await router.replace(redirect)
+    try {
+      await router.replace(redirect)
+    } catch {
+      await router.replace('/')
+    }
   } catch {
     errorMessage.value = '登录失败，请重试。'
   } finally {

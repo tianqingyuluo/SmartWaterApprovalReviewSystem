@@ -80,7 +80,7 @@
           </div>
           <article
             v-for="item in searchResult.results"
-            :key="`${item.section}-${item.id}`"
+            :key="`${item.rank}-${item.section}-${item.id}`"
             class="rounded-[10px] border border-sw-line bg-white p-4"
           >
             <div class="flex flex-wrap items-start justify-between gap-3">
@@ -327,6 +327,9 @@ function runFailedCompletenessCheck() {
 }
 
 function buildKnowledgeSearchParams() {
+  if (!searchQuery.value.trim()) {
+    throw new Error('请输入查询词后重试。')
+  }
   if (!Number.isFinite(searchTopK.value) || searchTopK.value < 1 || searchTopK.value > 50) {
     throw new Error('topK 需要在 1-50 之间，请修改后重试。')
   }

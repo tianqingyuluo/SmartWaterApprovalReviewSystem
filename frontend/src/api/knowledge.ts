@@ -6,6 +6,7 @@ import type {
   MaterialType,
   McpToolName,
 } from '@/types'
+import { MATERIAL_LABELS } from '@/types'
 
 const DEMO_KNOWLEDGE_PACK_VERSION = 'water-permit-mvp-2026-05'
 
@@ -98,9 +99,9 @@ export function buildDemoCompleteness(materials: MaterialType[]): CompletenessRe
       severity: materialType === 'ID_CARD' ? 'BLOCKER' : 'WARNING',
       materialType,
       materialId: materialType.toLowerCase(),
-      materialDisplayName: materialDisplayName(materialType),
-      message: `${materialDisplayName(materialType)}未提交，完整性检查不通过。`,
-      applicantMessage: `请补充${materialDisplayName(materialType)}后重新提交。`,
+      materialDisplayName: MATERIAL_LABELS[materialType],
+      message: `${MATERIAL_LABELS[materialType]}未提交，完整性检查不通过。`,
+      applicantMessage: `请补充${MATERIAL_LABELS[materialType]}后重新提交。`,
       basisRefs: ['BASIS_MVP_REQUIRED_MATERIALS'],
       sourceRefs: ['取水许可 MVP 材料清单'],
     })),
@@ -108,8 +109,3 @@ export function buildDemoCompleteness(materials: MaterialType[]): CompletenessRe
   }
 }
 
-function materialDisplayName(materialType: MaterialType): string {
-  if (materialType === 'APPLICATION_FORM') return '取水许可申请书'
-  if (materialType === 'BUSINESS_LICENSE') return '营业执照'
-  return '身份证'
-}
