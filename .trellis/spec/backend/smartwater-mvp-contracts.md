@@ -743,6 +743,7 @@ POST /api/task/submit
 GET /api/task/{taskId}/status
 GET /api/task/{taskId}/result/applicant
 GET /api/task/{taskId}/result/reviewer
+POST /api/task/{taskId}/reviewer-action
 ```
 
 Worker APIs remain token-protected and do not require a user session:
@@ -770,6 +771,51 @@ GET /api/material/download?key=<storageKey>
 | Applicant result | `APPLICANT` result projection only; never expose `reviewerResult.extractedFields`, `riskHints`, or `draftOpinion`. |
 | Reviewer result | Only `REVIEWER` or `ADMIN` can call `/result/reviewer`. |
 
+### CP3 Initial Review Action Contract
+
+Reviewer action API:
+
+```http
+POST /api/task/{taskId}/reviewer-action
+Authorization: Bearer <reviewer-or-admin-token>
+Content-Type: application/json
+
+{
+  "actionCode": "RETURN_FOR_CORRECTION",
+  "reviewerRemark": "请补充营业执照副本并重新提交"
+}
+```
+
+Allowed `actionCode` values:
+
+```json
+[
+  "APPROVE_INITIAL_REVIEW",
+  "RETURN_FOR_CORRECTION",
+  "TRANSFER_MANUAL_REVIEW"
+]
+```
+
+Action-to-handling-status mapping:
+
+| actionCode | handlingStatus | handlingStatusLabel |
+|---|---|---|
+| `APPROVE_INITIAL_REVIEW` | `INITIAL_REVIEW_PASSED` | `通过初审` |
+| `RETURN_FOR_CORRECTION` | `CORRECTION_REQUIRED` | `退回补正` |
+| `TRANSFER_MANUAL_REVIEW` | `MANUAL_REVIEW_REQUIRED` | `转人工复核` |
+
+Contracts:
+
+| Item | Contract |
+|---|---|
+| Processing status boundary | Reviewer actions do not mutate canonical `ProcessingStatus`; they write a separate handling snapshot. |
+| Allowed task status | Actions are allowed only after AI reviewer result exists and task status is `PARTIAL_SUCCESS` or `COMPLETED`. |
+| Permissions | Only `REVIEWER` or `ADMIN` may submit actions. |
+| Duplicate behavior | CP3 allows one successful initial-review action per task; duplicates or raced stale writes return `409` and must not create an action log. |
+| Applicant visibility | Applicant result/status/list may show `handlingStatus`, `handlingStatusLabel`, `reviewerRemark`, and action time only. |
+| Reviewer visibility | Reviewer result may show action code, operator display data, and action log items. |
+| CP4 boundary | `RETURN_FOR_CORRECTION` only marks correction required and records the remark; correction upload, material versioning, diff, and final decision remain CP4. |
+
 ### 4. Validation & Error Matrix
 
 | Condition | Expected behavior |
@@ -780,6 +826,10 @@ GET /api/material/download?key=<storageKey>
 | Applicant calls reviewer result endpoint | Return `403`. |
 | Reviewer opens `SUBMITTED`, `QUEUED`, or `PROCESSING` task directly | Return `403`. |
 | Reviewer submits a new application | Return `403`; frontend must hide the action. |
+| Applicant submits reviewer action | Return `403`. |
+| Reviewer action before AI reviewer result | Return `409`. |
+| Reviewer action with unsupported `actionCode` | Return `400`. |
+| Duplicate reviewer action | Return `409` and do not add another `review_action_log` row. |
 | Worker callback without configured/valid worker token when required | Return worker-token auth error; do not require Sa-Token login. |
 
 ### 5. Good/Base/Bad Cases
@@ -801,6 +851,9 @@ GET /api/material/download?key=<storageKey>
 - Java tests that applicant A cannot see applicant B's task/result.
 - Java tests that reviewer sees only reviewer-visible statuses and cannot
   submit an applicant-owned task.
+- Java tests for reviewer action success, role rejection, invalid action, not-ready
+  status, missing AI reviewer result, duplicate/stale-write rejection, applicant
+  projection, and action log exposure.
 - Java tests that Worker endpoints still work with `X-Worker-Token`.
 - Frontend tests that business `401` clears auth state.
 - Frontend adapter/page tests that applicant result flow uses applicant

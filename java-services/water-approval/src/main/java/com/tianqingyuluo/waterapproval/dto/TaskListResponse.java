@@ -17,6 +17,11 @@ public class TaskListResponse {
         private String taskId;
         private String sessionId;
         private String status;
+        private String handlingStatus;
+        private String handlingStatusLabel;
+        private String reviewerRemark;
+        private String reviewerDisplayName;
+        private LocalDateTime reviewerActionAt;
         private LocalDateTime submittedAt;
         private LocalDateTime updatedAt;
         private String knowledgePackVersion;

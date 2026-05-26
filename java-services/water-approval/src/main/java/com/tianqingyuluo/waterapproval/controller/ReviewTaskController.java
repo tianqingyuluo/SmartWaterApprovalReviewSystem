@@ -6,6 +6,7 @@ import com.tianqingyuluo.waterapproval.service.AuthService;
 import com.tianqingyuluo.waterapproval.service.ReviewTaskService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -85,6 +86,16 @@ public class ReviewTaskController {
             @RequestParam(required = false) String sessionId) {
         log.info("查询审批人员结果: taskId={}", taskId);
         ReviewerResultResponse response = reviewTaskService.getReviewerResult(taskId, sessionId, authService.currentUser());
+        return R.ok(response);
+    }
+
+    @PostMapping("/{taskId}/reviewer-action")
+    public R<ReviewerActionResponse> submitReviewerAction(
+            @PathVariable String taskId,
+            @Validated @RequestBody ReviewerActionSubmitRequest request) {
+        log.info("提交审核动作: taskId={}, actionCode={}", taskId, request.getActionCode());
+        ReviewerActionResponse response =
+                reviewTaskService.submitReviewerAction(taskId, request, authService.currentUser());
         return R.ok(response);
     }
 }

@@ -29,9 +29,10 @@
 
 | 表 | 实体 | 用途 |
 |---|---|---|
-| `review_task` | `ReviewTask` | 任务主表，保存 `taskId/sessionId/ownerUserId/status/knowledgePackVersion` |
+| `review_task` | `ReviewTask` | 任务主表，保存 `taskId/sessionId/ownerUserId/status/knowledgePackVersion` 和 CP3 初审处理快照 |
 | `material_slot` | `MaterialSlot` | 固定三槽位材料上传记录 |
 | `review_result` | `ReviewResult` | `APPLICANT` / `REVIEWER` 两类结果 JSON |
+| `review_action_log` | `ReviewActionLog` | CP3 审批人员初审动作审计日志 |
 | `user_account` | `UserAccount` | CP3 最小登录账号与角色 |
 
 ### 实体约定
@@ -64,8 +65,10 @@ resultMapper.selectOne(
 
 - `review_task.task_id`、`review_task.session_id` 唯一
 - `review_task.owner_user_id` 可为空以兼容历史数据，但新提交任务必须写入当前用户 ID
+- `review_task.reviewer_action_code` 保存单次 CP3 初审动作快照；重复动作必须在 service 条件更新中拒绝
 - `material_slot (task_id, material_type)` 唯一，保证每类材料只有一个槽位
 - `review_result (task_id, result_type)` 唯一，保证申请人/审批人员结果各一份
+- `review_action_log.task_id` 可多行用于审计；CP3 当前业务只允许一条成功初审动作日志
 - `user_account.username` 唯一，`role_code` 只能使用 `APPLICANT` / `REVIEWER` / `ADMIN`
 
 ---
@@ -83,6 +86,7 @@ resultMapper.selectOne(
   - `ReviewTask`
   - `MaterialSlot`
   - `ReviewResult`
+  - `ReviewActionLog` when reviewer action logging changes
   - `UserAccount` when auth/account schema changes
 
 ### 3. Contracts

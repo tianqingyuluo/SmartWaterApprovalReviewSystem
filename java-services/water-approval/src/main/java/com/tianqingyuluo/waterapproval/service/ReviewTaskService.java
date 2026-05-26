@@ -10,6 +10,11 @@ public interface ReviewTaskService {
     TaskStatusResponse getStatus(String taskId, String sessionId, UserProfileResponse currentUser);
     ApplicantResultResponse getApplicantResult(String taskId, String sessionId, UserProfileResponse currentUser);
     ReviewerResultResponse getReviewerResult(String taskId, String sessionId, UserProfileResponse currentUser);
+    ReviewerActionResponse submitReviewerAction(
+            String taskId,
+            ReviewerActionSubmitRequest request,
+            UserProfileResponse currentUser
+    );
 
     List<PendingTaskResponse> getPendingTasks();
     TaskListResponse getTaskList(int page, int size, UserProfileResponse currentUser);

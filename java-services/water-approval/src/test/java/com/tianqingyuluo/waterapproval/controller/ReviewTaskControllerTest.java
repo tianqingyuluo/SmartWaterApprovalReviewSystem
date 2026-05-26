@@ -6,6 +6,8 @@ import com.tianqingyuluo.waterapproval.dto.ApplicantResultResponse;
 import com.tianqingyuluo.waterapproval.dto.LoginRequest;
 import com.tianqingyuluo.waterapproval.dto.PendingTaskResponse;
 import com.tianqingyuluo.waterapproval.dto.ResultWriteRequest;
+import com.tianqingyuluo.waterapproval.dto.ReviewerActionResponse;
+import com.tianqingyuluo.waterapproval.dto.ReviewerActionSubmitRequest;
 import com.tianqingyuluo.waterapproval.dto.ReviewerResultResponse;
 import com.tianqingyuluo.waterapproval.dto.StatusUpdateRequest;
 import com.tianqingyuluo.waterapproval.dto.TaskListResponse;
@@ -262,6 +264,59 @@ class ReviewTaskControllerTest {
         mockMvc.perform(get("/task/list"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(401));
+    }
+
+    @Test
+    void submitReviewerActionShouldSucceed() throws Exception {
+        ReviewerActionSubmitRequest request = new ReviewerActionSubmitRequest();
+        request.setActionCode("RETURN_FOR_CORRECTION");
+        request.setReviewerRemark("请补充补正材料");
+
+        ReviewerActionResponse response = new ReviewerActionResponse();
+        response.setTaskId("task-1");
+        response.setActionCode("RETURN_FOR_CORRECTION");
+        response.setHandlingStatus("CORRECTION_REQUIRED");
+        when(reviewTaskService.submitReviewerAction(eq("task-1"), any(), any())).thenReturn(response);
+
+        String token = loginAs("reviewer", "reviewer123");
+        mockMvc.perform(post("/task/task-1/reviewer-action")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.actionCode").value("RETURN_FOR_CORRECTION"))
+                .andExpect(jsonPath("$.data.handlingStatus").value("CORRECTION_REQUIRED"));
+    }
+
+    @Test
+    void submitReviewerActionShouldValidateRequestBody() throws Exception {
+        ReviewerActionSubmitRequest request = new ReviewerActionSubmitRequest();
+        request.setActionCode("   ");
+        String token = loginAs("reviewer", "reviewer123");
+
+        mockMvc.perform(post("/task/task-1/reviewer-action")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(400));
+    }
+
+    @Test
+    void submitReviewerActionShouldReturnBusinessErrors() throws Exception {
+        ReviewerActionSubmitRequest request = new ReviewerActionSubmitRequest();
+        request.setActionCode("APPROVE_INITIAL_REVIEW");
+        doThrow(new BusinessException(409, "该任务已提交过审核动作，不允许重复提交"))
+                .when(reviewTaskService).submitReviewerAction(eq("task-1"), any(), any());
+        String token = loginAs("reviewer", "reviewer123");
+
+        mockMvc.perform(post("/task/task-1/reviewer-action")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(409));
     }
 
     private String loginAs(String username, String password) throws Exception {

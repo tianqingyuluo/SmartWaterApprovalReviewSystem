@@ -1,18 +1,25 @@
 package com.tianqingyuluo.waterapproval.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tianqingyuluo.waterapproval.common.BusinessException;
 import com.tianqingyuluo.waterapproval.dto.ResultWriteRequest;
+import com.tianqingyuluo.waterapproval.dto.ReviewerActionResponse;
+import com.tianqingyuluo.waterapproval.dto.ReviewerActionSubmitRequest;
 import com.tianqingyuluo.waterapproval.dto.ReviewerResultResponse;
 import com.tianqingyuluo.waterapproval.dto.SubmitRequest;
 import com.tianqingyuluo.waterapproval.dto.TaskListResponse;
 import com.tianqingyuluo.waterapproval.dto.UserProfileResponse;
 import com.tianqingyuluo.waterapproval.entity.MaterialSlot;
+import com.tianqingyuluo.waterapproval.entity.ReviewActionLog;
 import com.tianqingyuluo.waterapproval.entity.ReviewResult;
 import com.tianqingyuluo.waterapproval.entity.ReviewTask;
+import com.tianqingyuluo.waterapproval.mapper.ReviewActionLogMapper;
 import com.tianqingyuluo.waterapproval.mapper.MaterialSlotMapper;
 import com.tianqingyuluo.waterapproval.mapper.ReviewResultMapper;
 import com.tianqingyuluo.waterapproval.mapper.ReviewTaskMapper;
+import com.tianqingyuluo.waterapproval.storage.StorageService;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
@@ -24,8 +31,13 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -42,6 +54,9 @@ class ReviewTaskServiceImplTest {
 
     @Autowired
     private ReviewResultMapper resultMapper;
+
+    @Autowired
+    private ReviewActionLogMapper reviewActionLogMapper;
 
     private static UserProfileResponse applicantUser(long id) {
         UserProfileResponse user = new UserProfileResponse();
@@ -175,7 +190,7 @@ class ReviewTaskServiceImplTest {
         task2.setOwnerUserId(1001L);
         taskMapper.updateById(task2);
 
-        TaskListResponse response = reviewTaskService.getTaskList(1, 20, adminUser());
+        TaskListResponse response = reviewTaskService.getTaskList(1, 100, adminUser());
 
         assertNotNull(response);
         assertTrue(response.getTotal() >= 2);
@@ -364,6 +379,209 @@ class ReviewTaskServiceImplTest {
         assertEquals(403, ex.getCode());
     }
 
+    @Test
+    void reviewerActionShouldPersistTaskSnapshotAndOperationLogAndApplicantProjection() {
+        String taskId = "task-review-action-" + System.nanoTime();
+        ReviewTask task = newReviewTask(taskId, "session-review-action", "COMPLETED");
+        task.setOwnerUserId(7001L);
+        taskMapper.insert(task);
+        insertReviewerResultRow(taskId, "AI初审结论已生成");
+
+        ReviewerActionSubmitRequest request = new ReviewerActionSubmitRequest();
+        request.setActionCode("RETURN_FOR_CORRECTION");
+        request.setReviewerRemark("请补充营业执照副本并重新提交");
+
+        ReviewerActionResponse actionResponse =
+                reviewTaskService.submitReviewerAction(taskId, request, reviewerUser());
+
+        assertEquals("RETURN_FOR_CORRECTION", actionResponse.getActionCode());
+        assertEquals("CORRECTION_REQUIRED", actionResponse.getHandlingStatus());
+        assertEquals("退回补正", actionResponse.getHandlingStatusLabel());
+        assertEquals("请补充营业执照副本并重新提交", actionResponse.getReviewerRemark());
+        assertNotNull(actionResponse.getOperatedAt());
+
+        ReviewTask updatedTask = taskMapper.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ReviewTask>()
+                        .eq(ReviewTask::getTaskId, taskId)
+        );
+        assertEquals("COMPLETED", updatedTask.getStatus(), "reviewer action should not mutate processing status");
+        assertEquals("CORRECTION_REQUIRED", updatedTask.getHandlingStatus());
+        assertEquals("退回补正", updatedTask.getHandlingStatusLabel());
+        assertEquals("RETURN_FOR_CORRECTION", updatedTask.getReviewerActionCode());
+        assertEquals("请补充营业执照副本并重新提交", updatedTask.getReviewerRemark());
+        assertEquals(9001L, updatedTask.getReviewerUserId());
+        assertEquals("审批员", updatedTask.getReviewerDisplayName());
+        assertNotNull(updatedTask.getReviewerActionAt());
+
+        List<ReviewActionLog> logs = reviewActionLogMapper.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ReviewActionLog>()
+                        .eq(ReviewActionLog::getTaskId, taskId)
+        );
+        assertEquals(1, logs.size());
+        assertEquals("RETURN_FOR_CORRECTION", logs.get(0).getActionCode());
+        assertEquals("CORRECTION_REQUIRED", logs.get(0).getToHandlingStatus());
+        assertEquals(9001L, logs.get(0).getOperatorUserId());
+
+        var applicantView = reviewTaskService.getApplicantResult(taskId, "session-review-action", applicantUser(7001L));
+        assertEquals("CORRECTION_REQUIRED", applicantView.getHandlingStatus());
+        assertEquals("退回补正", applicantView.getHandlingStatusLabel());
+        assertEquals("请补充营业执照副本并重新提交", applicantView.getReviewerRemark());
+        assertNotNull(applicantView.getReviewerActionAt());
+    }
+
+    @Test
+    void reviewerActionShouldRejectInvalidActionCode() {
+        String taskId = "task-review-action-invalid-" + System.nanoTime();
+        ReviewTask task = newReviewTask(taskId, "session-review-action-invalid", "COMPLETED");
+        task.setOwnerUserId(7101L);
+        taskMapper.insert(task);
+
+        ReviewerActionSubmitRequest request = new ReviewerActionSubmitRequest();
+        request.setActionCode("INVALID_ACTION");
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> reviewTaskService.submitReviewerAction(taskId, request, reviewerUser()));
+        assertEquals(400, ex.getCode());
+    }
+
+    @Test
+    void reviewerActionShouldRejectDuplicateSubmission() {
+        String taskId = "task-review-action-dup-" + System.nanoTime();
+        ReviewTask task = newReviewTask(taskId, "session-review-action-dup", "COMPLETED");
+        task.setOwnerUserId(7201L);
+        task.setHandlingStatus("INITIAL_REVIEW_PASSED");
+        task.setHandlingStatusLabel("通过初审");
+        task.setReviewerActionCode("APPROVE_INITIAL_REVIEW");
+        task.setReviewerUserId(9001L);
+        task.setReviewerDisplayName("审批员");
+        task.setReviewerActionAt(LocalDateTime.now().minusMinutes(1));
+        taskMapper.insert(task);
+        insertReviewerResultRow(taskId, "AI初审结论已生成");
+
+        ReviewerActionSubmitRequest request = new ReviewerActionSubmitRequest();
+        request.setActionCode("TRANSFER_MANUAL_REVIEW");
+        request.setReviewerRemark("二次提交应被拒绝");
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> reviewTaskService.submitReviewerAction(taskId, request, reviewerUser()));
+        assertEquals(409, ex.getCode());
+
+        List<ReviewActionLog> logs = reviewActionLogMapper.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ReviewActionLog>()
+                        .eq(ReviewActionLog::getTaskId, taskId)
+        );
+        assertEquals(0, logs.size(), "duplicate reject should not create new operation log");
+    }
+
+    @Test
+    void reviewerActionShouldRejectWhenConditionalTaskUpdateFailsWithoutCreatingLog() {
+        ReviewTaskMapper mockedTaskMapper = mock(ReviewTaskMapper.class);
+        MaterialSlotMapper mockedMaterialSlotMapper = mock(MaterialSlotMapper.class);
+        ReviewResultMapper mockedResultMapper = mock(ReviewResultMapper.class);
+        ReviewActionLogMapper mockedLogMapper = mock(ReviewActionLogMapper.class);
+        StorageService mockedStorageService = mock(StorageService.class);
+        ReviewTaskServiceImpl service = new ReviewTaskServiceImpl(
+                mockedTaskMapper,
+                mockedMaterialSlotMapper,
+                mockedResultMapper,
+                mockedLogMapper,
+                mockedStorageService,
+                new ObjectMapper()
+        );
+
+        String taskId = "task-review-action-stale-" + System.nanoTime();
+        ReviewTask task = newReviewTask(taskId, "session-stale-action", "COMPLETED");
+        ReviewResult reviewerResult = new ReviewResult();
+        reviewerResult.setTaskId(taskId);
+        reviewerResult.setResultType("REVIEWER");
+        reviewerResult.setContent("{\"summary\":\"AI初审结论已生成\"}");
+
+        when(mockedTaskMapper.selectOne(ArgumentMatchers.any())).thenReturn(task);
+        when(mockedResultMapper.selectOne(ArgumentMatchers.any())).thenReturn(reviewerResult);
+        when(mockedTaskMapper.update(
+                ArgumentMatchers.<ReviewTask>isNull(),
+                ArgumentMatchers.any()
+        )).thenReturn(0);
+
+        ReviewerActionSubmitRequest request = new ReviewerActionSubmitRequest();
+        request.setActionCode("APPROVE_INITIAL_REVIEW");
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.submitReviewerAction(taskId, request, reviewerUser()));
+        assertEquals(409, ex.getCode());
+        verify(mockedLogMapper, never()).insert(ArgumentMatchers.any(ReviewActionLog.class));
+    }
+
+    @Test
+    void reviewerActionShouldRejectWhenTaskStatusNotReady() {
+        String taskId = "task-review-action-status-" + System.nanoTime();
+        ReviewTask task = newReviewTask(taskId, "session-review-action-status", "PROCESSING");
+        task.setOwnerUserId(7301L);
+        taskMapper.insert(task);
+
+        ReviewerActionSubmitRequest request = new ReviewerActionSubmitRequest();
+        request.setActionCode("APPROVE_INITIAL_REVIEW");
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> reviewTaskService.submitReviewerAction(taskId, request, reviewerUser()));
+        assertEquals(409, ex.getCode());
+    }
+
+    @Test
+    void reviewerActionShouldRejectWhenAiReviewerResultMissing() {
+        String taskId = "task-review-action-no-ai-result-" + System.nanoTime();
+        ReviewTask task = newReviewTask(taskId, "session-review-action-no-ai-result", "COMPLETED");
+        task.setOwnerUserId(7302L);
+        taskMapper.insert(task);
+
+        ReviewerActionSubmitRequest request = new ReviewerActionSubmitRequest();
+        request.setActionCode("APPROVE_INITIAL_REVIEW");
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> reviewTaskService.submitReviewerAction(taskId, request, reviewerUser()));
+        assertEquals(409, ex.getCode());
+    }
+
+    @Test
+    void reviewerActionShouldRejectApplicantRole() {
+        String taskId = "task-review-action-role-" + System.nanoTime();
+        ReviewTask task = newReviewTask(taskId, "session-review-action-role", "COMPLETED");
+        task.setOwnerUserId(7401L);
+        taskMapper.insert(task);
+        insertReviewerResultRow(taskId, "AI初审结论已生成");
+
+        ReviewerActionSubmitRequest request = new ReviewerActionSubmitRequest();
+        request.setActionCode("APPROVE_INITIAL_REVIEW");
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> reviewTaskService.submitReviewerAction(taskId, request, applicantUser(7401L)));
+        assertEquals(403, ex.getCode());
+    }
+
+    @Test
+    void reviewerResultShouldExposeActionLogsAndAllowEmptyRemark() {
+        String taskId = "task-review-action-log-view-" + System.nanoTime();
+        ReviewTask task = newReviewTask(taskId, "session-review-action-log-view", "PARTIAL_SUCCESS");
+        task.setOwnerUserId(7501L);
+        taskMapper.insert(task);
+        insertReviewerResultRow(taskId, "AI初审结论已生成");
+
+        ReviewerActionSubmitRequest request = new ReviewerActionSubmitRequest();
+        request.setActionCode("TRANSFER_MANUAL_REVIEW");
+        request.setReviewerRemark("   ");
+        reviewTaskService.submitReviewerAction(taskId, request, reviewerUser());
+
+        ReviewerResultResponse reviewerResult = reviewTaskService.getReviewerResult(taskId, null, reviewerUser());
+        assertEquals("MANUAL_REVIEW_REQUIRED", reviewerResult.getHandlingStatus());
+        assertEquals("转人工复核", reviewerResult.getHandlingStatusLabel());
+        assertNull(reviewerResult.getReviewerRemark());
+        assertEquals("TRANSFER_MANUAL_REVIEW", reviewerResult.getReviewerActionCode());
+        assertEquals(1, reviewerResult.getActionLogs().size());
+        assertEquals("TRANSFER_MANUAL_REVIEW", reviewerResult.getActionLogs().get(0).getActionCode());
+        assertEquals("MANUAL_REVIEW_REQUIRED", reviewerResult.getActionLogs().get(0).getToHandlingStatus());
+        assertNull(reviewerResult.getActionLogs().get(0).getReviewerRemark());
+    }
+
     private ReviewTask newReviewTask(String taskId, String sessionId, String status) {
         ReviewTask task = new ReviewTask();
         task.setTaskId(taskId);
@@ -373,5 +591,15 @@ class ReviewTaskServiceImplTest {
         task.setCreatedAt(LocalDateTime.now());
         task.setUpdatedAt(LocalDateTime.now());
         return task;
+    }
+
+    private void insertReviewerResultRow(String taskId, String summary) {
+        ReviewResult reviewResult = new ReviewResult();
+        reviewResult.setTaskId(taskId);
+        reviewResult.setResultType("REVIEWER");
+        reviewResult.setContent("{\"summary\":\"" + summary + "\"}");
+        reviewResult.setCreatedAt(LocalDateTime.now());
+        reviewResult.setUpdatedAt(LocalDateTime.now());
+        resultMapper.insert(reviewResult);
     }
 }

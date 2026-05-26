@@ -6,44 +6,35 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("review_task")
-public class ReviewTask {
+@TableName("review_action_log")
+public class ReviewActionLog {
 
     @TableId(type = IdType.ASSIGN_ID)
     private Long id;
 
     private String taskId;
 
-    private String sessionId;
+    private String actionCode;
 
-    private Long ownerUserId;
-
-    private String status;
-
-    private String handlingStatus;
-
-    private String handlingStatusLabel;
-
-    private String reviewerActionCode;
+    private String actionLabel;
 
     private String reviewerRemark;
 
-    private Long reviewerUserId;
+    private Long operatorUserId;
 
-    private String reviewerDisplayName;
+    private String operatorUsername;
 
-    private LocalDateTime reviewerActionAt;
+    private String operatorDisplayName;
 
-    @TableField(fill = FieldFill.INSERT)
-    private LocalDateTime submittedAt;
+    private String fromHandlingStatus;
+
+    private String toHandlingStatus;
 
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
 
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updatedAt;
-
-    private String knowledgePackVersion;
 
     @TableLogic
     private Integer deleted;

@@ -69,6 +69,8 @@ Applicant view may show:
 
 - Missing materials.
 - Obvious upload or field issues marked `applicantVisible`.
+- CP3 initial-review handling result: `handlingStatus`, `handlingStatusLabel`,
+  `reviewerRemark`, and action time.
 - Basic retry or resubmission guidance for a new task.
 - Short AI-assist disclaimer.
 
@@ -89,6 +91,8 @@ Reviewer view may show:
 - Draft review opinion.
 - Basis references.
 - Manual review notice.
+- CP3 initial-review action controls and action log after the backend exposes
+  a reviewer result for the task.
 - Failure category and redacted failure reason.
 
 ## CP3 Role Routing And Token State
@@ -124,6 +128,7 @@ export type UserRole = 'APPLICANT' | 'REVIEWER' | 'ADMIN'
 | Admin menu | May see all entries needed for demo and troubleshooting. |
 | Applicant result link | Must call `/task/{taskId}/result/applicant`, not reviewer result APIs. |
 | Reviewer result link | May call `/task/{taskId}/result/reviewer` only for reviewer/admin roles. |
+| Reviewer action submit | Reviewer/admin may call `POST /task/{taskId}/reviewer-action` with one of `APPROVE_INITIAL_REVIEW`, `RETURN_FOR_CORRECTION`, or `TRANSFER_MANUAL_REVIEW`. |
 
 ### 4. Validation & Error Matrix
 
@@ -134,6 +139,7 @@ export type UserRole = 'APPLICANT' | 'REVIEWER' | 'ADMIN'
 | Applicant opens `/knowledge-mcp` | Redirect to application list. |
 | Reviewer opens `/apply` | Redirect to application list. |
 | Java returns business `401` with HTTP 200 | Clear auth state and redirect to login. |
+| Reviewer action returns `409` | Treat as already handled or no longer actionable; refresh the task detail before enabling another submit. |
 
 ### 5. Good/Base/Bad Cases
 

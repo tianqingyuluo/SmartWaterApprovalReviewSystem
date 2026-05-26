@@ -9,6 +9,9 @@ import java.util.List;
 public class TaskStatusResponse {
     private String taskId;
     private String status;
+    private String handlingStatus;
+    private String handlingStatusLabel;
+    private String reviewerRemark;
     private LocalDateTime submittedAt;
     private LocalDateTime updatedAt;
     private List<MaterialStatus> materials;
