@@ -1,0 +1,40 @@
+{
+  "id": "v1-cp3-material-safe-preview",
+  "name": "v1-cp3-material-safe-preview",
+  "title": "CP3-G 材料安全预览接口与前端嵌入",
+  "description": "为 CP3 审核结果页补齐网页登录用户可安全预览 PDF/图片材料的后端接口与前端嵌入，不暴露 Worker token 或原始 storageKey。",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P1",
+  "creator": "tianqingyuluo",
+  "assignee": "tianqingyuluo",
+  "createdAt": "2026-05-26",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "v1",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "05-13-v1-system-design-checkpoints",
+  "relatedFiles": [],
+  "notes": "Added during CP3 review after discovering the result page cannot safely embed original PDF/image materials. Keep the work in CP3 because it directly supports reviewer evidence inspection in the initial-review workflow; do not expand into CP4 correction versioning or report export.",
+  "meta": {
+    "checkpoint": "CP3",
+    "lane": "fullstack",
+    "wave": 3,
+    "dependsOn": [
+      "v1-cp3-minimal-rbac-task-visibility",
+      "v1-cp3-reviewer-actions-applicant-result",
+      "v1-cp3-frontend-review-workbench"
+    ],
+    "unblocks": [
+      "v1-cp3-integration-stability-tests"
+    ],
+    "unlockCriteria": "CP3 login, task visibility, material storage, and review result page are available.",
+    "gatePolicy": "Implement safe read-only material preview only; do not expose Worker token or raw storage keys to browser clients."
+  }
+}

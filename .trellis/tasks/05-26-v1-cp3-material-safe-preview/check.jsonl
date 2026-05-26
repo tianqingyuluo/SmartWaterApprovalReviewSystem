@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/backend/smartwater-mvp-contracts.md", "reason": "Verify new preview API does not break storage keys, task access checks, or role visibility contracts."}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Verify material missing, unauthorized, unsupported type, and storage download failure responses are explicit and consistent."}
+{"file": ".trellis/spec/frontend/smartwater-mvp-visibility.md", "reason": "Verify applicant/reviewer/admin preview behavior matches CP3 visibility rules."}
+{"file": ".trellis/spec/frontend/type-safety.md", "reason": "Verify preview state is typed through API adapters instead of ad hoc page-only raw DTO consumption."}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Review browser -> Java -> storage data flow and avoid leaking internal storage identifiers across layers."}
