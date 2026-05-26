@@ -1,0 +1,42 @@
+{
+  "id": "cp3-5-document-ocr-real-pipeline",
+  "name": "cp3-5-document-ocr-real-pipeline",
+  "title": "CP3.5-C 生产级文档解析与 OCR",
+  "description": "打通 PDF/DOCX/图片真实解析与 OCR，禁止用 mock 或空抽取伪装成功。",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P0",
+  "creator": "tianqingyuluo",
+  "assignee": "tianqingyuluo",
+  "createdAt": "2026-05-27",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "v1",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "05-26-cp3-5-agent",
+  "relatedFiles": [],
+  "notes": "Builds the real material extraction path and depends on the confirmed GLM data URI bugfix.",
+  "meta": {
+    "checkpoint": "CP3.5",
+    "checkpointScope": "CP3 recovery",
+    "lane": "python-ocr",
+    "wave": 2,
+    "dependsOn": [
+      "cp3-5-real-chain-guardrails",
+      "cp3-5-java-python-real-dispatch",
+      "v1-cp3-glm-ocr-data-uri-fix"
+    ],
+    "unblocks": [
+      "cp3-5-mcp-client-tool-chain",
+      "cp3-5-intelligent-compliance-result",
+      "cp3-5-real-e2e-acceptance"
+    ],
+    "gatePolicy": "Use real parsers/OCR for acceptance; empty text or mock extraction is failure, not success."
+  }
+}

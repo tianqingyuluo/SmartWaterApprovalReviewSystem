@@ -1,0 +1,6 @@
+{"file": ".trellis/tasks/05-27-cp3-5-document-ocr-real-pipeline/prd.md", "reason": "验证生产级文档解析与 OCR 验收标准"}
+{"file": ".trellis/tasks/05-26-v1-cp3-glm-ocr-data-uri-fix/prd.md", "reason": "验证 GLM data URI 修复被覆盖"}
+{"file": ".trellis/spec/backend/ocr-adapter.md", "reason": "验证 OCR 适配器契约"}
+{"file": ".trellis/spec/backend/smartwater-mvp-contracts.md", "reason": "验证材料下载和抽取字段回写契约"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "验证 OCR/解析失败不伪装成功"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "后端质量检查标准"}

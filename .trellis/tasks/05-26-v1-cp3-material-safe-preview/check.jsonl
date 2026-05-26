@@ -1,3 +1,5 @@
+{"file": ".trellis/tasks/05-26-cp3-5-agent/prd.md", "reason": "验证材料预览是否满足 CP3.5 真实证据链要求"}
+{"file": ".trellis/tasks/05-26-cp3-5-agent/research/cp3-failure-root-cause.md", "reason": "验证前端不再用占位区域替代真实材料核验"}
 {"file": ".trellis/spec/backend/smartwater-mvp-contracts.md", "reason": "Verify new preview API does not break storage keys, task access checks, or role visibility contracts."}
 {"file": ".trellis/spec/backend/error-handling.md", "reason": "Verify material missing, unauthorized, unsupported type, and storage download failure responses are explicit and consistent."}
 {"file": ".trellis/spec/frontend/smartwater-mvp-visibility.md", "reason": "Verify applicant/reviewer/admin preview behavior matches CP3 visibility rules."}

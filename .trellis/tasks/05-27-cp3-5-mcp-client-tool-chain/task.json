@@ -1,0 +1,40 @@
+{
+  "id": "cp3-5-mcp-client-tool-chain",
+  "name": "cp3-5-mcp-client-tool-chain",
+  "title": "CP3.5-D MCP Client 真实工具调用",
+  "description": "让审查 Agent 通过 MCP Client 发现并调用知识库、完整性检查等真实工具，而不是内部函数或演示服务。",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P0",
+  "creator": "tianqingyuluo",
+  "assignee": "tianqingyuluo",
+  "createdAt": "2026-05-27",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "v1",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "05-26-cp3-5-agent",
+  "relatedFiles": [],
+  "notes": "Moves MCP from demo-server proof into the actual Agent review chain.",
+  "meta": {
+    "checkpoint": "CP3.5",
+    "checkpointScope": "CP3 recovery",
+    "lane": "python-mcp",
+    "wave": 3,
+    "dependsOn": [
+      "cp3-5-real-chain-guardrails",
+      "cp3-5-document-ocr-real-pipeline"
+    ],
+    "unblocks": [
+      "cp3-5-intelligent-compliance-result",
+      "cp3-5-real-e2e-acceptance"
+    ],
+    "gatePolicy": "Agent must use MCP Client discovery/calls in the real review path; internal-function fallback is not accepted."
+  }
+}

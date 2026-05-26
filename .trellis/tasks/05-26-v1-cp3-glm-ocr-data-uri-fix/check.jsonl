@@ -1,3 +1,5 @@
+{"file": ".trellis/tasks/05-26-cp3-5-agent/prd.md", "reason": "验证 GLM OCR 修复是否满足 CP3.5 真实 OCR 验收路线"}
+{"file": ".trellis/tasks/05-26-cp3-5-agent/research/cp3-failure-root-cause.md", "reason": "验证修复不再依赖 mock OCR 或演示兜底"}
 {"file": ".trellis/spec/backend/ocr-adapter.md", "reason": "Verify GLM OCR request encoding, parsing, and failure handling match the project OCR contract."}
 {"file": ".trellis/spec/backend/smartwater-mvp-contracts.md", "reason": "Verify OCR fix preserves Worker material flow and reviewer extractedFields contract."}
 {"file": ".trellis/spec/backend/error-handling.md", "reason": "Verify external OCR 400/5xx/auth failures remain structured and do not leak API keys or file content."}

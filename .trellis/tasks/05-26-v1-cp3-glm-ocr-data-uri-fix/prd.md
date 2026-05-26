@@ -1,4 +1,4 @@
-# CP3-H 修正 GLM OCR data URI 请求格式
+# CP3.5-H 修正 GLM OCR data URI 请求格式
 
 ## Scope
 
@@ -67,3 +67,7 @@
 ## CP3 Boundary
 
 本任务归入 CP3，因为它直接影响“处理非结构化文档”和“初审 Agent 与系统集成”评分点。它是 CP3 OCR 主线的 bugfix，不应扩展到 CP4 的部署降级、报告导出或材料版本能力。
+
+## CP3.5 Recovery Placement
+
+本任务现在收进 `05-26-cp3-5-agent`，作为 CP3.5 真实 OCR 链路的前置修复。GLM 对裸 base64 返回 400，而 data URI 返回 200，是 CP3 旧验收没有覆盖真实外部 OCR 合同的直接证据。CP3.5 后续文档解析和 E2E 验收必须证明真实 OCR 成功进入审查结果，而不是用 mock 文本或规则兜底替代。

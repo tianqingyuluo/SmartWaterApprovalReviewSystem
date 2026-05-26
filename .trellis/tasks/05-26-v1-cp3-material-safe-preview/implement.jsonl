@@ -1,3 +1,5 @@
+{"file": ".trellis/tasks/05-26-cp3-5-agent/prd.md", "reason": "CP3.5 父任务要求前端展示真实材料证据，避免页面占位演示"}
+{"file": ".trellis/tasks/05-26-cp3-5-agent/research/cp3-failure-root-cause.md", "reason": "CP3 前端无法核验原始材料是失败表现之一"}
 {"file": ".trellis/spec/backend/smartwater-mvp-contracts.md", "reason": "Material storage, task visibility, status, and cross-service API contracts for adding a browser-safe preview endpoint."}
 {"file": ".trellis/spec/backend/error-handling.md", "reason": "Binary download boundary, R<T> error semantics, Worker token failures, and user-facing API errors."}
 {"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Backend test and quality expectations for permission checks and binary response behavior."}

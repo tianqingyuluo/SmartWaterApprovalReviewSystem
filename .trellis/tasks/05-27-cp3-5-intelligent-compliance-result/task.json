@@ -1,0 +1,41 @@
+{
+  "id": "cp3-5-intelligent-compliance-result",
+  "name": "cp3-5-intelligent-compliance-result",
+  "title": "CP3.5-E 智能合规审查与结构化结论",
+  "description": "基于真实 OCR/RAG/MCP/LLM 形成可引用、可追溯、稳定的智能初审结论，不用规则兜底替代 Agent。",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P0",
+  "creator": "tianqingyuluo",
+  "assignee": "tianqingyuluo",
+  "createdAt": "2026-05-27",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "v1",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "05-26-cp3-5-agent",
+  "relatedFiles": [],
+  "notes": "Produces the real intelligent review conclusion from OCR/RAG/MCP/LLM instead of rule fallback.",
+  "meta": {
+    "checkpoint": "CP3.5",
+    "checkpointScope": "CP3 recovery",
+    "lane": "python-agent",
+    "wave": 4,
+    "dependsOn": [
+      "cp3-5-real-chain-guardrails",
+      "cp3-5-document-ocr-real-pipeline",
+      "cp3-5-mcp-client-tool-chain",
+      "cp3-5-java-python-real-dispatch"
+    ],
+    "unblocks": [
+      "cp3-5-real-e2e-acceptance"
+    ],
+    "gatePolicy": "LLM/Agent failure must be visible as failure or retry, not replaced by a fake successful rule-only conclusion."
+  }
+}

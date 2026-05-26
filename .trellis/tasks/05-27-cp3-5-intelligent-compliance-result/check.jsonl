@@ -1,0 +1,6 @@
+{"file": ".trellis/tasks/05-27-cp3-5-intelligent-compliance-result/prd.md", "reason": "验证智能合规审查验收标准"}
+{"file": ".trellis/tasks/05-26-cp3-5-agent/prd.md", "reason": "验证没有规则兜底替代 Agent 结论"}
+{"file": ".trellis/spec/backend/review-reasoning-adapter.md", "reason": "验证 LLM 推理和结构化输出契约"}
+{"file": ".trellis/spec/backend/smartwater-mvp-contracts.md", "reason": "验证结论回写和前端展示契约"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "验证 LLM 失败状态语义"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "后端质量检查标准"}
