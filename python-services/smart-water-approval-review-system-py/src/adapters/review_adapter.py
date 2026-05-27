@@ -58,6 +58,82 @@ _SCHEMA_REQUIRED_TOP = {
 
 _SCHEMA_REQUIRED_ISSUE = {"code", "severity", "message"}
 
+_TOP_LEVEL_ALIASES = {
+    "摘要": "summary",
+    "总结": "summary",
+    "审核摘要": "summary",
+    "riskHints": "risk_hints",
+    "一致性风险": "risk_hints",
+    "风险提示": "risk_hints",
+    "draftOpinion": "draft_opinion",
+    "审核意见草稿": "draft_opinion",
+    "意见草稿": "draft_opinion",
+    "materialCompleteness": "material_completeness",
+    "材料完整性": "material_completeness",
+    "basisRefs": "basis_refs",
+    "依据引用": "basis_refs",
+    "引用依据": "basis_refs",
+    "manualReviewNotice": "manual_review_notice",
+    "人工复核说明": "manual_review_notice",
+    "人工审核提示": "manual_review_notice",
+    "字段问题": "issues",
+    "问题列表": "issues",
+    "合规问题": "issues",
+}
+
+_ISSUE_ALIASES = {
+    "问题编码": "code",
+    "问题类型": "code",
+    "类型": "code",
+    "严重级别": "severity",
+    "级别": "severity",
+    "问题描述": "message",
+    "描述": "message",
+    "说明": "message",
+    "materialType": "material_type",
+    "材料类型": "material_type",
+    "fieldKey": "field_key",
+    "字段": "field_key",
+    "字段键": "field_key",
+    "basisRefs": "basis_refs",
+    "依据": "basis_refs",
+    "依据引用": "basis_refs",
+    "applicantVisible": "applicant_visible",
+    "是否申请人可见": "applicant_visible",
+}
+
+_RISK_HINT_ALIASES = {
+    "riskLevel": "risk_level",
+    "风险等级": "risk_level",
+    "等级": "risk_level",
+    "风险描述": "description",
+    "描述": "description",
+    "basisRefs": "basis_refs",
+    "依据": "basis_refs",
+    "依据引用": "basis_refs",
+    "requiresManualReview": "requires_manual_review",
+    "是否需要人工复核": "requires_manual_review",
+    "需要人工复核": "requires_manual_review",
+}
+
+_MATERIAL_COMPLETENESS_ALIASES = {
+    "已接收材料": "received",
+    "接收材料": "received",
+    "已上传材料": "received",
+    "缺失材料": "missing",
+    "未识别材料": "unrecognized",
+    "无法识别材料": "unrecognized",
+}
+
+_WRAPPER_KEYS = (
+    "review_result",
+    "reviewResult",
+    "result",
+    "data",
+    "output",
+    "response",
+)
+
 
 _REVIEW_JSON_SCHEMA = {
     "type": "object",
@@ -258,7 +334,19 @@ class ReviewReasoningAdapter(ReviewAdapter):
 
         parts.append("\n## 审核要求")
         parts.append("请根据以上信息生成审核结果，包括：材料完整性、字段问题、一致性风险、审核意见草稿。")
-        parts.append("注意：你只能引用上述法规依据中列出的条目，不能编造法规条文。")
+        parts.append("注意：你只能引用上述法规依据中列出的 source_id，不能编造法规条文或来源 ID。")
+        parts.append("必须只输出一个 JSON object，不要 Markdown，不要解释文字。")
+        parts.append(
+            "JSON 顶层字段名必须使用英文 snake_case，且必须包含: "
+            "summary, issues, risk_hints, draft_opinion, material_completeness, basis_refs, manual_review_notice。"
+        )
+        parts.append(
+            "issues[] 字段名必须使用: "
+            "code, severity, message, material_type, field_key, basis_refs, applicant_visible。"
+        )
+        parts.append(
+            "risk_hints[] 字段名必须使用: risk_level, description, basis_refs, requires_manual_review。"
+        )
 
         return "\n".join(parts)
 
@@ -272,8 +360,13 @@ class ReviewReasoningAdapter(ReviewAdapter):
             logger.warning("Empty content from review for task %s", task_id)
             return None, "INVALID_JSON"
 
+        json_text = _extract_json_object(content)
+        if not json_text:
+            logger.warning("No JSON object found in review content for task %s", task_id)
+            return None, "INVALID_JSON"
+
         try:
-            data = json.loads(content)
+            data = json.loads(json_text)
         except json.JSONDecodeError as e:
             logger.warning("Invalid JSON from review for task %s: %s", task_id, e)
             return None, "INVALID_JSON"
@@ -281,10 +374,16 @@ class ReviewReasoningAdapter(ReviewAdapter):
         if not isinstance(data, dict):
             logger.warning("Review output is not a JSON object for task %s", task_id)
             return None, "SCHEMA_MISMATCH"
+        data = _normalize_review_payload(data)
 
         missing_top = _SCHEMA_REQUIRED_TOP - set(data.keys())
         if missing_top:
-            logger.warning("Schema mismatch for task %s: missing top-level keys %s", task_id, missing_top)
+            logger.warning(
+                "Schema mismatch for task %s: keys=%s missing top-level keys %s",
+                task_id,
+                sorted(str(key) for key in data.keys())[:20],
+                missing_top,
+            )
             return None, "SCHEMA_MISMATCH"
 
         issues_raw = data.get("issues", [])
@@ -411,6 +510,219 @@ def _classify_error(e: Exception) -> str:
     if re.search(r"(500|502|503|504)", msg):
         return "UPSTREAM_5XX"
     return "UPSTREAM_5XX"
+
+
+def _extract_json_object(content: str) -> str | None:
+    text = content.strip()
+    if not text:
+        return None
+
+    fenced = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, flags=re.DOTALL | re.IGNORECASE)
+    if fenced:
+        return fenced.group(1).strip()
+
+    if text.startswith("{") and text.endswith("}"):
+        return text
+
+    start = text.find("{")
+    end = text.rfind("}")
+    if start == -1 or end == -1 or end <= start:
+        return None
+    return text[start : end + 1]
+
+
+def _normalize_review_payload(data: dict[str, Any]) -> dict[str, Any]:
+    unwrapped = _unwrap_review_payload(data)
+    normalized = _normalize_aliases(unwrapped, _TOP_LEVEL_ALIASES)
+
+    issues = normalized.get("issues")
+    if isinstance(issues, list):
+        normalized["issues"] = [
+            _normalize_issue(issue) if isinstance(issue, dict) else issue for issue in issues
+        ]
+
+    risk_hints = normalized.get("risk_hints")
+    if isinstance(risk_hints, list):
+        normalized["risk_hints"] = [
+            _normalize_risk_hint(hint) if isinstance(hint, dict) else hint for hint in risk_hints
+        ]
+
+    material_completeness = normalized.get("material_completeness")
+    if isinstance(material_completeness, dict):
+        normalized["material_completeness"] = _normalize_material_completeness(material_completeness)
+
+    normalized = _apply_review_defaults(normalized)
+    return normalized
+
+
+def _normalize_issue(issue: dict[str, Any]) -> dict[str, Any]:
+    normalized = _normalize_aliases(issue, _ISSUE_ALIASES)
+    normalized["code"] = _normalize_issue_code(normalized.get("code"))
+    normalized["severity"] = _normalize_severity(normalized.get("severity"))
+    normalized["message"] = str(normalized.get("message") or normalized.get("code") or "模型返回问题项未提供描述。")
+    normalized["basis_refs"] = _normalize_string_list(normalized.get("basis_refs"))
+    normalized["applicant_visible"] = _normalize_bool(normalized.get("applicant_visible"), default=True)
+    if normalized.get("material_type") is not None:
+        normalized["material_type"] = str(normalized.get("material_type"))
+    if normalized.get("field_key") is not None:
+        normalized["field_key"] = str(normalized.get("field_key"))
+    return normalized
+
+
+def _normalize_risk_hint(hint: dict[str, Any]) -> dict[str, Any]:
+    normalized = _normalize_aliases(hint, _RISK_HINT_ALIASES)
+    normalized["risk_level"] = _normalize_risk_level(normalized.get("risk_level"))
+    normalized["description"] = str(normalized.get("description") or "模型返回风险项未提供描述。")
+    normalized["basis_refs"] = _normalize_string_list(normalized.get("basis_refs"))
+    normalized["requires_manual_review"] = _normalize_bool(normalized.get("requires_manual_review"), default=False)
+    return normalized
+
+
+def _normalize_material_completeness(value: dict[str, Any]) -> dict[str, Any]:
+    normalized = _normalize_aliases(value, _MATERIAL_COMPLETENESS_ALIASES)
+    return {
+        "received": _normalize_string_list(normalized.get("received")),
+        "missing": _normalize_string_list(normalized.get("missing")),
+        "unrecognized": _normalize_string_list(normalized.get("unrecognized")),
+    }
+
+
+def _apply_review_defaults(data: dict[str, Any]) -> dict[str, Any]:
+    normalized = dict(data)
+    if "summary" not in normalized:
+        normalized["summary"] = "AI已根据材料抽取结果和知识库依据生成辅助初审结果。"
+    if "risk_hints" not in normalized:
+        normalized["risk_hints"] = []
+    if "basis_refs" not in normalized:
+        refs: list[str] = []
+        for issue in normalized.get("issues", []):
+            if isinstance(issue, dict):
+                refs.extend(_normalize_string_list(issue.get("basis_refs")))
+        for hint in normalized.get("risk_hints", []):
+            if isinstance(hint, dict):
+                refs.extend(_normalize_string_list(hint.get("basis_refs")))
+        normalized["basis_refs"] = _dedupe_strings(refs)
+    else:
+        normalized["basis_refs"] = _normalize_string_list(normalized.get("basis_refs"))
+    if "manual_review_notice" not in normalized:
+        normalized["manual_review_notice"] = "AI审核结果为辅助建议，不构成最终审批意见。"
+    return normalized
+
+
+def _unwrap_review_payload(data: dict[str, Any]) -> dict[str, Any]:
+    if _looks_like_review_payload(data):
+        return data
+
+    for key in _WRAPPER_KEYS:
+        value = data.get(key)
+        if isinstance(value, dict) and _looks_like_review_payload(value):
+            return value
+
+    for value in data.values():
+        if isinstance(value, dict) and _looks_like_review_payload(value):
+            return value
+
+    return data
+
+
+def _looks_like_review_payload(data: dict[str, Any]) -> bool:
+    normalized_keys = set(data.keys())
+    for alias, canonical in _TOP_LEVEL_ALIASES.items():
+        if alias in normalized_keys:
+            normalized_keys.add(canonical)
+    return bool(_SCHEMA_REQUIRED_TOP & normalized_keys)
+
+
+def _normalize_aliases(data: dict[str, Any], aliases: dict[str, str]) -> dict[str, Any]:
+    normalized = dict(data)
+    for alias, canonical in aliases.items():
+        if canonical not in normalized and alias in normalized:
+            normalized[canonical] = normalized[alias]
+    return normalized
+
+
+def _normalize_string_list(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return _dedupe_strings(str(item).strip() for item in value if str(item).strip())
+    if isinstance(value, str):
+        parts = re.split(r"[、,，;；\\s]+", value.strip())
+        return _dedupe_strings(part for part in parts if part)
+    return [str(value)]
+
+
+def _dedupe_strings(values) -> list[str]:
+    seen: set[str] = set()
+    result: list[str] = []
+    for value in values:
+        text = str(value).strip()
+        if not text or text in seen:
+            continue
+        seen.add(text)
+        result.append(text)
+    return result
+
+
+def _normalize_bool(value: Any, default: bool = False) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        text = value.strip().lower()
+        if text in {"true", "yes", "y", "1", "是", "需要", "可见"}:
+            return True
+        if text in {"false", "no", "n", "0", "否", "不需要", "不可见"}:
+            return False
+    if isinstance(value, int | float):
+        return bool(value)
+    return default
+
+
+def _normalize_severity(value: Any) -> str:
+    text = str(value or "").strip().upper()
+    if text in {"INFO", "WARNING", "BLOCKER"}:
+        return text
+    if any(token in text for token in ("阻断", "严重", "高", "HIGH")):
+        return "BLOCKER"
+    if any(token in text for token in ("警告", "中", "MEDIUM", "WARN")):
+        return "WARNING"
+    return "INFO"
+
+
+def _normalize_risk_level(value: Any) -> str:
+    text = str(value or "").strip().upper()
+    if text in {"LOW", "MEDIUM", "HIGH"}:
+        return text
+    if any(token in text for token in ("高", "严重", "HIGH")):
+        return "HIGH"
+    if any(token in text for token in ("中", "MEDIUM")):
+        return "MEDIUM"
+    return "LOW"
+
+
+def _normalize_issue_code(value: Any) -> str:
+    text = str(value or "").strip()
+    upper = text.upper()
+    if upper in FindingType.ALL:
+        return upper
+
+    mappings = (
+        ("缺失材料", FindingType.MISSING_MATERIAL),
+        ("材料缺失", FindingType.MISSING_MATERIAL),
+        ("字段缺失", FindingType.MISSING_FIELD),
+        ("缺少字段", FindingType.MISSING_FIELD),
+        ("格式", FindingType.INVALID_FORMAT),
+        ("身份", FindingType.INCONSISTENT_IDENTITY),
+        ("证照", FindingType.INCONSISTENT_CREDENTIAL),
+        ("取水量", FindingType.WATER_AMOUNT_REVIEW_REQUIRED),
+        ("取水用途", FindingType.PERMIT_REQUIREMENT_REVIEW_REQUIRED),
+        ("公示", FindingType.PUBLIC_NOTICE_REVIEW_REQUIRED),
+        ("水资源论证", FindingType.WATER_RESOURCE_ASSESSMENT_REVIEW_REQUIRED),
+    )
+    for token, code in mappings:
+        if token in text:
+            return code
+    return FindingType.MODEL_UNCERTAIN
 
 
 def _safe_token_usage(resp) -> dict:

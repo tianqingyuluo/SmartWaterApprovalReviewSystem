@@ -11,7 +11,7 @@ from knowledge_pack import KnowledgePackError, load_knowledge_pack, normalize_kn
 from src.api.models import CreateReviewTaskRequest, CreateReviewTaskResponse, HealthResponse, TaskStatusResponse
 from src.config import config
 from src.services.fastapi_task_store import InMemoryTaskStore
-from src.services.knowledge_tools import SmartWaterKnowledgeTools
+from src.services.mcp_client import SmartWaterMcpClient
 from src.services.result_writer import ResultWriter, _result_to_dict
 from src.services.review_orchestrator import ReviewTaskOrchestrator
 
@@ -28,15 +28,15 @@ class FastapiReviewRuntime:
         self.writer = ResultWriter()
         self.knowledge_pack_version: str | None = None
         self._knowledge_fragments: list[dict[str, str]] = []
-        self._knowledge_tools: SmartWaterKnowledgeTools | None = None
+        self._knowledge_loaded = False
 
     def ensure_knowledge_loaded(self) -> None:
-        if self._knowledge_tools:
+        if self._knowledge_loaded:
             return
         pack = self._load_knowledge_pack()
         self.knowledge_pack_version = str(pack.get("version") or "") or None
         self._knowledge_fragments = normalize_knowledge_fragments(pack)
-        self._knowledge_tools = SmartWaterKnowledgeTools(pack)
+        self._knowledge_loaded = True
         logger.info(
             "FastAPI runtime loaded knowledge pack version=%s fragments=%d",
             self.knowledge_pack_version,
@@ -64,7 +64,7 @@ class FastapiReviewRuntime:
         try:
             self.ensure_knowledge_loaded()
             orchestrator = ReviewTaskOrchestrator(
-                knowledge_tools=self._knowledge_tools,
+                mcp_client=SmartWaterMcpClient(),
                 knowledge_fragments=self._knowledge_fragments,
                 knowledge_pack_version=self.knowledge_pack_version,
             )

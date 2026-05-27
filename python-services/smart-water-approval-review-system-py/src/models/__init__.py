@@ -102,6 +102,16 @@ class ModelMetadata(BaseModel):
     token_usage: dict[str, int] = Field(default_factory=dict)
 
 
+class ToolCallTrace(BaseModel):
+    tool_name: str
+    input_summary: str = ""
+    output_summary: str = ""
+    source_refs: list[str] = Field(default_factory=list)
+    status: str = "SUCCESS"
+    latency_ms: int | None = None
+    error: str | None = None
+
+
 class ReviewResult(BaseModel):
     summary: str = ""
     issues: list[Issue] = Field(default_factory=list)
@@ -112,6 +122,7 @@ class ReviewResult(BaseModel):
     basis_refs: list[str] = Field(default_factory=list)
     manual_review_notice: str = ""
     model_metadata: ModelMetadata | None = None
+    tool_call_traces: list[ToolCallTrace] = Field(default_factory=list)
 
 
 class ProcessingResult(BaseModel):

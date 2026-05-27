@@ -1,12 +1,38 @@
 from __future__ import annotations
 
+import logging
+
 from mcp.server.fastmcp import FastMCP
 
 from src.services.knowledge_tools import SmartWaterKnowledgeTools
 
+_logger = logging.getLogger(__name__)
+
 
 def build_mcp_server(tools: SmartWaterKnowledgeTools | None = None) -> FastMCP:
-    knowledge_tools = tools or SmartWaterKnowledgeTools()
+    if tools is None:
+        chroma_store = None
+        embedding_client = None
+        try:
+            from src.ingest.chroma_store import ChromaStore
+
+            chroma_store = ChromaStore()
+        except Exception as e:
+            _logger.info("ChromaStore not available, vector search disabled: %s", e)
+
+        try:
+            from src.ingest.embedding_client import EmbeddingClient
+
+            embedding_client = EmbeddingClient()
+        except Exception as e:
+            _logger.info("EmbeddingClient not available, vector search disabled: %s", e)
+
+        tools = SmartWaterKnowledgeTools(
+            chroma_store=chroma_store,
+            embedding_client=embedding_client,
+        )
+
+    knowledge_tools = tools
 
     server = FastMCP(
         name="smartwater-mcp-tools",

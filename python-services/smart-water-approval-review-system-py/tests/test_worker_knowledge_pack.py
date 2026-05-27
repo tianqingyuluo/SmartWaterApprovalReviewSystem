@@ -65,6 +65,30 @@ class WorkerKnowledgePackTests(unittest.TestCase):
         self.assertIsNone(worker._knowledge_pack_version)
         self.assertEqual([], worker._knowledge_cache)
 
+    def test_process_task_marks_failed_when_orchestrator_fails(self) -> None:
+        worker = SmartWaterWorker()
+        worker.writer = type(
+            "WriterStub",
+            (),
+            {
+                "__init__": lambda self: setattr(self, "statuses", []),
+                "update_status": lambda self, task_id, status: self.statuses.append((task_id, status)) or True,
+                "write_results": lambda self, task_id, result: True,
+            },
+        )()
+        worker._orchestrator = type(
+            "BrokenOrchestrator",
+            (),
+            {"process_task": lambda self, task_data: (_ for _ in ()).throw(RuntimeError("MCP unavailable"))},
+        )()
+
+        worker._process_task({"taskId": "task-mcp-down"})
+
+        self.assertEqual(
+            [("task-mcp-down", "PROCESSING"), ("task-mcp-down", "FAILED")],
+            worker.writer.statuses,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

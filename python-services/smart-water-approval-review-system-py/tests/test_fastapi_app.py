@@ -19,7 +19,7 @@ class FastapiAppTests(unittest.TestCase):
         runtime.store = runtime.store.__class__()
         runtime.knowledge_pack_version = None
         runtime._knowledge_fragments = []
-        runtime._knowledge_tools = None
+        runtime._knowledge_loaded = False
         config.INTERNAL_API_TOKEN = ""
 
     @patch("src.api.app.runtime.ensure_knowledge_loaded")

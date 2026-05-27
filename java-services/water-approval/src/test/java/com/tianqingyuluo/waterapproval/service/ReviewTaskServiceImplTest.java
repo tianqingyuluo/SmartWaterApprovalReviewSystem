@@ -420,6 +420,37 @@ class ReviewTaskServiceImplTest {
     }
 
     @Test
+    void getReviewerResultShouldExposeMcpToolCallTraceFromCallback() {
+        String taskId = "task-mcp-trace-" + System.nanoTime();
+        ReviewTask task = newReviewTask(taskId, "session-mcp-trace", "PROCESSING");
+        taskMapper.insert(task);
+
+        ResultWriteRequest request = new ResultWriteRequest();
+        request.setStatus("COMPLETED");
+        request.setReviewerResult(Map.of(
+                "summary", "MCP工具调用已记录",
+                "toolCallTraces", List.of(Map.of(
+                        "toolName", "knowledge_search",
+                        "inputSummary", "query='营业执照', top_k=8",
+                        "outputSummary", "total=3, ids=[BASIS_MATERIAL_INITIAL_LIST]",
+                        "sourceRefs", List.of("BASIS_MATERIAL_INITIAL_LIST"),
+                        "status", "SUCCESS",
+                        "latencyMs", 42
+                ))
+        ));
+
+        reviewTaskService.writeResult(taskId, request);
+
+        ReviewerResultResponse response = reviewTaskService.getReviewerResult(taskId, null, reviewerUser());
+
+        assertNotNull(response.getToolCallTraces());
+        assertEquals(1, response.getToolCallTraces().size());
+        assertEquals("knowledge_search", response.getToolCallTraces().get(0).getToolName());
+        assertEquals("SUCCESS", response.getToolCallTraces().get(0).getStatus());
+        assertEquals(List.of("BASIS_MATERIAL_INITIAL_LIST"), response.getToolCallTraces().get(0).getSourceRefs());
+    }
+
+    @Test
     void getTaskListShouldReturnTasksInDescOrder() {
         ReviewTask task1 = new ReviewTask();
         task1.setTaskId("task-list-1-" + System.currentTimeMillis());

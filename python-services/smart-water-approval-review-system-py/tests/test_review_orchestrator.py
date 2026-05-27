@@ -17,8 +17,16 @@ class _StubExtractor:
         ]
 
 
-class _StubKnowledgeTools:
-    def check_completeness(self, materials):
+class _StubMcpClient:
+    def __init__(self):
+        self.calls = []
+
+    def list_tools_sync(self):
+        self.calls.append(("list_tools", None))
+        return [{"name": "knowledge_search"}, {"name": "check_completeness"}]
+
+    def check_completeness_sync(self, materials):
+        self.calls.append(("check_completeness", list(materials)))
         return {
             "submitted": materials,
             "required": ["APPLICATION_FORM", "BUSINESS_LICENSE", "ID_CARD"],
@@ -35,7 +43,8 @@ class _StubKnowledgeTools:
             ],
         }
 
-    def knowledge_search(self, query, top_k=8):
+    def knowledge_search_sync(self, query, top_k=8):
+        self.calls.append(("knowledge_search", query, top_k))
         return {
             "results": [
                 {
@@ -45,6 +54,9 @@ class _StubKnowledgeTools:
                 }
             ]
         }
+
+    def consume_traces(self):
+        return []
 
 
 class ReviewTaskOrchestratorTests(unittest.TestCase):
@@ -91,15 +103,16 @@ class ReviewTaskOrchestratorTests(unittest.TestCase):
         orchestrator = ReviewTaskOrchestrator(
             extractor=_StubExtractor(),
             reviewer=reviewer,
-            knowledge_tools=_StubKnowledgeTools(),
+            mcp_client=_StubMcpClient(),
             knowledge_fragments=[{"source_id": "PROMPT_BASIS_LIMIT", "source_title": "prompt", "content": "限制依据"}],
             knowledge_pack_version="water-permit-mvp-2026-04-27",
         )
 
         result = orchestrator.process_task(self._task_payload())
 
-        self.assertEqual("PARTIAL_SUCCESS", result.status)
-        self.assertIn("降级为规则", result.result_summary)
+        self.assertEqual("FAILED", result.status)
+        self.assertIn("关键智能依赖失败", result.result_summary)
+        self.assertIn("关键智能依赖失败", result.error_message)
         self.assertTrue(any(issue.code == "MODEL_UNCERTAIN" for issue in result.reviewer_result.issues))
         self.assertTrue(any(issue.code == "MISSING_MATERIAL" for issue in result.reviewer_result.issues))
         self.assertEqual([], result.applicant_result.extracted_fields)
@@ -117,10 +130,11 @@ class ReviewTaskOrchestratorTests(unittest.TestCase):
                 )
             },
         )()
+        mcp_client = _StubMcpClient()
         orchestrator = ReviewTaskOrchestrator(
             extractor=_StubExtractor(),
             reviewer=reviewer,
-            knowledge_tools=_StubKnowledgeTools(),
+            mcp_client=mcp_client,
             knowledge_fragments=[],
             knowledge_pack_version="water-permit-mvp-2026-04-27",
         )
@@ -132,6 +146,21 @@ class ReviewTaskOrchestratorTests(unittest.TestCase):
         self.assertIn("MISSING_MATERIAL", codes)
         self.assertIn("WATER_AMOUNT_REVIEW_REQUIRED", codes)
         self.assertEqual("water-permit-mvp-2026-04-27", result.knowledge_pack_version)
+        self.assertEqual("list_tools", mcp_client.calls[0][0])
+        self.assertEqual("check_completeness", mcp_client.calls[1][0])
+        self.assertEqual("knowledge_search", mcp_client.calls[2][0])
+
+    def test_mcp_tool_discovery_failure_blocks_processing(self):
+        mcp_client = type("BrokenMcpClient", (), {"list_tools_sync": lambda self: [{"name": "knowledge_search"}]})()
+        orchestrator = ReviewTaskOrchestrator(
+            extractor=_StubExtractor(),
+            reviewer=object(),
+            mcp_client=mcp_client,
+            knowledge_fragments=[],
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "missing required tools"):
+            orchestrator.process_task(self._task_payload())
 
 
 if __name__ == "__main__":

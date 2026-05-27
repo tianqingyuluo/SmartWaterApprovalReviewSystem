@@ -896,6 +896,7 @@ GET /api/material/download?key=<storageKey>
 | Admin visibility | Admin can list and read all tasks; admin may submit for demo/troubleshooting. |
 | Applicant result | `APPLICANT` result projection only; never expose `reviewerResult.extractedFields`, `riskHints`, or `draftOpinion`. |
 | Reviewer result | Only `REVIEWER` or `ADMIN` can call `/result/reviewer`. |
+| Reviewer evidence fields | Reviewer result may expose `extractedFields`, `modelMetadata`, and `toolCallTraces`; applicant result must not expose these reviewer-only diagnostics. |
 
 ### CP3 Initial Review Action Contract
 
@@ -983,7 +984,8 @@ Contracts:
 - Java tests that Worker endpoints still work with `X-Worker-Token`.
 - Frontend tests that business `401` clears auth state.
 - Frontend adapter/page tests that applicant result flow uses applicant
-  projection and reviewer result preserves `extractedFields[]`.
+  projection and reviewer result preserves `extractedFields[]` plus
+  `toolCallTraces[]`.
 
 ### 7. Wrong vs Correct
 
@@ -1099,7 +1101,7 @@ X-Internal-Token: <INTERNAL_API_TOKEN, if configured>
 | Knowledge pack missing on `/health` | Return `status=degraded`; do not crash the service process. |
 | Java status sync fails | Continue processing but log a warning; final callback may still succeed. |
 | Java result callback fails after retries | Mark FastAPI in-memory task `FAILED` and attempt Java status `FAILED`. |
-| Agent/LLM returns failure category or throws | Return `PARTIAL_SUCCESS` with rules fallback and reviewer-only manual-review notice. |
+| Agent/LLM returns failure category or throws | CP3 compatibility may keep rules diagnostics, but CP3.5 real-chain acceptance must mark the task `FAILED` and must not claim AI review success. |
 
 ### 5. Good/Base/Bad Cases
 
@@ -1118,7 +1120,8 @@ X-Internal-Token: <INTERNAL_API_TOKEN, if configured>
 - FastAPI tests for health, task creation, status query, camelCase aliases,
   `403` token rejection, and `404` unknown task.
 - Orchestrator tests for rule issue merge, Agent failure fallback, applicant vs
-  reviewer result separation, and `knowledgePackVersion` propagation.
+  reviewer result separation, MCP `toolCallTraces`, CP3.5 failure semantics,
+  and `knowledgePackVersion` propagation.
 - Worker/result writer tests remain green after reusing the orchestrator.
 - Lock and dependency check after adding FastAPI/uvicorn:
 

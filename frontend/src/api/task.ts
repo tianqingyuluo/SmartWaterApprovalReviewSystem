@@ -13,6 +13,8 @@ import type {
   TaskResultView,
   ReviewActionLogDto,
   ReviewActionLogView,
+  ToolCallTraceDto,
+  ToolCallTraceView,
   HandlingStatus,
   FailureCategory,
   ApplicantIssueDto,
@@ -100,6 +102,7 @@ export function toApplicantTaskResultView(
     riskHints: [],
     draftOpinion: '',
     manualReviewNotice: resultView.suggestions.join(' '),
+    toolCallTraces: [],
     failureCategory: resultView.status === 'FAILED' ? 'SYSTEM_ERROR' : null,
     failureReason: resultView.status === 'FAILED'
       ? '暂无法生成结果，请检查材料文件是否可读，或重新提交新的任务。'
@@ -138,6 +141,7 @@ export function toReviewerResultView(
     riskHints: resultDto.riskHints.map(formatRiskHint),
     draftOpinion: resultDto.draftOpinion,
     manualReviewNotice,
+    toolCallTraces: normalizeToolCallTraces(resultDto.toolCallTraces),
     failureCategory,
     failureReason,
     requiresManualReview:
@@ -168,6 +172,22 @@ function normalizeReviewActionLogs(
     fromHandlingStatus: log.fromHandlingStatus ?? null,
     toHandlingStatus: log.toHandlingStatus ?? null,
     operatedAt: log.operatedAt ?? null,
+  }))
+}
+
+function normalizeToolCallTraces(traces: ToolCallTraceDto[] | null | undefined): ToolCallTraceView[] {
+  if (!Array.isArray(traces)) {
+    return []
+  }
+
+  return traces.map((trace) => ({
+    toolName: trace.toolName,
+    inputSummary: trace.inputSummary ?? '',
+    outputSummary: trace.outputSummary ?? '',
+    sourceRefs: Array.isArray(trace.sourceRefs) ? trace.sourceRefs : [],
+    status: trace.status ?? '',
+    latencyMs: typeof trace.latencyMs === 'number' ? trace.latencyMs : null,
+    error: trace.error ?? '',
   }))
 }
 

@@ -12,9 +12,10 @@ from src.models import (
     ProcessingResult,
     ReviewResult,
     RiskHint,
+    ToolCallTrace,
 )
 from src.services.field_extractor import FieldExtractor
-from src.services.knowledge_tools import SmartWaterKnowledgeTools
+from src.services.mcp_client import SmartWaterMcpClient
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,7 @@ _AGENT_FAILURE_CODES = {
     "UNSUPPORTED_CAPABILITY",
 }
 _ERROR_FIELD_KEYS = {"ocr_error", "extraction_error", "download_error"}
+_TECHNICAL_FAILURE_FIELD_KEYS = {"ocr_error", "extraction_error", "download_error"}
 
 
 def _dedupe(values: list[str]) -> list[str]:
@@ -67,13 +69,13 @@ class ReviewTaskOrchestrator:
         self,
         extractor: FieldExtractor | None = None,
         reviewer: ReviewReasoningAdapter | None = None,
-        knowledge_tools: SmartWaterKnowledgeTools | None = None,
+        mcp_client: SmartWaterMcpClient | None = None,
         knowledge_fragments: list[dict[str, str]] | None = None,
         knowledge_pack_version: str | None = None,
     ) -> None:
         self._extractor = extractor or FieldExtractor()
         self._reviewer = reviewer or ReviewReasoningAdapter()
-        self._knowledge_tools = knowledge_tools
+        self._mcp_client = mcp_client or SmartWaterMcpClient()
         self._knowledge_fragments = knowledge_fragments or []
         self._knowledge_pack_version = knowledge_pack_version
 
@@ -84,6 +86,7 @@ class ReviewTaskOrchestrator:
         uploaded = [material for material in materials if material.uploaded]
         material_types = [material.material_type for material in uploaded]
 
+        self._discover_mcp_tools()
         completeness = self._check_completeness(material_types)
         missing_materials = completeness.get("missing", [])
         required_materials = completeness.get("required", [])
@@ -116,22 +119,21 @@ class ReviewTaskOrchestrator:
             completeness.get("unrecognized", []),
         )
         reviewer_result.extracted_fields = extracted_fields
+        reviewer_result.tool_call_traces = self._consume_mcp_traces()
 
         total_required = len(required_materials) or _TOTAL_MVP_SLOTS
-        status = (
-            "PARTIAL_SUCCESS"
-            if agent_failed or partial_failures or missing_materials
-            else "COMPLETED"
-        )
+        technical_failure = agent_failed or self._has_technical_extraction_failure(extracted_fields)
+        status = "FAILED" if technical_failure else ("PARTIAL_SUCCESS" if missing_materials else "COMPLETED")
         result_summary = reviewer_result.summary
-        if partial_failures:
+        if technical_failure and partial_failures:
             processed_count = len(material_types)
             failure_count = len(partial_failures)
             result_summary = (
-                f"{result_summary} (已处理材料{processed_count}/{total_required}, 部分失败: {failure_count})"
+                f"{result_summary} (关键智能依赖失败，已处理材料{processed_count}/{total_required}, "
+                f"失败材料: {failure_count})"
             )
-        elif agent_failed:
-            result_summary = f"{result_summary} (已降级为规则结果，建议人工复核)"
+        elif technical_failure:
+            result_summary = f"{result_summary} (关键智能依赖失败，未生成AI审查成功结论)"
 
         applicant_result = ReviewResult(
             summary=reviewer_result.summary,
@@ -146,6 +148,7 @@ class ReviewTaskOrchestrator:
             result_summary=result_summary,
             applicant_result=applicant_result,
             reviewer_result=reviewer_result,
+            error_message=result_summary if technical_failure else None,
             knowledge_pack_version=self._knowledge_pack_version,
         )
 
@@ -166,20 +169,7 @@ class ReviewTaskOrchestrator:
         return slots
 
     def _check_completeness(self, material_types: list[str]) -> dict[str, Any]:
-        if not self._knowledge_tools:
-            missing = [
-                material_type
-                for material_type in ("APPLICATION_FORM", "BUSINESS_LICENSE", "ID_CARD")
-                if material_type not in material_types
-            ]
-            return {
-                "submitted": _dedupe(material_types),
-                "required": ["APPLICATION_FORM", "BUSINESS_LICENSE", "ID_CARD"],
-                "missing": missing,
-                "unrecognized": [],
-                "findings": [],
-            }
-        return self._knowledge_tools.check_completeness(material_types)
+        return self._mcp_client.check_completeness_sync(material_types)
 
     def _build_rule_issues(self, completeness: dict[str, Any]) -> list[Issue]:
         issues: list[Issue] = []
@@ -289,13 +279,10 @@ class ReviewTaskOrchestrator:
         material_types: list[str],
         extracted_fields: list[ExtractedField],
     ) -> list[dict[str, str]]:
-        if not self._knowledge_tools:
-            return list(self._knowledge_fragments)
-
         query_parts = list(material_types)
         query_parts.extend(field.field_key for field in extracted_fields[:8])
         query = " ".join(query_parts).strip() or "取水许可 材料审核 规则"
-        search_result = self._knowledge_tools.knowledge_search(query, top_k=8)
+        search_result = self._mcp_client.knowledge_search_sync(query, top_k=8)
 
         fragments: list[dict[str, str]] = []
         seen: set[str] = set()
@@ -326,6 +313,27 @@ class ReviewTaskOrchestrator:
             seen.add(source_id)
 
         return fragments or list(self._knowledge_fragments)
+
+    def _discover_mcp_tools(self) -> None:
+        tools = self._mcp_client.list_tools_sync()
+        names = {str(tool.get("name") or "") for tool in tools}
+        required = {"knowledge_search", "check_completeness"}
+        missing = sorted(required - names)
+        if missing:
+            raise RuntimeError(f"MCP server missing required tools: {missing}")
+        logger.info("MCP tools discovered for review orchestration: %s", sorted(names))
+
+    def _consume_mcp_traces(self) -> list[ToolCallTrace]:
+        consume = getattr(self._mcp_client, "consume_traces", None)
+        if callable(consume):
+            return consume()
+        snapshot = getattr(self._mcp_client, "traces_snapshot", None)
+        if callable(snapshot):
+            return snapshot()
+        return []
+
+    def _has_technical_extraction_failure(self, extracted_fields: list[ExtractedField]) -> bool:
+        return any(field.field_key in _TECHNICAL_FAILURE_FIELD_KEYS for field in extracted_fields)
 
     def _build_fallback_result(
         self,

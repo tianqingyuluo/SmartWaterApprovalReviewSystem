@@ -122,6 +122,26 @@ export interface RiskHintDto {
   requiresManualReview?: boolean | null
 }
 
+export interface ToolCallTraceDto {
+  toolName: string
+  inputSummary?: string | null
+  outputSummary?: string | null
+  sourceRefs?: string[] | null
+  status?: string | null
+  latencyMs?: number | null
+  error?: string | null
+}
+
+export interface ToolCallTraceView {
+  toolName: string
+  inputSummary: string
+  outputSummary: string
+  sourceRefs: string[]
+  status: string
+  latencyMs: number | null
+  error: string
+}
+
 export interface ReviewActionLogDto {
   actionCode: string
   actionLabel?: string | null
@@ -203,6 +223,7 @@ export interface ReviewerResultResponse {
   extractedFields: unknown
   manualReviewNotice?: string | null
   modelMetadata?: string | null
+  toolCallTraces?: ToolCallTraceDto[] | null
 }
 
 // ── Task List ──
@@ -272,6 +293,7 @@ export interface ReviewerResultView {
   riskHints: string[]
   draftOpinion: string
   manualReviewNotice: string
+  toolCallTraces: ToolCallTraceView[]
   failureCategory: FailureCategory
   failureReason: string | null
   requiresManualReview: boolean

@@ -351,6 +351,7 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
                 response.setManualReviewNotice((String) content.getOrDefault("manualReviewNotice", ""));
                 response.setMissingMaterials(parseMissingMaterialsFromContent(content));
                 response.setExtractedFields(content.get("extractedFields"));
+                response.setToolCallTraces(parseToolCallTraces(content.get("toolCallTraces")));
                 Object modelMeta = content.get("modelMetadata");
                 if (modelMeta instanceof String) {
                     response.setModelMetadata((String) modelMeta);
@@ -368,6 +369,7 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
             response.setDraftOpinion("");
             response.setManualReviewNotice("");
             response.setMissingMaterials(new ArrayList<>());
+            response.setToolCallTraces(new ArrayList<>());
         }
 
         return response;
@@ -520,6 +522,29 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
             }
         }
         return riskHints;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<ReviewerResultResponse.ToolCallTrace> parseToolCallTraces(Object tracesObj) {
+        List<ReviewerResultResponse.ToolCallTrace> traces = new ArrayList<>();
+        if (tracesObj instanceof List) {
+            List<Map<String, Object>> traceList = (List<Map<String, Object>>) tracesObj;
+            for (Map<String, Object> traceMap : traceList) {
+                ReviewerResultResponse.ToolCallTrace trace = new ReviewerResultResponse.ToolCallTrace();
+                trace.setToolName((String) traceMap.get("toolName"));
+                trace.setInputSummary((String) traceMap.get("inputSummary"));
+                trace.setOutputSummary((String) traceMap.get("outputSummary"));
+                trace.setSourceRefs((List<String>) traceMap.get("sourceRefs"));
+                trace.setStatus((String) traceMap.get("status"));
+                Object latency = traceMap.get("latencyMs");
+                if (latency instanceof Number latencyNumber) {
+                    trace.setLatencyMs(latencyNumber.intValue());
+                }
+                trace.setError((String) traceMap.get("error"));
+                traces.add(trace);
+            }
+        }
+        return traces;
     }
 
     private List<ReviewActionLogItem> loadActionLogs(String taskId) {

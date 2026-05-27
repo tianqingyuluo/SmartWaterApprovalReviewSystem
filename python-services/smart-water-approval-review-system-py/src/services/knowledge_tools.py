@@ -1,12 +1,18 @@
 from __future__ import annotations
 
+import logging
+import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
 from knowledge_pack import load_knowledge_pack
 
+logger = logging.getLogger(__name__)
+
 MVP_REQUIRED_MATERIAL_TYPES = ("APPLICATION_FORM", "BUSINESS_LICENSE", "ID_CARD")
+
+_MIN_VECTOR_SIMILARITY = 0.3
 
 
 @dataclass(frozen=True)
@@ -164,12 +170,33 @@ def _score_match(query_tokens: Sequence[str], searchable_text: str) -> int:
     return score
 
 
+def _cosine_similarity(a: list[float], b: list[float]) -> float:
+    dot = sum(x * y for x, y in zip(a, b, strict=False))
+    norm_a = math.sqrt(sum(x * x for x in a))
+    norm_b = math.sqrt(sum(y * y for y in b))
+    if norm_a == 0.0 or norm_b == 0.0:
+        return 0.0
+    return dot / (norm_a * norm_b)
+
+
 class SmartWaterKnowledgeTools:
-    def __init__(self, knowledge_pack: dict[str, Any] | None = None) -> None:
+    def __init__(
+        self,
+        knowledge_pack: dict[str, Any] | None = None,
+        chroma_store: Any | None = None,
+        embedding_client: Any | None = None,
+    ) -> None:
         self._pack = knowledge_pack if knowledge_pack is not None else load_knowledge_pack()
         self._version = str(self._pack.get("version") or "")
         self._basis_lookup = _review_basis_by_id(self._pack)
         self._checklist = self._build_checklist()
+
+        self._chroma_store = chroma_store
+        self._embedding_client = embedding_client
+        self._json_item_embeddings: list[tuple[list[float], dict[str, Any], str]] = []
+
+        if self._embedding_client is not None:
+            self._precompute_json_embeddings()
 
     @property
     def knowledge_pack_version(self) -> str:
@@ -206,16 +233,57 @@ class SmartWaterKnowledgeTools:
 
         return items
 
-    def knowledge_search(self, query: str, top_k: int | str = 5) -> dict[str, Any]:
-        normalized_query = query.strip()
-        query_tokens = _tokenize(normalized_query)
-        requested_top_k = top_k
-        try:
-            top_k_int = int(top_k)
-        except (TypeError, ValueError):
-            top_k_int = 5
-        safe_top_k = max(1, min(50, top_k_int))
+    def _precompute_json_embeddings(self) -> None:
+        sections = (
+            "materialChecklist",
+            "applicationFieldRules",
+            "reviewBasis",
+            "promptSnippets",
+            "manualReviewRules",
+        )
+        items_text: list[str] = []
+        items_meta: list[tuple[dict[str, Any], str]] = []
 
+        for section in sections:
+            section_items = self._pack.get(section, [])
+            if not isinstance(section_items, list):
+                continue
+            for raw_item in section_items:
+                if not isinstance(raw_item, dict):
+                    continue
+                text = _build_search_text(raw_item, self._basis_lookup)
+                items_text.append(text)
+                items_meta.append((raw_item, section))
+
+        if not items_text:
+            return
+
+        try:
+            all_embeddings = self._embedding_client.embed(items_text)
+            for emb, (raw_item, section) in zip(all_embeddings, items_meta, strict=False):
+                self._json_item_embeddings.append((emb, raw_item, section))
+            logger.info(
+                "Pre-computed embeddings for %d JSON knowledge pack items",
+                len(self._json_item_embeddings),
+            )
+        except Exception as e:
+            logger.warning(
+                "Failed to pre-compute JSON item embeddings: %s. "
+                "Vector search will only return document chunks.",
+                e,
+            )
+            self._json_item_embeddings = []
+
+    def _chroma_populated(self) -> bool:
+        if self._chroma_store is None:
+            return False
+        try:
+            return self._chroma_store.count() > 0
+        except Exception:
+            return False
+
+    def _keyword_search(self, normalized_query: str, safe_top_k: int) -> list[dict[str, Any]]:
+        query_tokens = _tokenize(normalized_query)
         candidates: list[dict[str, Any]] = []
         sections = (
             "materialChecklist",
@@ -281,6 +349,114 @@ class SmartWaterKnowledgeTools:
             result = dict(item)
             result["rank"] = rank
             results.append(result)
+        return results
+
+    def _vector_search(self, normalized_query: str, safe_top_k: int) -> list[dict[str, Any]]:
+        try:
+            query_embeddings = self._embedding_client.embed([normalized_query or " "])
+            query_emb = query_embeddings[0]
+        except Exception as e:
+            logger.warning("Failed to embed query, falling back: %s", e)
+            raise
+
+        candidates: list[dict[str, Any]] = []
+
+        if self._chroma_store is not None:
+            try:
+                chroma_hits = self._chroma_store.query(query_emb, top_k=safe_top_k)
+                for hit in chroma_hits:
+                    metadata = hit.get("metadata", {})
+                    distance = float(hit.get("distance", 0.0))
+                    similarity = 1.0 - distance
+                    doc_text = str(hit.get("document", "")).strip()
+                    excerpt = doc_text[:200] + "..." if len(doc_text) > 200 else doc_text
+                    chunk_id = str(hit.get("id", ""))
+                    source_file = str(metadata.get("source_file", ""))
+                    source_title = str(metadata.get("source_title") or source_file)
+
+                    candidates.append(
+                        {
+                            "section": "document_chunk",
+                            "id": chunk_id,
+                            "title": source_title,
+                            "materialType": None,
+                            "fieldPath": None,
+                            "excerpt": excerpt,
+                            "score": round(similarity, 4),
+                            "sourceIds": [source_file] if source_file else [],
+                            "sourceRefs": [],
+                            "basisRefs": [],
+                        }
+                    )
+            except Exception as e:
+                logger.warning("ChromaDB query failed, continuing with JSON items only: %s", e)
+
+        for emb, raw_item, section in self._json_item_embeddings:
+            similarity = _cosine_similarity(query_emb, emb)
+            if normalized_query and similarity < _MIN_VECTOR_SIMILARITY:
+                continue
+
+            item_id = str(raw_item.get("id") or "").strip()
+            title = (
+                str(raw_item.get("displayName") or "").strip()
+                or str(raw_item.get("sourceTitle") or "").strip()
+                or str(raw_item.get("kind") or "").strip()
+                or item_id
+            )
+            source_ids = _source_ids_for_item(raw_item, self._basis_lookup)
+            source_refs = _as_str_list(raw_item.get("sourceRefs", []))
+            basis_refs = _as_str_list(raw_item.get("basisRefs", []))
+            excerpt = _build_excerpt(raw_item, self._basis_lookup)
+
+            candidates.append(
+                {
+                    "section": section,
+                    "id": item_id,
+                    "title": title,
+                    "materialType": str(raw_item.get("materialType") or "").strip() or None,
+                    "fieldPath": str(raw_item.get("fieldPath") or "").strip() or None,
+                    "excerpt": excerpt,
+                    "score": round(similarity, 4),
+                    "sourceIds": source_ids,
+                    "sourceRefs": source_refs,
+                    "basisRefs": basis_refs,
+                }
+            )
+
+        candidates.sort(
+            key=lambda item: (
+                -float(item.get("score") or 0),
+                str(item.get("section") or ""),
+                str(item.get("id") or ""),
+            )
+        )
+
+        results = []
+        for rank, item in enumerate(candidates[:safe_top_k], start=1):
+            result = dict(item)
+            result["rank"] = rank
+            results.append(result)
+        return results
+
+    def knowledge_search(self, query: str, top_k: int | str = 5) -> dict[str, Any]:
+        normalized_query = query.strip()
+        requested_top_k = top_k
+        try:
+            top_k_int = int(top_k)
+        except (TypeError, ValueError):
+            top_k_int = 5
+        safe_top_k = max(1, min(50, top_k_int))
+
+        use_vector = self._chroma_populated() and self._embedding_client is not None
+
+        if use_vector:
+            try:
+                results = self._vector_search(normalized_query, safe_top_k)
+            except Exception as e:
+                logger.warning("Vector search failed, falling back to keyword: %s", e)
+                results = self._keyword_search(normalized_query, safe_top_k)
+        else:
+            results = self._keyword_search(normalized_query, safe_top_k)
 
         return {
             "query": normalized_query,

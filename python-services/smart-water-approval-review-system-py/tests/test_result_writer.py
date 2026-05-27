@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import httpx
 
-from src.models import ExtractedField, ProcessingResult, ReviewResult
+from src.models import ExtractedField, ProcessingResult, ReviewResult, ToolCallTrace
 from src.services.result_writer import ResultWriter, _parse_backend_response, _result_to_dict
 
 
@@ -127,6 +127,38 @@ class ResultWriterResponseTest(unittest.TestCase):
                 }
             ],
             payload["extractedFields"],
+        )
+
+    def test_result_to_dict_should_serialize_tool_call_traces(self) -> None:
+        result = ReviewResult(
+            summary="done",
+            tool_call_traces=[
+                ToolCallTrace(
+                    tool_name="knowledge_search",
+                    input_summary="query='营业执照', top_k=8",
+                    output_summary="total=3",
+                    source_refs=["BASIS_MATERIAL_INITIAL_LIST"],
+                    latency_ms=42,
+                )
+            ],
+        )
+
+        payload = _result_to_dict(result)
+
+        self.assertIsNotNone(payload)
+        self.assertEqual(
+            [
+                {
+                    "toolName": "knowledge_search",
+                    "inputSummary": "query='营业执照', top_k=8",
+                    "outputSummary": "total=3",
+                    "sourceRefs": ["BASIS_MATERIAL_INITIAL_LIST"],
+                    "status": "SUCCESS",
+                    "latencyMs": 42,
+                    "error": None,
+                }
+            ],
+            payload["toolCallTraces"],
         )
 
 

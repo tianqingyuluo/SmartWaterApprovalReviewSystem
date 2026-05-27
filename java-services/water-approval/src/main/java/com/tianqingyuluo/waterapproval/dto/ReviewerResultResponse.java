@@ -25,6 +25,7 @@ public class ReviewerResultResponse {
     private List<String> missingMaterials;
     private Object extractedFields;
     private String modelMetadata;
+    private List<ToolCallTrace> toolCallTraces;
 
     @Data
     public static class IssueItem {
@@ -43,5 +44,16 @@ public class ReviewerResultResponse {
         private String description;
         private List<String> basisRefs;
         private Boolean requiresManualReview;
+    }
+
+    @Data
+    public static class ToolCallTrace {
+        private String toolName;
+        private String inputSummary;
+        private String outputSummary;
+        private List<String> sourceRefs;
+        private String status;
+        private Integer latencyMs;
+        private String error;
     }
 }

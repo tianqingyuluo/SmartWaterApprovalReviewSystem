@@ -6,7 +6,7 @@ import time
 from knowledge_pack import KnowledgePackError, load_knowledge_pack, normalize_knowledge_fragments
 from src.config import config
 from src.models import ExtractedField, Issue, MaterialCompleteness, ProcessingResult, ReviewResult
-from src.services.knowledge_tools import SmartWaterKnowledgeTools
+from src.services.mcp_client import SmartWaterMcpClient
 from src.services.result_writer import ResultWriter
 from src.services.review_orchestrator import ReviewTaskOrchestrator
 
@@ -16,7 +16,6 @@ logger = logging.getLogger(__name__)
 class SmartWaterWorker:
     def __init__(self):
         self.writer = ResultWriter()
-        self._knowledge_tools: SmartWaterKnowledgeTools | None = None
         self._orchestrator: ReviewTaskOrchestrator | None = None
         self._running = False
         self._knowledge_cache: list = []
@@ -60,13 +59,18 @@ class SmartWaterWorker:
         task_id = str(task_data.get("taskId", ""))
         self.writer.update_status(task_id, "PROCESSING")
 
-        if not self._orchestrator:
-            self._orchestrator = ReviewTaskOrchestrator(
-                knowledge_tools=self._knowledge_tools,
-                knowledge_fragments=self._knowledge_cache,
-                knowledge_pack_version=self._knowledge_pack_version,
-            )
-        processing_result = self._orchestrator.process_task(task_data)
+        try:
+            if not self._orchestrator:
+                self._orchestrator = ReviewTaskOrchestrator(
+                    mcp_client=SmartWaterMcpClient(),
+                    knowledge_fragments=self._knowledge_cache,
+                    knowledge_pack_version=self._knowledge_pack_version,
+                )
+            processing_result = self._orchestrator.process_task(task_data)
+        except Exception as exc:
+            logger.error("Task processing failed for %s: %s", task_id, exc)
+            self.writer.update_status(task_id, "FAILED")
+            return
 
         success = self.writer.write_results(task_id, processing_result)
         if not success:
@@ -135,7 +139,6 @@ class SmartWaterWorker:
                 pack = load_knowledge_pack(preferred_pack)
                 self._knowledge_pack_version = str(pack.get("version") or "")
                 self._knowledge_cache = normalize_knowledge_fragments(pack)
-                self._knowledge_tools = SmartWaterKnowledgeTools(pack)
                 logger.info(
                     "Loaded knowledge pack version=%s fragments=%d",
                     self._knowledge_pack_version,
@@ -148,7 +151,6 @@ class SmartWaterWorker:
                     path = os.path.join(pack_dir, fname)
                     pack = load_knowledge_pack(path)
                     self._knowledge_pack_version = str(pack.get("version") or "")
-                    self._knowledge_tools = SmartWaterKnowledgeTools(pack)
                     self._knowledge_cache.extend(normalize_knowledge_fragments(pack))
 
             logger.info("Loaded %d knowledge fragments", len(self._knowledge_cache))

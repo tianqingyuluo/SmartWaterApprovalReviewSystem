@@ -70,6 +70,19 @@ def _result_to_dict(result: ReviewResult | None) -> dict | None:
             "finishReason": result.model_metadata.finish_reason,
             "tokenUsage": result.model_metadata.token_usage,
         }
+    if result.tool_call_traces:
+        d["toolCallTraces"] = [
+            {
+                "toolName": trace.tool_name,
+                "inputSummary": trace.input_summary,
+                "outputSummary": trace.output_summary,
+                "sourceRefs": trace.source_refs,
+                "status": trace.status,
+                "latencyMs": trace.latency_ms,
+                "error": trace.error,
+            }
+            for trace in result.tool_call_traces
+        ]
     return d
 
 

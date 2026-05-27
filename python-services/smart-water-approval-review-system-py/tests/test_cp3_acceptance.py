@@ -42,8 +42,11 @@ class _VariableNarrativeReviewer:
         )
 
 
-class _CompletenessTools:
-    def check_completeness(self, materials):
+class _McpClient:
+    def list_tools_sync(self):
+        return [{"name": "knowledge_search"}, {"name": "check_completeness"}]
+
+    def check_completeness_sync(self, materials):
         return {
             "submitted": materials,
             "required": ["APPLICATION_FORM", "BUSINESS_LICENSE", "ID_CARD"],
@@ -60,7 +63,7 @@ class _CompletenessTools:
             ],
         }
 
-    def knowledge_search(self, query, top_k=8):
+    def knowledge_search_sync(self, query, top_k=8):
         return {
             "results": [
                 {
@@ -71,13 +74,16 @@ class _CompletenessTools:
             ]
         }
 
+    def consume_traces(self):
+        return []
+
 
 class CP3AcceptanceTests(unittest.TestCase):
     def setUp(self) -> None:
         runtime.store = runtime.store.__class__()
         runtime.knowledge_pack_version = None
         runtime._knowledge_fragments = []
-        runtime._knowledge_tools = None
+        runtime._knowledge_loaded = False
 
     @staticmethod
     def _task_payload(task_id: str) -> dict:
@@ -128,7 +134,7 @@ class CP3AcceptanceTests(unittest.TestCase):
         orchestrator = ReviewTaskOrchestrator(
             extractor=_DeterministicExtractor(),
             reviewer=_VariableNarrativeReviewer(),
-            knowledge_tools=_CompletenessTools(),
+            mcp_client=_McpClient(),
             knowledge_fragments=[],
             knowledge_pack_version="water-permit-mvp-2026-04-27",
         )

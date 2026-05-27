@@ -155,6 +155,26 @@
             </ul>
           </div>
 
+          <div v-if="task.viewMode === 'REVIEWER' && task.toolCallTraces.length" class="mt-[18px] border-t border-sw-line pt-[18px]">
+            <h3 class="mb-3 text-base font-black text-[#16233b]">MCP 工具调用轨迹</h3>
+            <div class="grid gap-2.5">
+              <article
+                v-for="trace in task.toolCallTraces"
+                :key="`${trace.toolName}-${trace.inputSummary}-${trace.latencyMs}`"
+                class="rounded-[10px] border border-[#dbe8f7] bg-[#f7fbff] p-3"
+              >
+                <div class="mb-2 flex flex-wrap items-center gap-2">
+                  <strong class="text-[#20304a]">{{ trace.toolName }}</strong>
+                  <span class="rounded-full bg-white px-2 py-0.5 text-xs font-black text-sw-primary">{{ trace.status || 'UNKNOWN' }}</span>
+                  <span v-if="trace.latencyMs !== null" class="text-xs text-sw-muted">{{ trace.latencyMs }}ms</span>
+                </div>
+                <p class="mb-1 text-sm leading-[1.65] text-[#34516f]">输入：{{ trace.inputSummary || '未记录' }}</p>
+                <p class="text-sm leading-[1.65] text-[#34516f]">输出：{{ trace.outputSummary || trace.error || '未记录' }}</p>
+                <small v-if="trace.sourceRefs.length" class="mt-2 inline-block text-sw-muted">来源：{{ trace.sourceRefs.join('、') }}</small>
+              </article>
+            </div>
+          </div>
+
           <div v-if="task.viewMode === 'REVIEWER' && task.draftOpinion" class="mt-[18px] border-t border-sw-line pt-[18px]">
             <h3 class="mb-3 text-base font-black text-[#16233b]">审核意见草稿</h3>
             <p class="whitespace-pre-wrap rounded-[10px] bg-[#f6f9fd] p-[14px] leading-[1.8] text-slate-700">{{ task.draftOpinion }}</p>

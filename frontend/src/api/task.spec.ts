@@ -187,6 +187,16 @@ describe('task API adapters', () => {
           operatedAt: '2026-05-08T10:02:00',
         },
       ],
+      toolCallTraces: [
+        {
+          toolName: 'knowledge_search',
+          inputSummary: "query='营业执照', top_k=8",
+          outputSummary: 'total=3, ids=[BASIS_MATERIAL_INITIAL_LIST]',
+          sourceRefs: ['BASIS_MATERIAL_INITIAL_LIST'],
+          status: 'SUCCESS',
+          latencyMs: 42,
+        },
+      ],
       modelMetadata: null,
     }
 
@@ -219,6 +229,17 @@ describe('task API adapters', () => {
       actionLabel: '转人工复核',
       toHandlingStatus: 'MANUAL_REVIEW_REQUIRED',
     })
+    expect(view.toolCallTraces).toEqual([
+      {
+        toolName: 'knowledge_search',
+        inputSummary: "query='营业执照', top_k=8",
+        outputSummary: 'total=3, ids=[BASIS_MATERIAL_INITIAL_LIST]',
+        sourceRefs: ['BASIS_MATERIAL_INITIAL_LIST'],
+        status: 'SUCCESS',
+        latencyMs: 42,
+        error: '',
+      },
+    ])
     expect(view.requiresManualReview).toBe(true)
   })
 

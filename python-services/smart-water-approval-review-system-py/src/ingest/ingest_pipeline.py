@@ -21,9 +21,9 @@ class IngestPipeline:
         chunk_overlap: int | None = None,
         rebuild: bool = False,
     ) -> None:
-        self._source_dir = source_dir or config.KNOWLEDGE_SOURCE_DIR
-        self._chunk_size = chunk_size or config.CHUNK_SIZE
-        self._chunk_overlap = chunk_overlap or config.CHUNK_OVERLAP
+        self._source_dir = config.KNOWLEDGE_SOURCE_DIR if source_dir is None else source_dir
+        self._chunk_size = config.CHUNK_SIZE if chunk_size is None else chunk_size
+        self._chunk_overlap = config.CHUNK_OVERLAP if chunk_overlap is None else chunk_overlap
         self._rebuild = rebuild
 
         self._embedder = EmbeddingClient()
