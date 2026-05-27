@@ -3,7 +3,7 @@
   "name": "cp3-5-real-e2e-acceptance",
   "title": "CP3.5-F 真实端到端验收与答辩证据",
   "description": "用真实账号、真实材料、真实中间件和真实外部 AI 调用完成 CP3.5 端到端验收证据。",
-  "status": "planning",
+  "status": "locked",
   "dev_type": null,
   "scope": null,
   "package": null,
@@ -34,6 +34,8 @@
       "6newuser6"
     ],
     "responsibility": "tianqingyuluo owns final real E2E acceptance and defense evidence; each member contributes module logs, screenshots, tests, and Git account evidence.",
+    "lockReason": "Final acceptance must not start before the real chain exists; otherwise it will repeat CP3's demo-evidence failure.",
+    "unlockCriteria": "CP3.5-B/C/D/E/G/H have real integration outputs ready for full-chain verification.",
     "dependsOn": [
       "cp3-5-real-chain-guardrails",
       "cp3-5-java-python-real-dispatch",

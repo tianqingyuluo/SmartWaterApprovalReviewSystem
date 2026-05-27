@@ -3,7 +3,7 @@
   "name": "cp3-5-mcp-client-tool-chain",
   "title": "CP3.5-D MCP Client 真实工具调用",
   "description": "让审查 Agent 通过 MCP Client 发现并调用知识库、完整性检查等真实工具，而不是内部函数或演示服务。",
-  "status": "planning",
+  "status": "locked",
   "dev_type": null,
   "scope": null,
   "package": null,
@@ -32,6 +32,8 @@
       "tianqingyuluo"
     ],
     "responsibility": "6newuser6 owns MCP Client discovery/calls in the real Agent chain; tianqingyuluo reviews evidence to prevent demo-only internal function fallback.",
+    "lockReason": "Not in the current wave. MCP Client work needs real OCR/parser text blocks from CP3.5-C.",
+    "unlockCriteria": "CP3.5-C can produce real contentBlocks/extractedFields from actual materials.",
     "dependsOn": [
       "cp3-5-real-chain-guardrails",
       "cp3-5-document-ocr-real-pipeline"

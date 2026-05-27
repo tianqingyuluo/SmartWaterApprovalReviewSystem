@@ -110,6 +110,22 @@
         }
       ]
     },
+    "executionMemo": {
+      "date": "2026-05-27",
+      "currentWave": [
+        "cp3-5-real-chain-guardrails",
+        "cp3-5-java-python-real-dispatch",
+        "v1-cp3-glm-ocr-data-uri-fix",
+        "v1-cp3-material-safe-preview"
+      ],
+      "lockedUntilReady": [
+        "cp3-5-document-ocr-real-pipeline",
+        "cp3-5-mcp-client-tool-chain",
+        "cp3-5-intelligent-compliance-result",
+        "cp3-5-real-e2e-acceptance"
+      ],
+      "rule": "Do not fully parallelize CP3.5. Start A/B/H immediately; allow G frontend preparation only. Unlock C after B+H, D after C, E after B+C+D, and F only after B/C/D/E/G/H produce real chain evidence."
+    },
     "dependsOn": [
       "v1-cp3-java-ai-task-callback-results",
       "v1-cp3-python-fastapi-rules-agent",

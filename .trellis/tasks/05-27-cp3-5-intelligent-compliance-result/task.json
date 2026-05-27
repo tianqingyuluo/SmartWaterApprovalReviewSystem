@@ -3,7 +3,7 @@
   "name": "cp3-5-intelligent-compliance-result",
   "title": "CP3.5-E 智能合规审查与结构化结论",
   "description": "基于真实 OCR/RAG/MCP/LLM 形成可引用、可追溯、稳定的智能初审结论，不用规则兜底替代 Agent。",
-  "status": "planning",
+  "status": "locked",
   "dev_type": null,
   "scope": null,
   "package": null,
@@ -33,6 +33,8 @@
       "yuexianwei3699"
     ],
     "responsibility": "6newuser6 owns Python intelligent compliance reasoning and structured results; ymx545 supports persistence contract, yuexianwei3699 supports frontend display contract.",
+    "lockReason": "Not in the current wave. Intelligent compliance needs Java dispatch, real document/OCR input, and MCP tool results.",
+    "unlockCriteria": "CP3.5-B/C/D are usable enough to provide real task context, real extracted text, and real MCP tool outputs.",
     "dependsOn": [
       "cp3-5-real-chain-guardrails",
       "cp3-5-document-ocr-real-pipeline",

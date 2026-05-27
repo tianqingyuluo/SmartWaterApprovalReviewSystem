@@ -3,7 +3,7 @@
   "name": "cp3-5-document-ocr-real-pipeline",
   "title": "CP3.5-C 生产级文档解析与 OCR",
   "description": "打通 PDF/DOCX/图片真实解析与 OCR，禁止用 mock 或空抽取伪装成功。",
-  "status": "planning",
+  "status": "locked",
   "dev_type": null,
   "scope": null,
   "package": null,
@@ -32,6 +32,8 @@
       "tianqingyuluo"
     ],
     "responsibility": "6newuser6 owns Python PDF/DOCX/image parsing and OCR pipeline; tianqingyuluo provides real samples, keys, and acceptance evidence.",
+    "lockReason": "Not in the current wave. Wait until Java-Python task context/material download contract is usable and GLM OCR data URI fix is completed.",
+    "unlockCriteria": "CP3.5-B Java dispatch contract is available and CP3.5-H GLM OCR data URI fix is completed with real OCR proof.",
     "dependsOn": [
       "cp3-5-real-chain-guardrails",
       "cp3-5-java-python-real-dispatch",
