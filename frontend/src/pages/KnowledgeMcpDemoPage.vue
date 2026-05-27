@@ -57,6 +57,10 @@
           </button>
         </div>
 
+        <div v-if="searchValidationError" class="sw-alert sw-alert-warning mt-4">
+          {{ searchValidationError }}
+        </div>
+
         <div v-if="searchError" class="sw-alert sw-alert-danger mt-4">
           {{ searchError }}
           <button type="button" class="ml-3 font-bold text-sw-danger underline" @click="runKnowledgeSearch">重试</button>
@@ -80,7 +84,7 @@
           </div>
           <article
             v-for="item in searchResult.results"
-            :key="`${item.section}-${item.id}`"
+            :key="`${item.rank}-${item.section}-${item.id}`"
             class="rounded-[10px] border border-sw-line bg-white p-4"
           >
             <div class="flex flex-wrap items-start justify-between gap-3">
@@ -110,7 +114,7 @@
             <span class="font-bold text-[#26364f]">{{ materialLabel(slot) }}</span>
             <input v-model="selectedMaterials" type="checkbox" :value="slot" class="h-5 w-5 accent-[#1677ff]" />
           </label>
-          <button type="button" class="sw-btn sw-btn-primary" :disabled="completenessLoading" @click="runCompletenessCheck">
+          <button type="button" class="sw-btn sw-btn-primary" :disabled="completenessLoading" @click="runCompletenessCheck()">
             {{ completenessLoading ? '检查中...' : '检查完整性' }}
           </button>
         </div>
@@ -124,9 +128,13 @@
           </button>
         </div>
 
+        <div v-if="completenessValidationError" class="sw-alert sw-alert-warning mt-4">
+          {{ completenessValidationError }}
+        </div>
+
         <div v-if="completenessError" class="sw-alert sw-alert-danger mt-4">
           {{ completenessError }}
-          <button type="button" class="ml-3 font-bold text-sw-danger underline" @click="runCompletenessCheck">重试</button>
+          <button type="button" class="ml-3 font-bold text-sw-danger underline" @click="runCompletenessCheck()">重试</button>
         </div>
 
         <div v-if="completenessLoading" class="mt-4 flex items-center justify-center gap-2.5 rounded-[10px] bg-[#f6f9fd] py-10 text-sw-muted">
@@ -206,11 +214,13 @@ const statusLoading = ref(false)
 const searchQuery = ref('取水许可 材料')
 const searchTopK = ref(5)
 const searchLoading = ref(false)
+const searchValidationError = ref('')
 const searchError = ref('')
 const searchResult = ref<KnowledgeSearchResponse | null>(null)
 
 const selectedMaterials = ref<MaterialType[]>(['APPLICATION_FORM', 'BUSINESS_LICENSE'])
 const completenessLoading = ref(false)
+const completenessValidationError = ref('')
 const completenessError = ref('')
 const completenessResult = ref<CompletenessResponse | null>(null)
 
@@ -266,20 +276,38 @@ onMounted(() => {
 
 function loadStatus() {
   statusLoading.value = true
-  status.value = buildDemoStatus(status.value.lastToolName, '演示台状态已刷新为本地数据。')
+  status.value = {
+    ...status.value,
+    lastCalledAt: new Date().toISOString(),
+    source: 'demo' as const,
+    message: '演示台状态已刷新为本地数据。',
+  }
   window.setTimeout(() => {
     statusLoading.value = false
   }, 250)
 }
 
 async function runKnowledgeSearch() {
-  searchLoading.value = true
+  searchValidationError.value = ''
   searchError.value = ''
   searchResult.value = null
+
+  if (!searchQuery.value.trim()) {
+    searchValidationError.value = '请输入查询词后重试。'
+    return
+  }
+  if (!Number.isFinite(searchTopK.value) || searchTopK.value < 1 || searchTopK.value > 50) {
+    searchValidationError.value = 'topK 需要在 1-50 之间，请修改后重试。'
+    return
+  }
+
+  searchLoading.value = true
   try {
     await demoDelay()
-    const params = buildKnowledgeSearchParams()
-    searchResult.value = buildDemoKnowledgeSearch(params)
+    if (searchQuery.value.trim().toLowerCase() === 'simulate-error') {
+      throw new Error('knowledge_search 模拟失败，请点击重试。')
+    }
+    searchResult.value = buildDemoKnowledgeSearch({ query: searchQuery.value, topK: searchTopK.value })
     markToolCall('knowledge_search', '当前使用演示数据，等待后端 MCP HTTP 代理接入。', 'demo')
   } catch (error) {
     searchError.value = error instanceof Error ? error.message : 'knowledge_search 调用失败，请重试。'
@@ -288,19 +316,27 @@ async function runKnowledgeSearch() {
   }
 }
 
-async function runCompletenessCheck() {
-  completenessLoading.value = true
+async function runCompletenessCheck(options: { simulateFailure?: boolean } = {}) {
+  completenessValidationError.value = ''
   completenessError.value = ''
   completenessResult.value = null
+
+  if (selectedMaterials.value.length === 0) {
+    completenessValidationError.value = '请至少选择一项材料后重试。'
+    return
+  }
+
+  completenessLoading.value = true
   try {
     await demoDelay()
-    if (selectedMaterials.value.length === 0) {
-      throw new Error('check_completeness 模拟失败：至少选择一项材料后重试。')
+    if (options.simulateFailure) {
+      throw new Error('check_completeness 模拟失败，请点击重试。')
     }
     completenessResult.value = buildDemoCompleteness(selectedMaterials.value)
     markToolCall('check_completeness', '当前使用演示数据，等待后端 MCP HTTP 代理接入。', 'demo')
   } catch (error) {
     completenessError.value = error instanceof Error ? error.message : 'check_completeness 调用失败，请重试。'
+    markToolCall('check_completeness', 'check_completeness 调用失败，可点击重试。', 'demo')
   } finally {
     completenessLoading.value = false
   }
@@ -322,22 +358,16 @@ function runEmptyCompletenessCheck() {
 }
 
 function runFailedCompletenessCheck() {
-  selectedMaterials.value = []
-  runCompletenessCheck()
+  if (selectedMaterials.value.length === 0) {
+    selectedMaterials.value = ['APPLICATION_FORM']
+  }
+  runCompletenessCheck({ simulateFailure: true })
 }
 
-function buildKnowledgeSearchParams() {
-  if (!Number.isFinite(searchTopK.value) || searchTopK.value < 1 || searchTopK.value > 50) {
-    throw new Error('topK 需要在 1-50 之间，请修改后重试。')
-  }
-  if (searchQuery.value.trim().toLowerCase() === 'simulate-error') {
-    throw new Error('knowledge_search 模拟失败，请点击重试。')
-  }
-  return { query: searchQuery.value, topK: searchTopK.value }
-}
+const DEMO_DELAY_MS = 350
 
 function demoDelay() {
-  return new Promise((resolve) => window.setTimeout(resolve, 350))
+  return new Promise((resolve) => window.setTimeout(resolve, DEMO_DELAY_MS))
 }
 
 function markToolCall(toolName: McpToolName, message: string, source: 'api' | 'demo') {

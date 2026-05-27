@@ -40,11 +40,20 @@ const router = createRouter({
         },
       ],
     },
+    {
+      path: '/:pathMatch(.*)*',
+      name: 'not-found',
+      meta: { title: '404' },
+      component: () => import('@/pages/NotFoundPage.vue'),
+    },
   ],
 })
 
 router.beforeEach((to) => {
   if (to.name === 'login') {
+    if (isAuthenticated()) {
+      return { path: '/' }
+    }
     return true
   }
 
