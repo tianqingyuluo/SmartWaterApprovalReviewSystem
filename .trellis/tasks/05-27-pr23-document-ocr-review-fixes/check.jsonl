@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Verify Java/Python tests and clean-checkout expectations."}
+{"file": ".trellis/spec/backend/ocr-adapter.md", "reason": "Verify OCR fallback behavior and unsupported-format boundaries."}
+{"file": ".trellis/spec/backend/smartwater-mvp-contracts.md", "reason": "Verify docx acceptance is synchronized across layers."}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Verify failures are explicit and do not fabricate success."}
+{"file": ".trellis/spec/frontend/index.md", "reason": "Verify frontend upload validation and tests."}
