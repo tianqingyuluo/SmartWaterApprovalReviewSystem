@@ -543,6 +543,7 @@ class ReviewTaskServiceImplTest {
         BusinessException ex = assertThrows(BusinessException.class,
                 () -> reviewTaskService.previewMaterial(taskId, "UNKNOWN_TYPE", "session-preview-invalid-type", applicantUser(5401L)));
         assertEquals(400, ex.getCode());
+        assertEquals("非法的材料类型: UNKNOWN_TYPE", ex.getMessage());
     }
 
     @Test
@@ -555,6 +556,57 @@ class ReviewTaskServiceImplTest {
         BusinessException ex = assertThrows(BusinessException.class,
                 () -> reviewTaskService.previewMaterial(taskId, "APPLICATION_FORM", "session-preview-missing", applicantUser(5501L)));
         assertEquals(404, ex.getCode());
+        assertEquals("材料不存在或尚未上传", ex.getMessage());
+    }
+
+    @Test
+    void previewMaterialShouldRejectUnsupportedFormatWithReadableMessage() {
+        String taskId = "task-preview-unsupported-" + System.nanoTime();
+        ReviewTask task = newReviewTask(taskId, "session-preview-unsupported", "COMPLETED");
+        task.setOwnerUserId(5601L);
+        taskMapper.insert(task);
+
+        MaterialSlot slot = new MaterialSlot();
+        slot.setMaterialId("mat-preview-unsupported-" + System.nanoTime());
+        slot.setTaskId(taskId);
+        slot.setMaterialType("APPLICATION_FORM");
+        slot.setOriginalFileName("application.txt");
+        slot.setContentType("text/plain");
+        slot.setFileExtension("txt");
+        slot.setStorageKey(taskId + "/APPLICATION_FORM/file.txt");
+        slot.setCreatedAt(LocalDateTime.now());
+        slot.setUpdatedAt(LocalDateTime.now());
+        materialSlotMapper.insert(slot);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> reviewTaskService.previewMaterial(taskId, "APPLICATION_FORM", "session-preview-unsupported", applicantUser(5601L)));
+        assertEquals(400, ex.getCode());
+        assertEquals("当前材料格式暂不支持预览", ex.getMessage());
+    }
+
+    @Test
+    void previewMaterialShouldRejectStorageFailureWithReadableMessage() {
+        String taskId = "task-preview-storage-fail-" + System.nanoTime();
+        ReviewTask task = newReviewTask(taskId, "session-preview-storage-fail", "COMPLETED");
+        task.setOwnerUserId(5701L);
+        taskMapper.insert(task);
+
+        MaterialSlot slot = new MaterialSlot();
+        slot.setMaterialId("mat-preview-storage-fail-" + System.nanoTime());
+        slot.setTaskId(taskId);
+        slot.setMaterialType("APPLICATION_FORM");
+        slot.setOriginalFileName("application.pdf");
+        slot.setContentType("application/pdf");
+        slot.setFileExtension("pdf");
+        slot.setStorageKey(taskId + "/APPLICATION_FORM/missing.pdf");
+        slot.setCreatedAt(LocalDateTime.now());
+        slot.setUpdatedAt(LocalDateTime.now());
+        materialSlotMapper.insert(slot);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> reviewTaskService.previewMaterial(taskId, "APPLICATION_FORM", "session-preview-storage-fail", applicantUser(5701L)));
+        assertEquals(404, ex.getCode());
+        assertEquals("材料文件不存在或无法访问", ex.getMessage());
     }
 
     @Test

@@ -720,12 +720,12 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
                         .eq(MaterialSlot::getMaterialType, materialType)
         );
         if (slot == null) {
-            throw new BusinessException(404, "鏉愭枡涓嶅瓨鍦ㄦ垨灏氭湭涓婁紶");
+            throw new BusinessException(404, "材料不存在或尚未上传");
         }
 
         String contentType = normalizePreviewContentType(slot);
         if (contentType == null) {
-            throw new BusinessException(400, "褰撳墠鏉愭枡鏍煎紡鏆備笉鏀寔棰勮");
+            throw new BusinessException(400, "当前材料格式暂不支持预览");
         }
 
         try {
@@ -733,7 +733,7 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
             return new MaterialPreviewResource(inputStream, contentType, slot.getOriginalFileName());
         } catch (Exception e) {
             log.error("Failed to preview material: taskId={}, materialType={}", taskId, materialType, e);
-            throw new BusinessException(404, "鏉愭枡鏂囦欢涓嶅瓨鍦ㄦ垨鏃犳硶璁块棶");
+            throw new BusinessException(404, "材料文件不存在或无法访问");
         }
     }
 
@@ -806,7 +806,7 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
 
     private void validateMaterialType(String materialType) {
         if (!MATERIAL_TYPES.contains(materialType)) {
-            throw new BusinessException(400, "闈炴硶鐨勬潗鏂欑被鍨? " + materialType);
+            throw new BusinessException(400, "非法的材料类型: " + materialType);
         }
     }
 

@@ -78,8 +78,8 @@ public class ReviewTaskController {
                                 .filename(resource.getOriginalFileName(), StandardCharsets.UTF_8)
                                 .build()
                                 .toString())
-                .header(HttpHeaders.X_CONTENT_TYPE_OPTIONS, "nosniff")
-                .header(HttpHeaders.CONTENT_SECURITY_POLICY, "default-src 'none'; frame-ancestors 'self'; sandbox")
+                .header("X-Content-Type-Options", "nosniff")
+                .header("Content-Security-Policy", "default-src 'none'; frame-ancestors 'self'; sandbox")
                 .body(new InputStreamResource(resource.getInputStream()));
     }
 
