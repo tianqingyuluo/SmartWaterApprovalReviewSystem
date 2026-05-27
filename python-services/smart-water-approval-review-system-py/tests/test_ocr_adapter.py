@@ -106,6 +106,43 @@ class GlmOcrAdapterTests(unittest.TestCase):
         self.assertEqual([], fields)
         client_cls.return_value.__enter__.return_value.post.assert_not_called()
 
+    @patch("src.adapters.ocr_adapter.config.OCR_GLM_API_KEY", "test-glm-key")
+    @patch("src.adapters.ocr_adapter.config.OCR_GLM_BASE_URL", "https://open.bigmodel.cn/api/paas/v4")
+    @patch("src.adapters.ocr_adapter.httpx.Client")
+    def test_extract_fields_summarizes_upstream_error_without_leaking_token_or_payload(self, client_cls) -> None:
+        client = client_cls.return_value.__enter__.return_value
+        response = httpx.Response(
+            400,
+            json={
+                "error": {
+                    "message": (
+                        "仅支持 PDF、JPG、PNG、JPEG 格式；"
+                        "payload=data:image/png;base64,QUJDREVGRw== "
+                        "authorization=Bearer test-glm-key"
+                    )
+                }
+            },
+            request=httpx.Request("POST", "https://open.bigmodel.cn/api/paas/v4/layout_parsing"),
+        )
+        client.post.return_value = response
+
+        adapter = GlmOcrAdapter()
+        with self.assertLogs("src.adapters.ocr_adapter", level="ERROR") as logs:
+            fields = adapter.extract_fields(b"binary-image", "APPLICATION_FORM", "form.png")
+
+        self.assertEqual(1, len(fields))
+        self.assertEqual("ocr_error", fields[0].field_key)
+        self.assertIn("HTTP 400", fields[0].field_value)
+        self.assertIn("仅支持 PDF、JPG、PNG、JPEG 格式", fields[0].field_value)
+        self.assertNotIn("data:image/png;base64", fields[0].field_value)
+        self.assertNotIn("test-glm-key", fields[0].field_value)
+
+        joined_logs = "\n".join(logs.output)
+        self.assertIn("HTTP 400", joined_logs)
+        self.assertIn("仅支持 PDF、JPG、PNG、JPEG 格式", joined_logs)
+        self.assertNotIn("data:image/png;base64", joined_logs)
+        self.assertNotIn("test-glm-key", joined_logs)
+
 
 if __name__ == "__main__":
     unittest.main()
