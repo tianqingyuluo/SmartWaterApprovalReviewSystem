@@ -88,3 +88,29 @@
 
 - 结论：CP3-D 要求的三类验收点已有可执行、可复验的自动化证据，且测试链路不依赖真实外部服务。
 - 限制：本记录不包含真实 OCR/LLM/对象存储联机压测结果；Java 主动调用 Python FastAPI 的直接调度未纳入本次完成范围。若课程答辩要求真实联机演示，需要单独安排环境联调并追加截图/日志证据。
+
+---
+
+## 6. CP3.5-H OCR data URI 回归补充
+
+对应任务：`v1-cp3-glm-ocr-data-uri-fix`
+
+本轮新增自动化回归点：
+
+- GLM OCR 请求的 `file` 字段必须带 MIME 前缀的 data URI：
+  - `jpg` / `jpeg` -> `data:image/jpeg;base64,...`
+  - `png` -> `data:image/png;base64,...`
+  - `pdf` -> `data:application/pdf;base64,...`
+- `md_results` 仍优先映射为 `ocr_markdown`，`layout_details` 仍可回退为 `ExtractedField[]`。
+- 上游返回 HTTP `4xx/5xx` 时，`ocr_error` 和日志要保留业务错误摘要，但不能泄露 `Bearer` token 或 `data:...;base64,...` 原始内容。
+
+本地验证命令：
+
+- `cd python-services/smart-water-approval-review-system-py && uv run python -m unittest tests.test_ocr_adapter`
+- `cd python-services/smart-water-approval-review-system-py && uv run python -m unittest discover -s tests -p test*.py`
+- `cd python-services/smart-water-approval-review-system-py && uv run python -m compileall src main.py`
+
+当前限制：
+
+- 本机当前未配置 `OCR_GLM_API_KEY` 与 `OCR_GLM_BASE_URL`，因此本次补充的是自动化回归证据，不宣称真实 GLM OCR 联机成功。
+- 若后续补真实营业执照样例证据，应追加记录：请求前后差异、GLM 返回 `200`、以及结果页不再出现 `ocr_error: 400 Bad Request`。
