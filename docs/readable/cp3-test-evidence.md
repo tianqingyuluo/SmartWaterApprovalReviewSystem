@@ -114,3 +114,37 @@
 
 - 本机当前未配置 `OCR_GLM_API_KEY` 与 `OCR_GLM_BASE_URL`，因此本次补充的是自动化回归证据，不宣称真实 GLM OCR 联机成功。
 - 若后续补真实营业执照样例证据，应追加记录：请求前后差异、GLM 返回 `200`、以及结果页不再出现 `ocr_error: 400 Bad Request`。
+
+## 6.1 真实 GLM OCR 探测补录
+
+记录日期：`2026-05-27`
+
+在补充有效 `OCR_GLM_API_KEY` 与 `OCR_GLM_BASE_URL` 后，使用仓库内真实营业执照样例：
+
+- 样例文件：`docs/参考资料/营业执照.jpg`
+- 文件大小：`449597` 字节
+- 文件头：`FFD8FFE1...`，为有效 JPEG
+
+对同一文件执行两种请求：
+
+| 请求方式 | `file` 字段 | 结果 |
+|---|---|---|
+| 旧实现 | 裸 base64 | HTTP `400` |
+| 新实现 | `data:image/jpeg;base64,...` | HTTP `200` |
+
+关键结果：
+
+- 裸 base64 返回业务错误：`OCR仅支持PDF、JPG、PNG、JPEG格式...`
+- data URI 返回 `md_results`、`layout_details`、`request_id` 等字段
+- 通过当前 `GlmOcrAdapter` 直接调用，返回：
+  - `field_count = 1`
+  - `field_key = ocr_markdown`
+  - `ocr_markdown` 预览中可识别：
+    - `营业执照`
+    - `统一社会信用代码`
+    - `91441303MA531L6K37`
+
+结论：
+
+- 本任务“data URI 修复后真实 GLM OCR 从 400 变 200”的关键验收点已被真实联机探测证明。
+- 当前仍缺少的是“完整 Java -> Worker -> 结果页”联机截图或日志证据；但 OCR 适配器本身已确认可用。
