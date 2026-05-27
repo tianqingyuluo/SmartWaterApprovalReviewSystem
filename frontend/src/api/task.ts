@@ -20,6 +20,8 @@ import type {
   RiskHintDto,
   Finding,
   ResultSummary,
+  MaterialPreviewItem,
+  MaterialSlot,
 } from '@/types'
 import { REVIEWER_ACTION_LABELS } from '@/types'
 
@@ -59,6 +61,13 @@ export function submitReviewerAction(taskId: string, payload: ReviewerActionSubm
   return request.post<R<ReviewerActionResponse>>(`/task/${taskId}/reviewer-action`, payload)
 }
 
+export async function fetchMaterialPreviewBlob(previewPath: string) {
+  const response = await request.get<Blob>(previewPath, {
+    responseType: 'blob',
+  })
+  return response.data
+}
+
 // ── Adapters: backend DTO → page view model ──
 
 export function toApplicantResultView(dto: ApplicantResultResponse): ApplicantResultView {
@@ -92,6 +101,7 @@ export function toApplicantTaskResultView(
     reviewerActionAt: resultView.reviewerActionAt,
     reviewActionLogs: [],
     materials: statusDto.materials,
+    previewMaterials: statusDto.materials.map(toMaterialPreviewItem),
     summary,
     extractedFields: {},
     fieldConfidence: null,
@@ -130,6 +140,7 @@ export function toReviewerResultView(
     reviewerActionAt: resultDto.reviewerActionAt ?? null,
     reviewActionLogs: normalizeReviewActionLogs(resultDto.actionLogs, resultDto.reviewActionLogs),
     materials: statusDto.materials,
+    previewMaterials: statusDto.materials.map(toMaterialPreviewItem),
     summary: summarizeIssues(resultDto.issues),
     extractedFields: normalizeExtractedFields(resultDto.extractedFields),
     fieldConfidence: normalizeFieldConfidence(resultDto.extractedFields),
@@ -169,6 +180,31 @@ function normalizeReviewActionLogs(
     toHandlingStatus: log.toHandlingStatus ?? null,
     operatedAt: log.operatedAt ?? null,
   }))
+}
+
+function toMaterialPreviewItem(slot: MaterialSlot): MaterialPreviewItem {
+  return {
+    materialType: slot.materialType,
+    originalFileName: slot.originalFileName,
+    uploaded: slot.uploaded,
+    previewPath: slot.previewPath ?? null,
+    kind: inferPreviewKind(slot),
+  }
+}
+
+function inferPreviewKind(slot: MaterialSlot): MaterialPreviewItem['kind'] {
+  if (!slot.uploaded) {
+    return 'missing'
+  }
+
+  const fileName = slot.originalFileName?.toLowerCase() ?? ''
+  if (fileName.endsWith('.pdf')) {
+    return 'pdf'
+  }
+  if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || fileName.endsWith('.png')) {
+    return 'image'
+  }
+  return 'unsupported'
 }
 
 function inferActionLabel(actionCode: string): string {

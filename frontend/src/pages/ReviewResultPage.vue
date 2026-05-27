@@ -3,7 +3,9 @@
     <div class="flex items-start justify-between gap-5 max-md:block">
       <div>
         <h1 class="sw-page-title">AI 智能审核结果</h1>
-        <p class="mb-[22px] mt-[-12px] leading-[1.7] text-sw-muted">AI 结果用于审批辅助建议，不构成正式审批决定。最终结论以审批人员处理结果为准。</p>
+        <p class="mb-[22px] mt-[-12px] leading-[1.7] text-sw-muted">
+          AI 结果用于审批辅助建议，不构成正式审批决定。最终结论以审批人员处理结果为准。
+        </p>
       </div>
       <router-link class="sw-btn sw-btn-ghost" to="/">返回申请列表</router-link>
     </div>
@@ -31,28 +33,87 @@
             <strong>材料与任务信息</strong>
             <small class="justify-self-end text-[#cbd5e1] max-md:justify-self-center">{{ uploadedCount }}/{{ task.materials.length }} 已提交</small>
           </div>
-          <div class="grid min-h-[455px] place-items-center content-center gap-[14px] bg-[linear-gradient(90deg,rgba(15,23,42,0.035)_1px,transparent_1px),linear-gradient(rgba(15,23,42,0.035)_1px,transparent_1px),#fbfcff] bg-[length:24px_24px] px-11 py-11 text-center max-md:min-h-[300px] max-md:px-[18px] max-md:py-7">
-            <div class="grid h-[116px] w-[116px] place-items-center rounded-[28px] bg-[#eef6ff] text-[#6da9f5]" aria-hidden="true">
-              <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <path d="M14 2v6h6"/>
-                <path d="M8 13h8"/>
-                <path d="M8 17h5"/>
-              </svg>
-            </div>
-            <h2 class="text-xl text-[#172033]">不提供伪造证照预览</h2>
-            <p class="max-w-[440px] leading-[1.8] text-sw-muted">当前后端返回材料元数据与抽取结果，未返回可安全嵌入的 PDF/图片预览地址。</p>
+
+          <div class="grid gap-4 bg-[linear-gradient(90deg,rgba(15,23,42,0.035)_1px,transparent_1px),linear-gradient(rgba(15,23,42,0.035)_1px,transparent_1px),#fbfcff] bg-[length:24px_24px] px-5 py-5 max-md:px-4">
+            <article
+              v-for="slot in task.previewMaterials"
+              :key="slot.materialType"
+              class="overflow-hidden rounded-[16px] border border-sw-line bg-white shadow-[0_8px_24px_rgba(15,23,42,0.05)]"
+            >
+              <div class="flex items-center justify-between gap-3 border-b border-sw-line px-4 py-3 max-md:block">
+                <div>
+                  <strong class="text-[#172033]">{{ MATERIAL_LABELS[slot.materialType] }}</strong>
+                  <p class="mt-1 text-sm text-sw-muted">{{ slot.originalFileName || '未上传材料' }}</p>
+                </div>
+                <span
+                  class="inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-bold"
+                  :class="slot.uploaded ? 'border-sw-primary bg-[#f1f7ff] text-sw-primary' : 'border-[#ffe1a6] bg-[#fff8e8] text-[#9a6700]'"
+                >
+                  {{ slot.uploaded ? '可检查' : '缺失' }}
+                </span>
+              </div>
+
+              <div class="grid min-h-[260px] place-items-center bg-[#f8fafc] p-4">
+                <template v-if="slot.kind === 'missing'">
+                  <PreviewMessage
+                    title="材料未上传"
+                    description="当前槽位没有原始材料，无法提供预览。"
+                  />
+                </template>
+
+                <template v-else-if="slot.kind === 'unsupported'">
+                  <PreviewMessage
+                    title="暂不支持预览"
+                    description="当前文件格式不在前端预览范围内，请联系后端确认接口返回的文件类型。"
+                  />
+                </template>
+
+                <template v-else-if="previewState(slot.materialType).status === 'loading'">
+                  <div class="flex items-center gap-2 text-sw-muted">
+                    <span class="sw-spinner"></span>
+                    <span>正在加载材料预览</span>
+                  </div>
+                </template>
+
+                <template v-else-if="previewState(slot.materialType).status === 'error'">
+                  <PreviewMessage
+                    title="预览加载失败"
+                    :description="previewState(slot.materialType).message || '后端未返回可用的预览内容。'"
+                  />
+                </template>
+
+                <template v-else-if="slot.kind === 'pdf' && previewState(slot.materialType).objectUrl">
+                  <iframe
+                    :src="previewState(slot.materialType).objectUrl!"
+                    class="h-[420px] w-full rounded-[12px] border border-sw-line bg-white"
+                    title="PDF 材料预览"
+                  />
+                </template>
+
+                <template v-else-if="slot.kind === 'image' && previewState(slot.materialType).objectUrl">
+                  <img
+                    :src="previewState(slot.materialType).objectUrl!"
+                    :alt="slot.originalFileName || MATERIAL_LABELS[slot.materialType]"
+                    class="max-h-[420px] w-auto max-w-full rounded-[12px] border border-sw-line bg-white object-contain"
+                  />
+                </template>
+
+                <template v-else>
+                  <PreviewMessage
+                    title="暂无预览内容"
+                    description="前端正在等待预览地址或二进制内容返回。"
+                  />
+                </template>
+              </div>
+            </article>
           </div>
+
           <div class="flex gap-3 border-t border-sw-line bg-white px-5 py-4">
             <div
               v-for="slot in task.materials"
               :key="slot.materialType"
               class="grid h-[54px] w-[70px] place-items-center rounded-lg border text-xs font-extrabold"
-              :class="
-                slot.uploaded
-                  ? 'border-sw-primary bg-[#f1f7ff] text-sw-primary'
-                  : 'border-[#ffe1a6] bg-[#fff8e8] text-[#9a6700]'
-              "
+              :class="slot.uploaded ? 'border-sw-primary bg-[#f1f7ff] text-sw-primary' : 'border-[#ffe1a6] bg-[#fff8e8] text-[#9a6700]'"
             >
               <span>{{ materialShortName(slot.materialType) }}</span>
             </div>
@@ -163,7 +224,7 @@
 
           <div v-if="canShowReviewerActionPanel" class="mt-[18px] border-t border-sw-line pt-[18px]">
             <h3 class="mb-3 text-base font-black text-[#16233b]">审核处理</h3>
-            <p class="mb-3 leading-[1.7] text-sw-muted">请选择处理动作并填写备注（可选）。若任务已处理，将展示历史处理结果并禁用重复提交。</p>
+            <p class="mb-3 leading-[1.7] text-sw-muted">请选择处理动作并填写备注（可选）。若任务已处理，将显示历史处理结果并禁用重复提交。</p>
 
             <div v-if="actionErrorMessage" class="sw-alert sw-alert-danger mb-3">
               {{ actionErrorMessage }}
@@ -254,9 +315,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, defineComponent, h, onBeforeUnmount, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import {
+  fetchMaterialPreviewBlob,
   getApplicantResult,
   getReviewerResult,
   getTaskStatus,
@@ -268,6 +330,7 @@ import {
 } from '@/api/task'
 import { getCurrentRole } from '@/utils/auth'
 import type {
+  MaterialPreviewItem,
   MaterialType,
   ReviewerActionCode,
   Severity,
@@ -281,6 +344,27 @@ import StatusBanner from '@/components/business/StatusBanner.vue'
 import FailureInfo from '@/components/business/FailureInfo.vue'
 import TaskMaterialSummary from '@/components/business/TaskMaterialSummary.vue'
 
+const PreviewMessage = defineComponent({
+  name: 'PreviewMessage',
+  props: {
+    title: { type: String, required: true },
+    description: { type: String, required: true },
+  },
+  setup(props) {
+    return () => h('div', { class: 'grid place-items-center gap-3 text-center' }, [
+      h('div', { class: 'grid h-[92px] w-[92px] place-items-center rounded-[24px] bg-[#eef6ff] text-[#6da9f5]' }, 'PDF'),
+      h('strong', { class: 'text-lg text-[#172033]' }, props.title),
+      h('p', { class: 'max-w-[420px] leading-[1.8] text-sw-muted' }, props.description),
+    ])
+  },
+})
+
+type PreviewLoadState = {
+  status: 'idle' | 'loading' | 'ready' | 'error'
+  objectUrl: string | null
+  message: string
+}
+
 const route = useRoute()
 
 const inputTaskId = ref((route.query.taskId as string) || '')
@@ -291,6 +375,7 @@ const reviewerRemarkInput = ref('')
 const reviewerActionSubmitting = ref(false)
 const actionErrorMessage = ref('')
 const actionSuccessMessage = ref('')
+const previewStates = ref<Record<string, PreviewLoadState>>({})
 
 const uploadedCount = computed(() => task.value?.materials.filter((slot) => slot.uploaded).length ?? 0)
 const isApplicantView = computed(() => task.value?.viewMode === 'APPLICANT')
@@ -302,7 +387,7 @@ const reviewerActionAllowed = computed(() =>
 
 const summaryText = computed(() => {
   if (!task.value) return ''
-  if (task.value.failureCategory || task.value.status === 'FAILED') return '处理失败或模型结果异常，需人工复核。'
+  if (task.value.failureCategory || task.value.status === 'FAILED') return '处理失败或模型结果异常，需要人工复核。'
   if (task.value.requiresManualReview) return '结果已生成，但存在阻断项或人工复核提示。'
   if (task.value.status === 'PARTIAL_SUCCESS') return '已生成部分结果，请结合缺失材料和风险提示判断。'
   if (task.value.status === 'COMPLETED') return '后端已返回审核辅助结果，可查看字段、问题和草稿意见。'
@@ -336,12 +421,59 @@ async function lookup() {
     actionErrorMessage.value = ''
     actionSuccessMessage.value = ''
     reviewerRemarkInput.value = task.value?.reviewerRemark ?? ''
+    resetPreviewStates()
+    await loadPreviewAssets(task.value?.previewMaterials ?? [])
   } catch (error) {
     lookupError.value = error instanceof Error ? error.message : '查询失败，请确认任务 ID。'
     task.value = null
+    resetPreviewStates()
   } finally {
     loading.value = false
   }
+}
+
+async function loadPreviewAssets(items: MaterialPreviewItem[]) {
+  await Promise.all(items.map(async (item) => {
+    if (!item.previewPath || item.kind === 'missing' || item.kind === 'unsupported') {
+      previewStates.value[item.materialType] = {
+        status: 'idle',
+        objectUrl: null,
+        message: '',
+      }
+      return
+    }
+
+    previewStates.value[item.materialType] = {
+      status: 'loading',
+      objectUrl: null,
+      message: '',
+    }
+
+    try {
+      const blob = await fetchMaterialPreviewBlob(item.previewPath)
+      const objectUrl = URL.createObjectURL(blob)
+      previewStates.value[item.materialType] = {
+        status: 'ready',
+        objectUrl,
+        message: '',
+      }
+    } catch (error) {
+      previewStates.value[item.materialType] = {
+        status: 'error',
+        objectUrl: null,
+        message: error instanceof Error ? error.message : '预览加载失败',
+      }
+    }
+  }))
+}
+
+function resetPreviewStates() {
+  Object.values(previewStates.value).forEach((state) => {
+    if (state.objectUrl) {
+      URL.revokeObjectURL(state.objectUrl)
+    }
+  })
+  previewStates.value = {}
 }
 
 async function submitAction(actionCode: ReviewerActionCode) {
@@ -372,6 +504,14 @@ async function submitAction(actionCode: ReviewerActionCode) {
   }
 }
 
+function previewState(materialType: MaterialType): PreviewLoadState {
+  return previewStates.value[materialType] ?? {
+    status: 'idle',
+    objectUrl: null,
+    message: '',
+  }
+}
+
 function materialShortName(type: MaterialType): string {
   return MATERIAL_LABELS[type].slice(0, 2)
 }
@@ -394,9 +534,13 @@ function severityDotClass(severity: Severity): string {
 
 function severityIcon(severity: Severity): string {
   if (severity === 'BLOCKER') return '!'
-  if (severity === 'WARNING') return '△'
+  if (severity === 'WARNING') return '•'
   return 'i'
 }
+
+onBeforeUnmount(() => {
+  resetPreviewStates()
+})
 
 if (inputTaskId.value) {
   lookup()
