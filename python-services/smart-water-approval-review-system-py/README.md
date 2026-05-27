@@ -1,4 +1,4 @@
-# SmartWater Python Worker + MCP Tools
+# SmartWater Python FastAPI + Worker + MCP Tools
 
 ## Install
 
@@ -11,6 +11,20 @@ uv sync
 ```bash
 uv run python main.py
 ```
+
+## Start FastAPI Review Service
+
+```bash
+uv run uvicorn src.api.app:app --host 0.0.0.0 --port 8000
+```
+
+FastAPI exposes:
+
+- `GET /health`
+- `POST /api/review/tasks`
+- `GET /api/review/tasks/{aiTaskId}`
+
+If `INTERNAL_API_TOKEN` is configured, the review-task APIs require header `X-Internal-Token: <token>`.
 
 ## Start MCP Server
 

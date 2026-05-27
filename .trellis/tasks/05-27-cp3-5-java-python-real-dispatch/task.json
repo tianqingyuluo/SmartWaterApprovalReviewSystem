@@ -1,0 +1,45 @@
+{
+  "id": "cp3-5-java-python-real-dispatch",
+  "name": "cp3-5-java-python-real-dispatch",
+  "title": "CP3.5-B Java 主动调度 Python 审查链路",
+  "description": "前端提交后由 Java 创建真实审查任务并主动调度 Python FastAPI，状态、结果和错误完整回写。",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P0",
+  "creator": "tianqingyuluo",
+  "assignee": "ymx545",
+  "createdAt": "2026-05-27",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "v1",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "05-26-cp3-5-agent",
+  "relatedFiles": [],
+  "notes": "Replaces CP3's worker-only/partial proof with a real Java -> Python FastAPI dispatch path.",
+  "meta": {
+    "checkpoint": "CP3.5",
+    "checkpointScope": "CP3 recovery",
+    "lane": "java-python",
+    "wave": 1,
+    "owner": "ymx545",
+    "collaborators": [
+      "6newuser6"
+    ],
+    "responsibility": "ymx545 owns Java task creation, Python dispatch, state machine, callback persistence, and Java-side tests; 6newuser6 supports Python API contract.",
+    "dependsOn": [
+      "cp3-5-real-chain-guardrails"
+    ],
+    "unblocks": [
+      "cp3-5-document-ocr-real-pipeline",
+      "cp3-5-intelligent-compliance-result",
+      "cp3-5-real-e2e-acceptance"
+    ],
+    "gatePolicy": "Java must actively dispatch real Python review tasks; Python outages must not be converted into fake successful AI results."
+  }
+}

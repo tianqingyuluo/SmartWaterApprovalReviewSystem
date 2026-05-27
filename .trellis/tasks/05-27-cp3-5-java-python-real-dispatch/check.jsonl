@@ -1,0 +1,5 @@
+{"file": ".trellis/tasks/05-27-cp3-5-java-python-real-dispatch/prd.md", "reason": "验证 Java 主动调度 Python 任务验收标准"}
+{"file": ".trellis/tasks/05-26-cp3-5-agent/prd.md", "reason": "验证实现没有退回 Worker-only 或 mock 演示路线"}
+{"file": ".trellis/spec/backend/smartwater-mvp-contracts.md", "reason": "验证跨服务接口契约一致"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "验证失败状态和重试语义"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "后端质量检查标准"}

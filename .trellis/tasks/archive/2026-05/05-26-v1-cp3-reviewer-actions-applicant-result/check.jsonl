@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Verify review action permissions, status transitions, operation logs, and tests"}
+{"file": ".trellis/spec/backend/smartwater-mvp-contracts.md", "reason": "Verify AI advice is not converted into unsupported final approval language"}
+{"file": ".trellis/spec/frontend/smartwater-mvp-visibility.md", "reason": "Verify applicant-facing API contract does not require reviewer-only fields"}

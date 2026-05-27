@@ -137,6 +137,101 @@ Logging policy:
 
 - Log provider, model, provider request ID, token usage, finish reason, retry count, latency, and redacted input summary.
 - Do not log raw ID-card numbers, full OCR text, full business-license text, or full prompts.
+- Do not log `sessionId`, tokens, raw provider exception text, or signed download
+  URLs. Log failure category and exception class instead.
+
+---
+
+## Scenario: Rules/RAG/Agent Orchestration Fallback
+
+### 1. Scope / Trigger
+
+- Trigger: changing `ReviewTaskOrchestrator`, Agent failure handling, RAG
+  fragment assembly, or Worker/FastAPI shared processing.
+
+### 2. Signatures
+
+```python
+ReviewTaskOrchestrator.process_task(task_data: dict[str, Any]) -> ProcessingResult
+```
+
+`task_data` uses Java/FastAPI camelCase keys:
+
+```json
+{
+  "taskId": "SW123",
+  "sessionId": "session-token",
+  "materials": []
+}
+```
+
+### 3. Contracts
+
+| Item | Contract |
+|---|---|
+| Extraction | Uploaded material slots are downloaded/OCRed through `FieldExtractor`; extraction errors become reviewer-only issues. |
+| Rules | Material completeness checks always run before Agent review. |
+| RAG | Knowledge search may narrow fragments, but prompt fragments from the static pack can be appended for model constraints. |
+| Agent success | Merge rule issues with Agent issues and keep only one deduped issue per semantic key. |
+| Agent failure | Return rules fallback with `MODEL_UNCERTAIN`, `manualReviewNotice`, and `requiresManualReview=true` risk hint. |
+| Status | Missing materials, partial extraction failures, or Agent fallback produce `PARTIAL_SUCCESS`; otherwise `COMPLETED`. |
+| Applicant projection | Applicant result contains applicant-visible issues only and never contains `extractedFields`. |
+| Reviewer projection | Reviewer result contains `extractedFields`, rules issues, Agent issues, risk hints, draft opinion, and manual review notice. |
+
+### 4. Validation & Error Matrix
+
+| Condition | Expected behavior |
+|---|---|
+| No usable extracted fields | Fallback to rules result and mark `PARTIAL_SUCCESS`. |
+| Adapter returns `AUTH_ERROR` / `RATE_LIMIT` / other failure issue | Fallback to rules result and add reviewer-only `MODEL_UNCERTAIN`. |
+| OCR/download/extraction error field appears | Keep processing other materials and add reviewer-only issue. |
+| Knowledge search returns no usable fragments | Fall back to normalized static pack fragments. |
+
+### CP3.5 Guardrail
+
+The fallback behavior above documents the CP3-era compatibility path. It is not sufficient as final CP3.5 real-chain acceptance evidence.
+
+For CP3.5 real-chain runs:
+
+- Agent, LLM, MCP, OCR, or Java writeback failure must be surfaced as failed, retryable, or blocked instead of being persisted or displayed as AI review success.
+- Rules-only results may be retained as diagnostic context or manual-review hints, but the payload must explicitly say the intelligent review dependency was unavailable.
+- A PR or evidence document must not claim real AI review success unless it includes model metadata, cited basis, tool-call trace, and real extracted material input.
+- Unit tests may still mock the adapter to cover schema and error branches, but final CP3.5 E2E evidence must use real online dependencies.
+
+### 5. Good/Base/Bad Cases
+
+- Good: missing ID card produces applicant-visible missing-material issue, while
+  Agent failure details stay reviewer-only.
+- Good: fallback text names a sanitized failure category, not raw provider
+  exception text.
+- Base: if the Agent succeeds but materials are incomplete, result remains
+  `PARTIAL_SUCCESS`.
+- Bad: raise an exception from orchestrator and lose all rule findings.
+- Bad: put raw OCR text or raw provider exception text into applicant result.
+
+### 6. Tests Required
+
+- Orchestrator unit test for Agent failure fallback.
+- Orchestrator unit test for rules + Agent success merge.
+- Result writer test that applicant/reviewer payloads serialize camelCase.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```python
+return ReviewResult(summary=f"审核推理失败: {exc}")
+```
+
+#### Correct
+
+```python
+return ReviewResult(
+    summary="规则检查完成，Agent汇总不可用，已降级为规则结果",
+    issues=[Issue(code="MODEL_UNCERTAIN", applicant_visible=False)],
+    manual_review_notice="AI审核服务不可用或输出异常，已回退为规则检查结果，请人工复核。",
+)
+```
 
 ---
 

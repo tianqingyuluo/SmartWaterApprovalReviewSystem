@@ -4,10 +4,10 @@
       <div>
         <h1 class="sw-page-title">申请列表</h1>
         <p class="mb-[22px] mt-[-12px] leading-[1.7] text-sw-muted">
-          演示环境最近申请列表。MVP 暂无账号权限，使用任务 ID 和会话 ID 进入结果页。
+          已登录账号可见的任务列表。申请人看到我的申请，审批员看到待办范围，管理员可查看全量任务。
         </p>
       </div>
-      <router-link to="/apply" class="sw-btn sw-btn-primary">新建申请</router-link>
+      <router-link v-if="canCreateApplication" to="/apply" class="sw-btn sw-btn-primary">新建申请</router-link>
     </div>
 
     <PageCard compact class="mb-[14px]">
@@ -59,6 +59,7 @@
               <th class="whitespace-nowrap border-b border-[#edf2f7] px-[14px] py-[15px] text-left font-extrabold text-[#2f3f56]">状态</th>
               <th class="whitespace-nowrap border-b border-[#edf2f7] px-[14px] py-[15px] text-left font-extrabold text-[#2f3f56]">提交时间</th>
               <th class="whitespace-nowrap border-b border-[#edf2f7] px-[14px] py-[15px] text-left font-extrabold text-[#2f3f56]">更新时间</th>
+              <th class="whitespace-nowrap border-b border-[#edf2f7] px-[14px] py-[15px] text-left font-extrabold text-[#2f3f56]">初审处理</th>
               <th class="whitespace-nowrap border-b border-[#edf2f7] px-[14px] py-[15px] text-left font-extrabold text-[#2f3f56]">知识包版本</th>
               <th class="whitespace-nowrap border-b border-[#edf2f7] px-[14px] py-[15px] text-left font-extrabold text-[#2f3f56]">材料提交情况</th>
               <th class="whitespace-nowrap border-b border-[#edf2f7] px-[14px] py-[15px] text-left font-extrabold text-[#2f3f56]">操作</th>
@@ -66,7 +67,7 @@
           </thead>
           <tbody>
             <tr v-if="loading">
-              <td colspan="7">
+              <td colspan="8">
                 <div class="flex items-center justify-center gap-2.5 py-12 text-sw-muted">
                   <span class="sw-spinner"></span>
                   <span>正在加载申请列表</span>
@@ -74,12 +75,12 @@
               </td>
             </tr>
             <tr v-else-if="filteredItems.length === 0">
-              <td colspan="7">
+              <td colspan="8">
                 <EmptyState
                   title="暂无申请记录"
                   description="当前列表只展示真实后端列表 API 返回的数据。"
                 >
-                  <router-link to="/apply" class="sw-btn sw-btn-primary">新建申请</router-link>
+                  <router-link v-if="canCreateApplication" to="/apply" class="sw-btn sw-btn-primary">新建申请</router-link>
                 </EmptyState>
               </td>
             </tr>
@@ -93,12 +94,18 @@
                 <td class="px-[14px] py-[15px]"><StatusTag :status="item.status" /></td>
                 <td class="px-[14px] py-[15px]">{{ formatDateTime(item.submittedAt) }}</td>
                 <td class="px-[14px] py-[15px]">{{ formatDateTime(item.updatedAt) }}</td>
+                <td class="px-[14px] py-[15px]">
+                  <div class="grid gap-1">
+                    <strong class="text-[#2b4362]">{{ item.handlingStatusLabel || '未处理' }}</strong>
+                    <small v-if="item.reviewerRemark" class="line-clamp-2 text-sw-muted">{{ item.reviewerRemark }}</small>
+                  </div>
+                </td>
                 <td class="px-[14px] py-[15px]">{{ item.knowledgePackVersion || '未返回' }}</td>
                 <td class="px-[14px] py-[15px]"><TaskMaterialSummary :slots="item.materials" /></td>
                 <td class="px-[14px] py-[15px]">
                   <router-link
                     class="whitespace-nowrap font-extrabold text-sw-primary no-underline hover:text-sw-primary-strong"
-                    :to="`/review?taskId=${item.taskId}&sessionId=${item.sessionId}`"
+                    :to="`/review?taskId=${item.taskId}`"
                   >
                     进入详情
                   </router-link>
@@ -159,6 +166,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { getTaskList } from '@/api/task'
+import { getCurrentRole } from '@/utils/auth'
 import type { ProcessingStatus, TaskListItem } from '@/types'
 import { STATUS_LABELS_APPLICANT } from '@/types'
 import PageCard from '@/components/common/PageCard.vue'
@@ -177,6 +185,7 @@ const filterEndDate = ref('')
 const filterStatus = ref<ProcessingStatus | ''>('')
 const currentPage = ref(1)
 const pageSize = ref(10)
+const canCreateApplication = computed(() => getCurrentRole() !== 'REVIEWER')
 
 const filteredItems = computed(() => {
   let result = items.value

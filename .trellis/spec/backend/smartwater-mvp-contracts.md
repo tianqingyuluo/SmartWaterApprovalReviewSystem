@@ -458,6 +458,575 @@ def check_completeness(materials: list | dict | str | None = None) -> dict:
 
 ---
 
+## Java AI Ops Contract
+
+Java exposes CP2 operational visibility for the Python AI/MCP service without pretending that a Python REST ingest API exists before it is implemented.
+
+### 1. Scope / Trigger
+
+- Trigger: Java-side AI service configuration, health visibility, MCP endpoint documentation, ingest trigger/evidence support, or future Java integration with Python AI service.
+- Java package: `java-services/water-approval/src/main/java/com/tianqingyuluo/waterapproval/ai/`.
+- Controller: `GET /api/ai/health`, `POST /api/ai/ingest`.
+- Python current surface: MCP native transport and ingest CLI, not a formal REST ingest endpoint.
+
+### 2. Signatures
+
+Java config keys:
+
+```yaml
+water-approval:
+  ai-service:
+    base-url: http://localhost:8000
+    health-path: /health
+    internal-token: ""
+    timeout: 3s
+    mcp-transport: streamable-http
+    mcp-path: /mcp
+    ingest:
+      workdir: ../../python-services/smart-water-approval-review-system-py
+      source-dir: ../../docs/参考资料
+      chunk-size: 512
+      chunk-overlap: 64
+      rebuild: false
+```
+
+Java endpoints:
+
+```http
+GET /api/ai/health
+POST /api/ai/ingest
+```
+
+Python ingest command emitted by Java:
+
+```bash
+uv run python -m src.ingest.cli --source-dir <source-dir> --chunk-size <n> --chunk-overlap <n> [--rebuild]
+```
+
+### 3. Contracts
+
+`GET /api/ai/health` response fields:
+
+| Field | Contract |
+|---|---|
+| `baseUrl` | Normalized Python AI base URL with trailing slash removed. |
+| `healthUrl` | `baseUrl + healthPath`. |
+| `reachable` | `true` only when the configured health endpoint returns a non-error HTTP response. |
+| `statusCode` | HTTP status when available, else `null`. |
+| `message` | Short operational summary; must not include token values. |
+| `responseBody` | Truncated response body for evidence/debugging. |
+| `mcpTransport` | Configured MCP transport label such as `streamable-http`. |
+| `mcpUrl` | Configured MCP URL for documentation/evidence. |
+| `internalTokenConfigured` | Boolean only; never echo the secret. |
+| `checkedAt` | Java server time of the check. |
+
+`POST /api/ai/ingest` response fields:
+
+| Field | Contract |
+|---|---|
+| `mode` | Must be `ops-command` until Python exposes a formal REST ingest API. |
+| `workdir` | Directory where the command should be run. |
+| `command[]` | Tokenized CLI command. |
+| `verificationCommand` | MCP demo command for post-ingest verification. |
+| `note` | Explicitly states Java does not execute Python ingest in-process. |
+
+### 4. Validation & Error Matrix
+
+| Condition | Expected behavior |
+|---|---|
+| Python health endpoint reachable | Return `code=200`, `data.reachable=true`, and status summary. |
+| Python health endpoint returns 4xx/5xx | Return `code=200`, `data.reachable=false`, `data.statusCode=<status>`. |
+| Python health endpoint unavailable/timeouts | Return `code=200`, `data.reachable=false`, short error class in `message`. |
+| Internal token configured | Send `X-Internal-Token` on health probe; response only shows `internalTokenConfigured=true`. |
+| Python REST ingest not available | `/api/ai/ingest` returns ops command, not a fake success of remote execution. |
+
+### 5. Good/Base/Bad Cases
+
+- Good: Java health check returns a structured degraded response when Python is offline, so CP2 operators can diagnose config without crashing Java.
+- Good: `/api/ai/ingest` shows the exact `uv run python -m src.ingest.cli ...` command and MCP verification command.
+- Base: MCP URL/transport are displayed as configured evidence fields.
+- Bad: Java starts a local Python process on a web request or claims ingest ran successfully without Python confirmation.
+- Bad: Java logs or echoes `AI_SERVICE_INTERNAL_TOKEN`.
+
+### 6. Tests Required
+
+- Controller tests for `/ai/health` and `/ai/ingest` response shape.
+- Unit test for URL/path normalization and token configured flag.
+- Unit test that ingest command includes chunk settings and only includes `--rebuild` when configured.
+- Java verification command:
+
+```bash
+./mvnw test
+```
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```java
+return R.ok(Map.of("ingestTriggered", true));
+```
+
+when Python only has a CLI and no REST ingest endpoint.
+
+#### Correct
+
+```java
+return R.ok(aiOpsService.getIngestOperation());
+```
+
+The response contains `mode=ops-command`, `command[]`, and `verificationCommand`.
+
+---
+
+## CP2 Python Ingest And ChromaDB Contract
+
+Python CP2 ingest must be able to rebuild a knowledge base from an empty ChromaDB
+directory using an OpenAI-compatible embedding endpoint.
+
+### 1. Scope / Trigger
+
+- Trigger: Python ingest CLI, ChromaDB persistence, embedding provider wiring, or
+  CP2 evidence scripts.
+- Python package: `python-services/smart-water-approval-review-system-py`.
+- Primary command: `uv run python -m src.ingest.cli`.
+
+### 2. Signatures
+
+Ingest CLI:
+
+```bash
+uv run python -m src.ingest.cli \
+  --source-dir <source-dir> \
+  --chunk-size <n> \
+  --chunk-overlap <n> \
+  [--rebuild]
+```
+
+Evidence CLI:
+
+```bash
+uv run python -m src.cp2_evidence [--no-rebuild]
+```
+
+Embedding environment:
+
+```env
+EMBEDDING_PROVIDER=openai-compatible
+EMBEDDING_MODEL=Qwen/Qwen3-Embedding-4B
+EMBEDDING_BASE_URL=https://router.tumuer.me/v1
+EMBEDDING_API_KEY=<secret>
+CHROMA_PERSIST_DIR=./data/chroma
+CHROMA_COLLECTION_NAME=knowledge_base
+KNOWLEDGE_SOURCE_DIR=<source-dir>
+```
+
+### 3. Contracts
+
+| Item | Contract |
+|---|---|
+| `EMBEDDING_BASE_URL` | OpenAI-compatible API root only, not a full `/embeddings` path. |
+| `EMBEDDING_API_KEY` | Required for real ingest/evidence; never committed or logged. |
+| `--rebuild` | Clear the Chroma persist directory before opening a Chroma `PersistentClient`. |
+| Chroma IDs | Stable per source file, block index, and chunk index so repeat ingest can upsert without duplicates. |
+| Output stats | Print document count, text block count, chunk count, vector count, and source file list. |
+
+### 4. Validation & Error Matrix
+
+| Condition | Expected behavior |
+|---|---|
+| `source-dir` missing | Return non-zero or stats with `Source directory not found`. |
+| `EMBEDDING_API_KEY` missing in `cp2_evidence` | Abort before ingest and name the missing key. |
+| Embedding provider unavailable | Record embedding batch errors and produce `0` vectors; evidence must not claim success. |
+| `--rebuild` requested | Chroma persist directory is removed and recreated before client creation. |
+| Chroma write fails | Test must expose the failure; do not hide it as a successful ingest. |
+
+### 5. Good/Base/Bad Cases
+
+- Good: `--rebuild` from a fresh or existing Chroma directory stores a positive
+  vector count and prints all CP2 source files.
+- Good: OpenAI-compatible router base URL is `https://router.tumuer.me/v1`, while
+  the SDK call appends `/embeddings` internally.
+- Base: image-only source samples can produce zero chunks when OCR is not part of
+  CP2 ingest; this is acceptable if document/PDF sources generate vectors.
+- Bad: set `EMBEDDING_BASE_URL=https://router.tumuer.me/v1/embeddings`, causing
+  the SDK to construct an invalid endpoint.
+- Bad: instantiate `chromadb.PersistentClient` and then delete its persist
+  directory during `--rebuild`; this can leave SQLite handles in a read-only or
+  invalid state.
+
+### 6. Tests Required
+
+- Unit test that `rebuild=True` clears the Chroma persist directory before
+  constructing `ChromaStore`.
+- Unit test that repeat ingest/upsert does not duplicate vectors.
+- Unit test that embedding batch failures keep chunk/embedding pairs aligned.
+- CP2 verification commands:
+
+```bash
+uv run python -m pytest -q tests/test_ingest_pipeline.py tests/test_chroma_store.py tests/test_embedding_client.py tests/test_cp2_evidence.py
+uv run python -m src.ingest.cli --source-dir <source-dir> --chunk-size 512 --chunk-overlap 64 --rebuild
+uv run python -m src.cp2_evidence --no-rebuild
+```
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```python
+store = ChromaStore()
+if rebuild:
+    store.rebuild()  # deletes the directory after the PersistentClient opened it
+```
+
+#### Correct
+
+```python
+if rebuild:
+    ChromaStore.clear_persist_dir()
+store = ChromaStore()
+```
+
+---
+
+## CP3 Minimal RBAC And Task Visibility Contract
+
+CP3 adds the minimum identity boundary required for a real applicant/reviewer
+flow. This is not a full user-management subsystem.
+
+### 1. Scope / Trigger
+
+- Trigger: Java auth/login APIs, Sa-Token configuration, `user_account`
+  persistence, frontend token state, task submission/list/status/result
+  visibility, or Worker endpoint annotations.
+- Goal: applicants can only operate on their own tasks; reviewers see review
+  work only after AI processing reaches a reviewer-visible state; admins can
+  inspect all tasks for demonstration and troubleshooting.
+
+### 2. Signatures
+
+Auth APIs:
+
+```http
+POST /api/auth/login
+Content-Type: application/json
+
+{"username": "applicant", "password": "<password>"}
+```
+
+```json
+{
+  "code": 200,
+  "data": {
+    "token": "<sa-token>",
+    "user": {
+      "userId": 1,
+      "username": "applicant",
+      "displayName": "默认申请人",
+      "role": "APPLICANT"
+    }
+  }
+}
+```
+
+```http
+GET /api/auth/me
+Authorization: Bearer <sa-token>
+```
+
+Authenticated business APIs:
+
+```http
+Authorization: Bearer <sa-token>
+GET /api/task/list?page=1&size=20
+POST /api/task/submit
+GET /api/task/{taskId}/status
+GET /api/task/{taskId}/result/applicant
+GET /api/task/{taskId}/result/reviewer
+POST /api/task/{taskId}/reviewer-action
+```
+
+Worker APIs remain token-protected and do not require a user session:
+
+```http
+X-Worker-Token: <configured worker token>
+GET /api/task/pending
+PUT /api/task/{taskId}/status
+PUT /api/task/{taskId}/result
+GET /api/material/download?key=<storageKey>
+```
+
+### 3. Contracts
+
+| Item | Contract |
+|---|---|
+| Roles | Canonical values are `APPLICANT`, `REVIEWER`, and `ADMIN`. |
+| Login token | Sa-Token value returned by `/auth/login`; frontend sends it as `Authorization: Bearer <token>`. |
+| Public API | Only endpoints annotated with `@PublicApi`, currently `/auth/login`, bypass login. |
+| Worker API | Endpoints annotated with `@WorkerApi` bypass user login but keep `X-Worker-Token` validation when token is configured. |
+| Task owner | `review_task.owner_user_id` is set from the logged-in applicant/admin submitting the task. |
+| Applicant visibility | Applicant lists and reads only tasks where `owner_user_id` equals the current user ID. |
+| Reviewer visibility | Reviewer task list/status/result access is limited to reviewer-visible statuses: `PARTIAL_SUCCESS`, `COMPLETED`, `FAILED`. |
+| Admin visibility | Admin can list and read all tasks; admin may submit for demo/troubleshooting. |
+| Applicant result | `APPLICANT` result projection only; never expose `reviewerResult.extractedFields`, `riskHints`, or `draftOpinion`. |
+| Reviewer result | Only `REVIEWER` or `ADMIN` can call `/result/reviewer`. |
+
+### CP3 Initial Review Action Contract
+
+Reviewer action API:
+
+```http
+POST /api/task/{taskId}/reviewer-action
+Authorization: Bearer <reviewer-or-admin-token>
+Content-Type: application/json
+
+{
+  "actionCode": "RETURN_FOR_CORRECTION",
+  "reviewerRemark": "请补充营业执照副本并重新提交"
+}
+```
+
+Allowed `actionCode` values:
+
+```json
+[
+  "APPROVE_INITIAL_REVIEW",
+  "RETURN_FOR_CORRECTION",
+  "TRANSFER_MANUAL_REVIEW"
+]
+```
+
+Action-to-handling-status mapping:
+
+| actionCode | handlingStatus | handlingStatusLabel |
+|---|---|---|
+| `APPROVE_INITIAL_REVIEW` | `INITIAL_REVIEW_PASSED` | `通过初审` |
+| `RETURN_FOR_CORRECTION` | `CORRECTION_REQUIRED` | `退回补正` |
+| `TRANSFER_MANUAL_REVIEW` | `MANUAL_REVIEW_REQUIRED` | `转人工复核` |
+
+Contracts:
+
+| Item | Contract |
+|---|---|
+| Processing status boundary | Reviewer actions do not mutate canonical `ProcessingStatus`; they write a separate handling snapshot. |
+| Allowed task status | Actions are allowed only after AI reviewer result exists and task status is `PARTIAL_SUCCESS` or `COMPLETED`. |
+| Permissions | Only `REVIEWER` or `ADMIN` may submit actions. |
+| Duplicate behavior | CP3 allows one successful initial-review action per task; duplicates or raced stale writes return `409` and must not create an action log. |
+| Applicant visibility | Applicant result/status/list may show `handlingStatus`, `handlingStatusLabel`, `reviewerRemark`, and action time only. |
+| Reviewer visibility | Reviewer result may show action code, operator display data, and action log items. |
+| CP4 boundary | `RETURN_FOR_CORRECTION` only marks correction required and records the remark; correction upload, material versioning, diff, and final decision remain CP4. |
+
+### 4. Validation & Error Matrix
+
+| Condition | Expected behavior |
+|---|---|
+| Missing or expired user token on business API | Return business `401`, and frontend clears auth state. |
+| Wrong login credentials or disabled account | Return business `401` with a generic credential error. |
+| Applicant A reads applicant B's task | Return `403`. |
+| Applicant calls reviewer result endpoint | Return `403`. |
+| Reviewer opens `SUBMITTED`, `QUEUED`, or `PROCESSING` task directly | Return `403`. |
+| Reviewer submits a new application | Return `403`; frontend must hide the action. |
+| Applicant submits reviewer action | Return `403`. |
+| Reviewer action before AI reviewer result | Return `409`. |
+| Reviewer action with unsupported `actionCode` | Return `400`. |
+| Duplicate reviewer action | Return `409` and do not add another `review_action_log` row. |
+| Worker callback without configured/valid worker token when required | Return worker-token auth error; do not require Sa-Token login. |
+
+### 5. Good/Base/Bad Cases
+
+- Good: frontend login stores the backend token and user profile, then routes by
+  role without treating the menu as the authority.
+- Good: backend enforces the same role boundary even when a user crafts direct
+  API calls.
+- Base: seed users are acceptable for CP3 local/demo flow; CP4 can add full
+  admin user management.
+- Bad: let applicants query `/result/reviewer` and rely on frontend hiding
+  fields.
+- Bad: require a human login token for Python Worker polling or result callback.
+
+### 6. Tests Required
+
+- Java controller/service tests for login success/failure and `/auth/me`.
+- Java tests for unauthenticated business API rejection.
+- Java tests that applicant A cannot see applicant B's task/result.
+- Java tests that reviewer sees only reviewer-visible statuses and cannot
+  submit an applicant-owned task.
+- Java tests for reviewer action success, role rejection, invalid action, not-ready
+  status, missing AI reviewer result, duplicate/stale-write rejection, applicant
+  projection, and action log exposure.
+- Java tests that Worker endpoints still work with `X-Worker-Token`.
+- Frontend tests that business `401` clears auth state.
+- Frontend adapter/page tests that applicant result flow uses applicant
+  projection and reviewer result preserves `extractedFields[]`.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```java
+@GetMapping("/{taskId}/result/reviewer")
+public R<ReviewerResultResponse> getReviewerResult(...) {
+    return R.ok(reviewTaskService.getReviewerResult(taskId, sessionId));
+}
+```
+
+without checking the current role.
+
+#### Correct
+
+```java
+ReviewerResultResponse response =
+    reviewTaskService.getReviewerResult(taskId, sessionId, authService.currentUser());
+```
+
+and the service rejects non-reviewer/non-admin users with `403`.
+
+---
+
+## CP3 Python FastAPI Review Task Contract
+
+CP3-B adds a FastAPI task entry while keeping the existing Worker polling and
+Java callback contract as the source of truth.
+
+### 1. Scope / Trigger
+
+- Trigger: Python FastAPI routes, `INTERNAL_API_TOKEN`, review task DTOs,
+  background processing, shared Worker/FastAPI orchestration, or Java-to-Python
+  task dispatch.
+- Python package: `python-services/smart-water-approval-review-system-py`.
+
+### 2. Signatures
+
+FastAPI service:
+
+```bash
+uv run uvicorn src.api.app:app --host 0.0.0.0 --port 8000
+```
+
+Health:
+
+```http
+GET /health
+```
+
+Create task:
+
+```http
+POST /api/review/tasks
+X-Internal-Token: <INTERNAL_API_TOKEN, if configured>
+Content-Type: application/json
+```
+
+```json
+{
+  "taskId": "SW123",
+  "sessionId": "session-token",
+  "materials": [
+    {
+      "materialType": "APPLICATION_FORM",
+      "originalFileName": "apply.pdf",
+      "storageKey": "SW123/APPLICATION_FORM/file.pdf",
+      "fileExtension": "pdf",
+      "uploaded": true
+    }
+  ],
+  "idempotencyKey": "optional"
+}
+```
+
+```json
+{
+  "aiTaskId": "SW123",
+  "status": "QUEUED",
+  "createdAt": "2026-05-26T03:00:00Z"
+}
+```
+
+Query task:
+
+```http
+GET /api/review/tasks/{aiTaskId}
+X-Internal-Token: <INTERNAL_API_TOKEN, if configured>
+```
+
+### 3. Contracts
+
+| Item | Contract |
+|---|---|
+| `INTERNAL_API_TOKEN` | Optional internal token for FastAPI review-task APIs; when empty, only local/dev unauthenticated calls are allowed. |
+| `X-Internal-Token` | Required only when `INTERNAL_API_TOKEN` is non-empty. |
+| JSON casing | FastAPI wire contract uses camelCase; Python internals may use snake_case with Pydantic aliases. |
+| `aiTaskId` | CP3 uses Java `taskId` as the FastAPI task ID for traceability. |
+| Task store | In-memory only for CP3; Java persistence remains authoritative. |
+| Background work | `POST /api/review/tasks` returns `202` after queuing processing. |
+| Status sync | Background processing first tries Java `/task/{taskId}/status` -> `PROCESSING`. |
+| Result writeback | Final result still goes through Java `/task/{taskId}/result` with `X-Worker-Token`. |
+| Worker polling | Existing `SmartWaterWorker` keeps `/task/pending` polling and reuses the same orchestrator. |
+| Knowledge pack | FastAPI loads the static MVP knowledge pack and copies its version into result callbacks. |
+
+### 4. Validation & Error Matrix
+
+| Condition | Expected behavior |
+|---|---|
+| Wrong `X-Internal-Token` when configured | FastAPI returns HTTP `403`; do not start background processing. |
+| Unknown `aiTaskId` on query | FastAPI returns HTTP `404`. |
+| Knowledge pack missing on `/health` | Return `status=degraded`; do not crash the service process. |
+| Java status sync fails | Continue processing but log a warning; final callback may still succeed. |
+| Java result callback fails after retries | Mark FastAPI in-memory task `FAILED` and attempt Java status `FAILED`. |
+| Agent/LLM returns failure category or throws | Return `PARTIAL_SUCCESS` with rules fallback and reviewer-only manual-review notice. |
+
+### 5. Good/Base/Bad Cases
+
+- Good: Java can dispatch a task to FastAPI, while frontend still polls Java and
+  never calls Python directly.
+- Good: Worker polling and FastAPI dispatch share `ReviewTaskOrchestrator`, so
+  fallback and callback behavior do not diverge.
+- Base: FastAPI task state is process-local; restart loses FastAPI query history
+  but Java remains authoritative.
+- Bad: create a separate FastAPI result schema that cannot be written to Java
+  `/task/{taskId}/result`.
+- Bad: let ordinary tests require a live OCR/LLM/backend service.
+
+### 6. Tests Required
+
+- FastAPI tests for health, task creation, status query, camelCase aliases,
+  `403` token rejection, and `404` unknown task.
+- Orchestrator tests for rule issue merge, Agent failure fallback, applicant vs
+  reviewer result separation, and `knowledgePackVersion` propagation.
+- Worker/result writer tests remain green after reusing the orchestrator.
+- Lock and dependency check after adding FastAPI/uvicorn:
+
+```bash
+uv lock --check
+uv run ruff check src tests
+uv run mypy src
+uv run python -m compileall src main.py
+uv run pytest -q tests/test_fastapi_app.py tests/test_review_orchestrator.py tests/test_result_writer.py tests/test_review_adapter.py tests/test_ocr_adapter.py
+```
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```python
+class CreateReviewTaskRequest(BaseModel):
+    task_id: str
+```
+
+and require Java to send `task_id`.
+
+#### Correct
+
+```python
+class CreateReviewTaskRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    task_id: str = Field(alias="taskId")
+```
+
+so the wire contract remains camelCase.
+
+---
+
 ## Forbidden Patterns
 
 - Do not introduce alternate enum names such as `WATER_INTAKE_APPLICATION` unless the contract is updated everywhere.

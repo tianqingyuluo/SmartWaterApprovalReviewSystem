@@ -1,0 +1,37 @@
+{
+  "id": "v1-cp2-python-demo-evidence",
+  "name": "v1-cp2-python-demo-evidence",
+  "title": "CP2-B Python ingest、ChromaDB、Embedding 收尾",
+  "description": "补齐 CP2 答辩可复现的 Python 知识库演示证据。",
+  "status": "completed",
+  "dev_type": "fullstack",
+  "scope": null,
+  "package": null,
+  "priority": "P1",
+  "creator": "6newuser6",
+  "assignee": "6newuser6",
+  "createdAt": "2026-05-19",
+  "completedAt": "2026-05-25",
+  "branch": "task/v1-cp2-python-demo-evidence",
+  "base_branch": "v1",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "05-13-v1-system-design-checkpoints",
+  "relatedFiles": [],
+  "notes": "PR 标题: feat: 补齐Python知识库演示证据；commit: feat: 补齐Python知识库演示证据",
+  "meta": {
+    "checkpoint": "CP2",
+    "lane": "python",
+    "wave": 2,
+    "dependsOn": [
+      "v1-cp2-python-ingest-chromadb-embedding"
+    ],
+    "unlockCriteria": "CP2 Python ingest 主线合入 v1 后可开工。",
+    "gatePolicy": "锁定任务需在依赖完成且父任务批准下一波次后再启动。",
+    "assignedBy": "tianqingyuluo",
+    "assignedAt": "2026-05-19"
+  }
+}

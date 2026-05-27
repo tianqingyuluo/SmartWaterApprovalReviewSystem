@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/backend/smartwater-mvp-contracts.md", "reason": "Verify Python FastAPI/Worker remains aligned with Java task, status, RBAC, and result callback contracts"}
+{"file": ".trellis/spec/backend/review-reasoning-adapter.md", "reason": "Verify result schema, extractedFields, applicant/reviewer separation, and Agent failure fallback"}
+{"file": ".trellis/spec/backend/ocr-adapter.md", "reason": "Verify OCR integration and failure behavior are not regressed"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Verify R<T> handling, Worker token use, status transitions, and controlled errors"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Verify Python tests, compile checks, and no real external dependencies in ordinary tests"}

@@ -14,6 +14,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class MybatisPlusConfig implements WebMvcConfigurer {
 
     private final WorkerTokenInterceptor workerTokenInterceptor;
+    private final AuthTokenInterceptor authTokenInterceptor;
 
     @Bean
     public MybatisPlusInterceptor mybatisPlusInterceptor() {
@@ -25,5 +26,8 @@ public class MybatisPlusConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(workerTokenInterceptor).addPathPatterns("/task/**", "/material/**");
+        registry.addInterceptor(authTokenInterceptor)
+                .addPathPatterns("/task/**", "/ai/**", "/auth/**")
+                .excludePathPatterns("/auth/login");
     }
 }

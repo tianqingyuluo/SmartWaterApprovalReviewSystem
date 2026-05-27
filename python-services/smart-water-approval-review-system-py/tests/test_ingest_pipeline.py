@@ -85,3 +85,51 @@ class TestIngestPipeline(unittest.TestCase):
             self.assertIn("token16", stored_texts)
             self.assertNotIn("token0", stored_texts)
             self.assertEqual(len(stats.errors), 1)
+
+    @patch("src.ingest.ingest_pipeline.config")
+    @patch("src.ingest.ingest_pipeline.list_source_files")
+    @patch("src.ingest.ingest_pipeline.parse_file")
+    @patch("src.ingest.ingest_pipeline.split_blocks")
+    @patch("src.ingest.ingest_pipeline.ChromaStore")
+    @patch("src.ingest.ingest_pipeline.EmbeddingClient")
+    def test_rebuild_clears_persist_dir_before_opening_store(
+        self,
+        mock_embedder_cls,
+        mock_store_cls,
+        mock_split,
+        mock_parse,
+        mock_list,
+        mock_config,
+    ):
+        events: list[str] = []
+
+        with tempfile.TemporaryDirectory() as source_dir:
+            mock_config.CHUNK_SIZE = 100
+            mock_config.CHUNK_OVERLAP = 10
+
+            chunk = ChunkResult(content="token", metadata={"source_file": "a.pdf", "chunk_index": 0})
+            mock_list.return_value = [Path(source_dir) / "a.pdf"]
+            mock_parse.return_value = [chunk]
+            mock_split.return_value = [chunk]
+
+            mock_embedder_cls.return_value.embed.return_value = [[0.1, 0.2, 0.3]]
+
+            mock_store = mock_store_cls.return_value
+            mock_store.store_chunks.return_value = 1
+
+            def clear_persist_dir() -> None:
+                events.append("clear")
+
+            def create_store():
+                events.append("store")
+                return mock_store
+
+            mock_store_cls.clear_persist_dir.side_effect = clear_persist_dir
+            mock_store_cls.side_effect = create_store
+
+            pipeline = IngestPipeline(source_dir=source_dir, rebuild=True)
+            stats = pipeline.run()
+
+            self.assertEqual(["clear", "store"], events)
+            self.assertEqual(1, stats.vector_count)
+            mock_store.store_chunks.assert_called_once()

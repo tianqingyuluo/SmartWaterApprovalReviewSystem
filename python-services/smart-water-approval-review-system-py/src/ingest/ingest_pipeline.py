@@ -27,7 +27,7 @@ class IngestPipeline:
         self._rebuild = rebuild
 
         self._embedder = EmbeddingClient()
-        self._store = ChromaStore()
+        self._store: ChromaStore | None = None
 
     def run(self) -> IngestStats:
         stats = IngestStats()
@@ -46,8 +46,10 @@ class IngestPipeline:
         logger.info("Starting ingest from: %s", self._source_dir)
 
         if self._rebuild:
-            self._store.rebuild()
+            ChromaStore.clear_persist_dir()
             logger.info("Rebuild mode: ChromaDB cleared")
+
+        self._store = ChromaStore()
 
         source_files = list_source_files(source_path)
         stats.doc_count = len(source_files)
@@ -101,6 +103,7 @@ class IngestPipeline:
             logger.warning("No embeddings generated")
             return stats
 
+        assert self._store is not None
         stored = self._store.store_chunks(stored_chunks, stored_embeddings)
         stats.vector_count = stored
 

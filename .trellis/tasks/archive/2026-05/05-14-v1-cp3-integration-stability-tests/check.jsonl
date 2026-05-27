@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/backend/smartwater-mvp-contracts.md", "reason": "Verify CP3 acceptance evidence matches cross-service contracts"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Verify Java/Python test gates and no real external services in ordinary tests"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Verify callback failure and fallback evidence has explainable status"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "Verify frontend tests/build evidence included"}
+{"file": ".trellis/spec/project-documentation.md", "reason": "Verify readable CP3 evidence and development log updated"}

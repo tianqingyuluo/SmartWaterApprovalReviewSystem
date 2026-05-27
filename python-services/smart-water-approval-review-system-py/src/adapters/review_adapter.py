@@ -159,11 +159,10 @@ class ReviewReasoningAdapter(ReviewAdapter):
         for attempt in range(config.WORKER_MAX_RETRIES):
             try:
                 logger.info(
-                    "Review attempt %d/%d for task %s session %s",
+                    "Review attempt %d/%d for task %s",
                     attempt + 1,
                     config.WORKER_MAX_RETRIES,
                     task_id,
-                    session_id[:8] + "..." if len(session_id) > 8 else session_id,
                 )
                 start_time = time.time()
                 resp = client.chat.completions.create(**payload)
@@ -207,19 +206,20 @@ class ReviewReasoningAdapter(ReviewAdapter):
 
             except Exception as e:
                 elapsed = time.time() - start_time
+                category = _classify_error(e)
                 logger.error(
-                    "Review API error for task %s: %s latency=%.1fs",
+                    "Review API error for task %s: category=%s errorType=%s latency=%.1fs",
                     task_id,
-                    e,
+                    category,
+                    e.__class__.__name__,
                     elapsed,
                 )
-                category = _classify_error(e)
                 if attempt < config.WORKER_MAX_RETRIES - 1 and category in RETRYABLE_FAILURES:
                     time.sleep(2**attempt)
                     continue
-                return self._error_result(task_id, str(e), category)
+                return self._error_result(task_id, category)
 
-        return self._error_result(task_id, "max retries exhausted", classification or "UNKNOWN")
+        return self._error_result(task_id, classification or "UNKNOWN")
 
     def _build_client(self) -> OpenAI:
         return OpenAI(
@@ -373,14 +373,14 @@ class ReviewReasoningAdapter(ReviewAdapter):
             manual_review_notice="AI审核输出格式校验失败，请人工审核所有材料。",
         )
 
-    def _error_result(self, task_id: str, error: str, category: str = "UPSTREAM_5XX") -> ReviewResult:
+    def _error_result(self, task_id: str, category: str = "UPSTREAM_5XX") -> ReviewResult:
         return ReviewResult(
-            summary=f"审核推理失败: {error}",
+            summary=f"审核推理失败: {category}",
             issues=[
                 Issue(
                     code=category,
                     severity="BLOCKER",
-                    message=f"审核推理调用失败: {error}",
+                    message=f"审核推理调用失败，失败类型: {category}，需要人工复核。",
                     applicant_visible=False,
                 )
             ],

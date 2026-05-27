@@ -1,0 +1,9 @@
+{"file": ".trellis/tasks/05-26-cp3-5-agent/prd.md", "reason": "验证 CP3.5 是否满足真实链路和禁止演示兜底的父任务要求"}
+{"file": ".trellis/tasks/05-26-cp3-5-agent/info.md", "reason": "验证技术路线和验收门禁是否被实现覆盖"}
+{"file": ".trellis/tasks/05-26-cp3-5-agent/research/cp3-failure-root-cause.md", "reason": "检查实现是否避免重复 CP3 玩具演示路线"}
+{"file": "docs/readable/cp3-test-evidence.md", "reason": "对照旧证据缺口，确认 CP3.5 已补真实联机验收"}
+{"file": ".trellis/spec/backend/smartwater-mvp-contracts.md", "reason": "验证 Java/Python/Worker/前端跨服务契约一致"}
+{"file": ".trellis/spec/backend/ocr-adapter.md", "reason": "验证真实 OCR 适配器和错误语义"}
+{"file": ".trellis/spec/backend/review-reasoning-adapter.md", "reason": "验证审查推理与结构化输出契约"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "后端质量检查标准"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "前端质量检查标准"}

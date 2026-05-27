@@ -1,6 +1,6 @@
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class FindingType:
@@ -53,7 +53,7 @@ class ReviewTask(BaseModel):
     task_id: str
     session_id: str
     status: str
-    material_slots: list[MaterialSlot] = []
+    material_slots: list[MaterialSlot] = Field(default_factory=list)
     knowledge_pack_version: str | None = None
 
 
@@ -77,21 +77,21 @@ class Issue(BaseModel):
     message: str
     material_type: str | None = None
     field_key: str | None = None
-    basis_refs: list[str] = []
+    basis_refs: list[str] = Field(default_factory=list)
     applicant_visible: bool = True
 
 
 class RiskHint(BaseModel):
     risk_level: str
     description: str
-    basis_refs: list[str] = []
+    basis_refs: list[str] = Field(default_factory=list)
     requires_manual_review: bool = False
 
 
 class MaterialCompleteness(BaseModel):
-    received: list[str] = []
-    missing: list[str] = []
-    unrecognized: list[str] = []
+    received: list[str] = Field(default_factory=list)
+    missing: list[str] = Field(default_factory=list)
+    unrecognized: list[str] = Field(default_factory=list)
 
 
 class ModelMetadata(BaseModel):
@@ -99,17 +99,17 @@ class ModelMetadata(BaseModel):
     model: str
     request_id: str | None = None
     finish_reason: str | None = None
-    token_usage: dict[str, int] = {}
+    token_usage: dict[str, int] = Field(default_factory=dict)
 
 
 class ReviewResult(BaseModel):
     summary: str = ""
-    issues: list[Issue] = []
-    risk_hints: list[RiskHint] = []
+    issues: list[Issue] = Field(default_factory=list)
+    risk_hints: list[RiskHint] = Field(default_factory=list)
     draft_opinion: str = ""
-    material_completeness: MaterialCompleteness = MaterialCompleteness()
-    extracted_fields: list[ExtractedField] = []
-    basis_refs: list[str] = []
+    material_completeness: MaterialCompleteness = Field(default_factory=MaterialCompleteness)
+    extracted_fields: list[ExtractedField] = Field(default_factory=list)
+    basis_refs: list[str] = Field(default_factory=list)
     manual_review_notice: str = ""
     model_metadata: ModelMetadata | None = None
 

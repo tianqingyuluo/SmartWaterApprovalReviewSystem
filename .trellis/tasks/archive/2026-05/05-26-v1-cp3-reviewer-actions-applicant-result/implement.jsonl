@@ -1,0 +1,6 @@
+{"file": ".trellis/tasks/05-13-v1-system-design-checkpoints/prd.md", "reason": "V1 initial-review actions, notes, operation log, and CP4 boundary decisions"}
+{"file": ".trellis/spec/backend/smartwater-mvp-contracts.md", "reason": "Existing task states, result projections, and AI as assistive advice constraints"}
+{"file": ".trellis/spec/backend/database-guidelines.md", "reason": "Schema and persistence rules for review decisions and operation logs"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Status transition, access control, and result writeback test expectations"}
+{"file": ".trellis/spec/frontend/smartwater-mvp-visibility.md", "reason": "Applicant/reviewer UI visibility and final-decision wording constraints"}
+{"file": ".trellis/spec/frontend/component-guidelines.md", "reason": "Business component conventions for review action panels and result blocks"}

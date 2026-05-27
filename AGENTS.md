@@ -55,3 +55,14 @@ When `wait` returns a `completed` notification, treat it as an event signal — 
 Managed by Trellis. Edits outside this block are preserved; edits inside may be overwritten by a future `trellis update`.
 
 <!-- TRELLIS:END -->
+
+<!-- PROJECT-LOCAL:START -->
+# Project-Local Override
+
+This repository does not use subagents.
+
+- Do not call `spawn_agent`, `followup_task`, `wait_agent`, or any other subagent dispatch tool for this project.
+- Use the Trellis inline workflow: the main session reads specs, implements, checks, tests, updates docs/specs, commits, and archives directly.
+- If a generated Trellis prompt still mentions dispatching `trellis-implement`, `trellis-check`, or `trellis-research`, treat `.trellis/config.yaml` (`codex.dispatch_mode: inline`) and this override as the controlling project rule.
+
+<!-- PROJECT-LOCAL:END -->

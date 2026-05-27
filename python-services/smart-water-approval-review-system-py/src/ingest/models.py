@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class DocumentBlock(BaseModel):
@@ -26,5 +26,5 @@ class IngestStats(BaseModel):
     block_count: int = 0
     chunk_count: int = 0
     vector_count: int = 0
-    sources: list[str] = []
-    errors: list[str] = []
+    sources: list[str] = Field(default_factory=list)
+    errors: list[str] = Field(default_factory=list)

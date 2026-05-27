@@ -114,7 +114,7 @@
             <span class="font-bold text-[#26364f]">{{ materialLabel(slot) }}</span>
             <input v-model="selectedMaterials" type="checkbox" :value="slot" class="h-5 w-5 accent-[#1677ff]" />
           </label>
-          <button type="button" class="sw-btn sw-btn-primary" :disabled="completenessLoading" @click="runCompletenessCheck">
+          <button type="button" class="sw-btn sw-btn-primary" :disabled="completenessLoading" @click="runCompletenessCheck()">
             {{ completenessLoading ? '检查中...' : '检查完整性' }}
           </button>
         </div>
@@ -134,7 +134,7 @@
 
         <div v-if="completenessError" class="sw-alert sw-alert-danger mt-4">
           {{ completenessError }}
-          <button type="button" class="ml-3 font-bold text-sw-danger underline" @click="runCompletenessCheck">重试</button>
+          <button type="button" class="ml-3 font-bold text-sw-danger underline" @click="runCompletenessCheck()">重试</button>
         </div>
 
         <div v-if="completenessLoading" class="mt-4 flex items-center justify-center gap-2.5 rounded-[10px] bg-[#f6f9fd] py-10 text-sw-muted">
@@ -316,7 +316,7 @@ async function runKnowledgeSearch() {
   }
 }
 
-async function runCompletenessCheck() {
+async function runCompletenessCheck(options: { simulateFailure?: boolean } = {}) {
   completenessValidationError.value = ''
   completenessError.value = ''
   completenessResult.value = null
@@ -329,10 +329,14 @@ async function runCompletenessCheck() {
   completenessLoading.value = true
   try {
     await demoDelay()
+    if (options.simulateFailure) {
+      throw new Error('check_completeness 模拟失败，请点击重试。')
+    }
     completenessResult.value = buildDemoCompleteness(selectedMaterials.value)
     markToolCall('check_completeness', '当前使用演示数据，等待后端 MCP HTTP 代理接入。', 'demo')
   } catch (error) {
     completenessError.value = error instanceof Error ? error.message : 'check_completeness 调用失败，请重试。'
+    markToolCall('check_completeness', 'check_completeness 调用失败，可点击重试。', 'demo')
   } finally {
     completenessLoading.value = false
   }
@@ -354,8 +358,10 @@ function runEmptyCompletenessCheck() {
 }
 
 function runFailedCompletenessCheck() {
-  selectedMaterials.value = []
-  runCompletenessCheck()
+  if (selectedMaterials.value.length === 0) {
+    selectedMaterials.value = ['APPLICATION_FORM']
+  }
+  runCompletenessCheck({ simulateFailure: true })
 }
 
 const DEMO_DELAY_MS = 350

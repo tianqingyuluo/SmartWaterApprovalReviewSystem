@@ -1,0 +1,7 @@
+{"file": ".trellis/tasks/05-27-cp3-5-java-python-real-dispatch/prd.md", "reason": "本任务 PRD：Java 主动调度 Python 审查链路"}
+{"file": ".trellis/tasks/05-26-cp3-5-agent/prd.md", "reason": "CP3.5 父任务真实链路路线和禁止演示兜底规则"}
+{"file": ".trellis/tasks/05-26-cp3-5-agent/research/cp3-failure-root-cause.md", "reason": "CP3 旧链路没有证明 Java 主动调度 Python 的根因背景"}
+{"file": ".trellis/spec/backend/smartwater-mvp-contracts.md", "reason": "Java/Python/Worker/前端跨服务 DTO 和接口契约"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Python 不可用、回写失败和重试状态的错误语义"}
+{"file": ".trellis/spec/backend/database-guidelines.md", "reason": "审查任务状态和结果持久化数据库规范"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "前端提交、Java 调度、Python 回写、前端展示的跨层链路"}

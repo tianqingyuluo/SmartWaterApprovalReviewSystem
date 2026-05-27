@@ -1,0 +1,39 @@
+{
+  "id": "v1-cp3-integration-stability-tests",
+  "name": "v1-cp3-integration-stability-tests",
+  "title": "CP3-D 集成测试与稳定性验收",
+  "description": "形成 Java-Python 全链路测试与稳定性验收证据。",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P1",
+  "creator": "tianqingyuluo",
+  "assignee": "tianqingyuluo",
+  "createdAt": "2026-05-14",
+  "completedAt": "2026-05-26",
+  "branch": null,
+  "base_branch": "mvp/smartwater",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "05-13-v1-system-design-checkpoints",
+  "relatedFiles": [],
+  "notes": "Unlocked after CP2-D archive and parent approval for CP3 Wave 3. Execute after CP3 Python and frontend core chain are implemented.",
+  "meta": {
+    "checkpoint": "CP3",
+    "lane": "docs-tests",
+    "wave": 3,
+    "dependsOn": [
+      "v1-cp3-java-ai-task-callback-results",
+      "v1-cp3-python-fastapi-rules-agent",
+      "v1-cp3-minimal-rbac-task-visibility",
+      "v1-cp3-reviewer-actions-applicant-result",
+      "v1-cp3-frontend-review-workbench"
+    ],
+    "unlockCriteria": "CP3 core chain delivered and parent approves Wave 3 acceptance.",
+    "gatePolicy": "Do not start locked tasks until dependencies are completed and parent task approves next wave."
+  }
+}

@@ -1,0 +1,6 @@
+{"file": ".trellis/tasks/05-27-cp3-5-real-e2e-acceptance/prd.md", "reason": "验证真实端到端验收任务标准"}
+{"file": ".trellis/tasks/05-26-cp3-5-agent/prd.md", "reason": "验证最终证据满足 CP3.5 父任务硬约束"}
+{"file": ".trellis/tasks/05-26-cp3-5-agent/info.md", "reason": "验证技术路线和验收门禁覆盖"}
+{"file": ".trellis/tasks/05-26-cp3-5-agent/research/cp3-failure-root-cause.md", "reason": "验证没有重复 CP3 旧演示路线"}
+{"file": "docs/readable/cp3-test-evidence.md", "reason": "对照旧证据缺口检查新证据"}
+{"file": ".trellis/spec/project-documentation.md", "reason": "验证 docs/readable 验收证据完整"}

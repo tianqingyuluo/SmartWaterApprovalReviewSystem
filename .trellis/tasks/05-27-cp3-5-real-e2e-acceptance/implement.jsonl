@@ -1,0 +1,7 @@
+{"file": ".trellis/tasks/05-27-cp3-5-real-e2e-acceptance/prd.md", "reason": "本任务 PRD：真实端到端验收与答辩证据"}
+{"file": ".trellis/tasks/05-26-cp3-5-agent/prd.md", "reason": "CP3.5 父任务真实链路验收口径"}
+{"file": ".trellis/tasks/05-26-cp3-5-agent/info.md", "reason": "CP3.5 技术路线和验收门禁"}
+{"file": ".trellis/tasks/05-26-cp3-5-agent/research/cp3-failure-root-cause.md", "reason": "对照 CP3 旧证据缺口收口真实 E2E"}
+{"file": "docs/readable/cp3-test-evidence.md", "reason": "旧 CP3 验收记录，明确不能重复旧限制"}
+{"file": ".trellis/spec/project-documentation.md", "reason": "真实验收证据写入 docs/readable 的文档规则"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "端到端跨层验证清单"}

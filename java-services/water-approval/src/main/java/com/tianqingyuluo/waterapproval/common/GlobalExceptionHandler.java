@@ -1,5 +1,7 @@
 package com.tianqingyuluo.waterapproval.common;
 
+import cn.dev33.satoken.exception.NotLoginException;
+import cn.dev33.satoken.exception.NotRoleException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -23,6 +25,16 @@ public class GlobalExceptionHandler {
                 .map(FieldError::getDefaultMessage)
                 .collect(Collectors.joining("; "));
         return R.fail(400, message);
+    }
+
+    @ExceptionHandler(NotLoginException.class)
+    public R<?> handleNotLogin(NotLoginException e) {
+        return R.fail(401, "未登录或登录已过期");
+    }
+
+    @ExceptionHandler(NotRoleException.class)
+    public R<?> handleNotRole(NotRoleException e) {
+        return R.fail(403, "权限不足");
     }
 
     @ExceptionHandler(Exception.class)

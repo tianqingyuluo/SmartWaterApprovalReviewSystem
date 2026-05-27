@@ -16,13 +16,7 @@ logger = logging.getLogger(__name__)
 
 class ChromaStore:
     def __init__(self) -> None:
-        persist_dir = Path(config.CHROMA_PERSIST_DIR)
-        persist_dir.mkdir(parents=True, exist_ok=True)
-
-        self._client = chromadb.PersistentClient(
-            path=str(persist_dir),
-            settings=Settings(anonymized_telemetry=False),
-        )
+        self._client = self._create_client()
         self._collection_name = config.CHROMA_COLLECTION_NAME
 
     def store_chunks(
@@ -106,17 +100,27 @@ class ChromaStore:
         return int(collection.count())
 
     def rebuild(self) -> None:
+        self.clear_persist_dir()
+        self._client = self._create_client()
+        logger.info("Rebuilt ChromaDB at: %s", config.CHROMA_PERSIST_DIR)
+
+    @staticmethod
+    def clear_persist_dir() -> None:
         persist_dir = Path(config.CHROMA_PERSIST_DIR)
         if persist_dir.exists():
             shutil.rmtree(persist_dir)
             logger.info("Cleared ChromaDB persist directory: %s", persist_dir)
 
         persist_dir.mkdir(parents=True, exist_ok=True)
-        self._client = chromadb.PersistentClient(
+
+    @staticmethod
+    def _create_client():
+        persist_dir = Path(config.CHROMA_PERSIST_DIR)
+        persist_dir.mkdir(parents=True, exist_ok=True)
+        return chromadb.PersistentClient(
             path=str(persist_dir),
             settings=Settings(anonymized_telemetry=False),
         )
-        logger.info("Rebuilt ChromaDB at: %s", persist_dir)
 
     def _get_or_create_collection(self):
         return self._client.get_or_create_collection(
