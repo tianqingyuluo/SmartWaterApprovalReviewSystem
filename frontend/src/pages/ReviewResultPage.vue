@@ -75,7 +75,7 @@
                   </div>
                 </template>
 
-                <template v-else-if="previewState(slot.materialType).status === 'error'">
+                <template v-else-if="isPreviewMessageState(previewState(slot.materialType).status)">
                   <PreviewMessage
                     title="预览加载失败"
                     :description="previewState(slot.materialType).message || '后端未返回可用的预览内容。'"
@@ -319,6 +319,7 @@ import { computed, defineComponent, h, onBeforeUnmount, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   fetchMaterialPreviewBlob,
+  getMaterialPreviewErrorState,
   getApplicantResult,
   getReviewerResult,
   getTaskStatus,
@@ -331,6 +332,7 @@ import {
 import { getCurrentRole } from '@/utils/auth'
 import type {
   MaterialPreviewItem,
+  MaterialPreviewLoadStatus,
   MaterialType,
   ReviewerActionCode,
   Severity,
@@ -360,7 +362,7 @@ const PreviewMessage = defineComponent({
 })
 
 type PreviewLoadState = {
-  status: 'idle' | 'loading' | 'ready' | 'error'
+  status: MaterialPreviewLoadStatus
   objectUrl: string | null
   message: string
 }
@@ -471,10 +473,11 @@ async function loadPreviewAssets(items: MaterialPreviewItem[]) {
       }
     } catch (error) {
       if (currentLoad !== previewLoadSequence) return
+      const errorState = getMaterialPreviewErrorState(error)
       previewStates.value[item.materialType] = {
-        status: 'error',
+        status: errorState.status,
         objectUrl: null,
-        message: error instanceof Error ? error.message : '预览加载失败',
+        message: errorState.message,
       }
     }
   }))
@@ -524,6 +527,13 @@ function previewState(materialType: MaterialType): PreviewLoadState {
     objectUrl: null,
     message: '',
   }
+}
+
+function isPreviewMessageState(status: MaterialPreviewLoadStatus): boolean {
+  return status === 'forbidden'
+    || status === 'not_found'
+    || status === 'unsupported'
+    || status === 'error'
 }
 
 function materialShortName(type: MaterialType): string {

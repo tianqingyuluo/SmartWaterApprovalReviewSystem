@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isReviewerActionCompleted, toApplicantResultView, toApplicantTaskResultView, toReviewerResultView } from './task'
+import { getMaterialPreviewErrorState, isReviewerActionCompleted, toApplicantResultView, toApplicantTaskResultView, toReviewerResultView } from './task'
 import type { ApplicantResultResponse, ReviewerResultResponse, TaskStatusResponse } from '@/types'
 
 describe('task API adapters', () => {
@@ -588,5 +588,24 @@ describe('task API adapters', () => {
     const view = toReviewerResultView(statusDto, resultDto)
 
     expect(view.previewMaterials[0].previewPath).toBe('/task/task-contract/material/APPLICATION_FORM/preview')
+  })
+
+  it('classifies safe preview HTTP failures for page state rendering', () => {
+    expect(getMaterialPreviewErrorState({ response: { status: 403 } })).toEqual({
+      status: 'forbidden',
+      message: '无权查看该材料，请确认当前账号是否可访问该任务。',
+    })
+    expect(getMaterialPreviewErrorState({ response: { status: 404 } })).toEqual({
+      status: 'not_found',
+      message: '材料不存在或已被移除，请刷新任务后重试。',
+    })
+    expect(getMaterialPreviewErrorState({ response: { status: 415 } })).toEqual({
+      status: 'unsupported',
+      message: '该文件格式暂不支持在线预览。',
+    })
+    expect(getMaterialPreviewErrorState(new Error('network failed'))).toEqual({
+      status: 'error',
+      message: 'network failed',
+    })
   })
 })

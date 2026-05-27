@@ -22,6 +22,7 @@ import type {
   ResultSummary,
   MaterialPreviewItem,
   MaterialSlot,
+  MaterialPreviewLoadStatus,
 } from '@/types'
 import { REVIEWER_ACTION_LABELS } from '@/types'
 
@@ -66,6 +67,33 @@ export async function fetchMaterialPreviewBlob(previewPath: string) {
     responseType: 'blob',
   })
   return response.data
+}
+
+export function getMaterialPreviewErrorState(error: unknown): { status: MaterialPreviewLoadStatus; message: string } {
+  const status = extractHttpStatus(error)
+  if (status === 403) {
+    return {
+      status: 'forbidden',
+      message: '无权查看该材料，请确认当前账号是否可访问该任务。',
+    }
+  }
+  if (status === 404) {
+    return {
+      status: 'not_found',
+      message: '材料不存在或已被移除，请刷新任务后重试。',
+    }
+  }
+  if (status === 415) {
+    return {
+      status: 'unsupported',
+      message: '该文件格式暂不支持在线预览。',
+    }
+  }
+
+  return {
+    status: 'error',
+    message: error instanceof Error ? error.message : '预览加载失败。',
+  }
 }
 
 // ── Adapters: backend DTO → page view model ──
@@ -334,6 +362,13 @@ function normalizeFieldConfidence(value: unknown): Record<string, number> | null
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
+function extractHttpStatus(error: unknown): number | null {
+  if (!isRecord(error) || !isRecord(error.response)) {
+    return null
+  }
+  return typeof error.response.status === 'number' ? error.response.status : null
 }
 
 function buildApplicantSuggestions(dto: ApplicantResultResponse): string[] {

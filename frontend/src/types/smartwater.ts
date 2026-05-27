@@ -89,6 +89,14 @@ export interface MaterialSlot {
 }
 
 export type MaterialPreviewKind = 'pdf' | 'image' | 'unsupported' | 'missing'
+export type MaterialPreviewLoadStatus =
+  | 'idle'
+  | 'loading'
+  | 'ready'
+  | 'forbidden'
+  | 'not_found'
+  | 'unsupported'
+  | 'error'
 
 export interface MaterialPreviewItem {
   materialType: MaterialType
