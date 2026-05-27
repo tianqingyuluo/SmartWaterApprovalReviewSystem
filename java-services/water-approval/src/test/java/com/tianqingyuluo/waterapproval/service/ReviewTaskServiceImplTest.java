@@ -9,6 +9,7 @@ import com.tianqingyuluo.waterapproval.dto.ReviewerActionSubmitRequest;
 import com.tianqingyuluo.waterapproval.dto.ReviewerResultResponse;
 import com.tianqingyuluo.waterapproval.dto.SubmitRequest;
 import com.tianqingyuluo.waterapproval.dto.SubmitResponse;
+import com.tianqingyuluo.waterapproval.dto.TaskStatusResponse;
 import com.tianqingyuluo.waterapproval.dto.TaskListResponse;
 import com.tianqingyuluo.waterapproval.dto.UserProfileResponse;
 import com.tianqingyuluo.waterapproval.entity.MaterialSlot;
@@ -32,6 +33,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -61,6 +63,9 @@ class ReviewTaskServiceImplTest {
 
     @Autowired
     private ReviewActionLogMapper reviewActionLogMapper;
+
+    @Autowired
+    private StorageService storageService;
 
     private static UserProfileResponse applicantUser(long id) {
         UserProfileResponse user = new UserProfileResponse();
@@ -444,6 +449,112 @@ class ReviewTaskServiceImplTest {
 
         ReviewerResultResponse response = reviewTaskService.getReviewerResult(taskId, null, reviewerUser());
         assertEquals(taskId, response.getTaskId());
+    }
+
+    @Test
+    void getStatusShouldExposePreviewPathForUploadedMaterials() {
+        String taskId = "task-preview-status-" + System.nanoTime();
+        ReviewTask task = newReviewTask(taskId, "session-preview-status", "COMPLETED");
+        task.setOwnerUserId(5101L);
+        taskMapper.insert(task);
+
+        MaterialSlot slot = new MaterialSlot();
+        slot.setMaterialId("mat-preview-status-" + System.nanoTime());
+        slot.setTaskId(taskId);
+        slot.setMaterialType("APPLICATION_FORM");
+        slot.setOriginalFileName("application.pdf");
+        slot.setContentType("application/pdf");
+        slot.setFileExtension("pdf");
+        slot.setStorageKey(taskId + "/APPLICATION_FORM/file.pdf");
+        slot.setCreatedAt(LocalDateTime.now());
+        slot.setUpdatedAt(LocalDateTime.now());
+        materialSlotMapper.insert(slot);
+
+        TaskStatusResponse response = reviewTaskService.getStatus(taskId, "session-preview-status", applicantUser(5101L));
+
+        TaskStatusResponse.MaterialStatus material = response.getMaterials().stream()
+                .filter(item -> "APPLICATION_FORM".equals(item.getMaterialType()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(Boolean.TRUE, material.getUploaded());
+        assertEquals("/task/" + taskId + "/material/APPLICATION_FORM/preview", material.getPreviewPath());
+    }
+
+    @Test
+    void previewMaterialShouldRespectApplicantOwnershipAndReturnBinaryMetadata() throws Exception {
+        String taskId = "task-preview-ok-" + System.nanoTime();
+        ReviewTask task = newReviewTask(taskId, "session-preview-ok", "COMPLETED");
+        task.setOwnerUserId(5201L);
+        taskMapper.insert(task);
+
+        MaterialSlot slot = new MaterialSlot();
+        slot.setMaterialId("mat-preview-ok-" + System.nanoTime());
+        slot.setTaskId(taskId);
+        slot.setMaterialType("APPLICATION_FORM");
+        slot.setOriginalFileName("application.pdf");
+        slot.setContentType("application/pdf");
+        slot.setFileExtension("pdf");
+        slot.setStorageKey(taskId + "/APPLICATION_FORM/file.pdf");
+        slot.setCreatedAt(LocalDateTime.now());
+        slot.setUpdatedAt(LocalDateTime.now());
+        materialSlotMapper.insert(slot);
+
+        byte[] uploadedContent = "preview-bytes".getBytes(StandardCharsets.UTF_8);
+        storageService.upload(slot.getStorageKey(), new java.io.ByteArrayInputStream(uploadedContent), uploadedContent.length, "application/pdf");
+
+        var resource = reviewTaskService.previewMaterial(taskId, "APPLICATION_FORM", "session-preview-ok", applicantUser(5201L));
+
+        assertEquals("application/pdf", resource.getContentType());
+        assertEquals("application.pdf", resource.getOriginalFileName());
+        assertArrayEquals(uploadedContent, resource.getInputStream().readAllBytes());
+    }
+
+    @Test
+    void previewMaterialShouldRejectOtherApplicant() {
+        String taskId = "task-preview-deny-" + System.nanoTime();
+        ReviewTask task = newReviewTask(taskId, "session-preview-deny", "COMPLETED");
+        task.setOwnerUserId(5301L);
+        taskMapper.insert(task);
+
+        MaterialSlot slot = new MaterialSlot();
+        slot.setMaterialId("mat-preview-deny-" + System.nanoTime());
+        slot.setTaskId(taskId);
+        slot.setMaterialType("APPLICATION_FORM");
+        slot.setOriginalFileName("application.pdf");
+        slot.setContentType("application/pdf");
+        slot.setFileExtension("pdf");
+        slot.setStorageKey(taskId + "/APPLICATION_FORM/file.pdf");
+        slot.setCreatedAt(LocalDateTime.now());
+        slot.setUpdatedAt(LocalDateTime.now());
+        materialSlotMapper.insert(slot);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> reviewTaskService.previewMaterial(taskId, "APPLICATION_FORM", "session-preview-deny", applicantUser(5302L)));
+        assertEquals(403, ex.getCode());
+    }
+
+    @Test
+    void previewMaterialShouldRejectInvalidMaterialType() {
+        String taskId = "task-preview-invalid-type-" + System.nanoTime();
+        ReviewTask task = newReviewTask(taskId, "session-preview-invalid-type", "COMPLETED");
+        task.setOwnerUserId(5401L);
+        taskMapper.insert(task);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> reviewTaskService.previewMaterial(taskId, "UNKNOWN_TYPE", "session-preview-invalid-type", applicantUser(5401L)));
+        assertEquals(400, ex.getCode());
+    }
+
+    @Test
+    void previewMaterialShouldRejectMissingSlot() {
+        String taskId = "task-preview-missing-" + System.nanoTime();
+        ReviewTask task = newReviewTask(taskId, "session-preview-missing", "COMPLETED");
+        task.setOwnerUserId(5501L);
+        taskMapper.insert(task);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> reviewTaskService.previewMaterial(taskId, "APPLICATION_FORM", "session-preview-missing", applicantUser(5501L)));
+        assertEquals(404, ex.getCode());
     }
 
     @Test

@@ -6,10 +6,17 @@ import com.tianqingyuluo.waterapproval.service.AuthService;
 import com.tianqingyuluo.waterapproval.service.ReviewTaskService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @RestController
@@ -53,6 +60,27 @@ public class ReviewTaskController {
         log.info("查询任务状态: taskId={}", taskId);
         TaskStatusResponse response = reviewTaskService.getStatus(taskId, sessionId, authService.currentUser());
         return R.ok(response);
+    }
+
+    @GetMapping("/{taskId}/material/{materialType}/preview")
+    public ResponseEntity<InputStreamResource> previewMaterial(
+            @PathVariable String taskId,
+            @PathVariable String materialType,
+            @RequestParam(required = false) String sessionId) {
+        MaterialPreviewResource resource =
+                reviewTaskService.previewMaterial(taskId, materialType, sessionId, authService.currentUser());
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(resource.getContentType()))
+                .cacheControl(CacheControl.maxAge(5, TimeUnit.MINUTES).cachePrivate().mustRevalidate())
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        org.springframework.http.ContentDisposition.inline()
+                                .filename(resource.getOriginalFileName(), StandardCharsets.UTF_8)
+                                .build()
+                                .toString())
+                .header(HttpHeaders.X_CONTENT_TYPE_OPTIONS, "nosniff")
+                .header(HttpHeaders.CONTENT_SECURITY_POLICY, "default-src 'none'; frame-ancestors 'self'; sandbox")
+                .body(new InputStreamResource(resource.getInputStream()));
     }
 
     @PutMapping("/{taskId}/status")

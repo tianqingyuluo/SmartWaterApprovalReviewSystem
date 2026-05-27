@@ -558,4 +558,35 @@ describe('task API adapters', () => {
       },
     ])
   })
+
+  it('keeps backend preview path contract stable for safe preview endpoint', () => {
+    const statusDto: TaskStatusResponse = {
+      taskId: 'task-contract',
+      status: 'COMPLETED',
+      submittedAt: '2026-05-08T10:00:00',
+      updatedAt: '2026-05-08T10:01:00',
+      materials: [
+        {
+          materialType: 'APPLICATION_FORM',
+          originalFileName: 'application.pdf',
+          uploaded: true,
+          previewPath: '/task/task-contract/material/APPLICATION_FORM/preview',
+        },
+      ],
+    }
+    const resultDto: ReviewerResultResponse = {
+      taskId: 'task-contract',
+      status: 'COMPLETED',
+      summary: '',
+      missingMaterials: [],
+      draftOpinion: '',
+      extractedFields: {},
+      issues: [],
+      riskHints: [],
+    }
+
+    const view = toReviewerResultView(statusDto, resultDto)
+
+    expect(view.previewMaterials[0].previewPath).toBe('/task/task-contract/material/APPLICATION_FORM/preview')
+  })
 })

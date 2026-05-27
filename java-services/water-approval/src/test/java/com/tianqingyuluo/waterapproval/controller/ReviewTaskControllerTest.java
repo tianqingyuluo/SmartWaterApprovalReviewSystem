@@ -24,6 +24,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.io.ByteArrayInputStream;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -146,6 +147,12 @@ class ReviewTaskControllerTest {
         TaskStatusResponse resp = new TaskStatusResponse();
         resp.setTaskId("task-1");
         resp.setStatus("PROCESSING");
+        TaskStatusResponse.MaterialStatus materialStatus = new TaskStatusResponse.MaterialStatus();
+        materialStatus.setMaterialType("APPLICATION_FORM");
+        materialStatus.setUploaded(true);
+        materialStatus.setOriginalFileName("application.pdf");
+        materialStatus.setPreviewPath("/task/task-1/material/APPLICATION_FORM/preview");
+        resp.setMaterials(List.of(materialStatus));
         when(reviewTaskService.getStatus(eq("task-1"), eq("session-1"), any())).thenReturn(resp);
         String token = loginAs("applicant", "applicant123");
 
@@ -154,7 +161,47 @@ class ReviewTaskControllerTest {
                         .param("sessionId", "session-1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.data.status").value("PROCESSING"));
+                .andExpect(jsonPath("$.data.status").value("PROCESSING"))
+                .andExpect(jsonPath("$.data.materials[0].previewPath").value("/task/task-1/material/APPLICATION_FORM/preview"));
+    }
+
+    @Test
+    void previewMaterialWithoutLoginShouldBeRejected() throws Exception {
+        mockMvc.perform(get("/task/task-1/material/APPLICATION_FORM/preview"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(401));
+    }
+
+    @Test
+    void previewMaterialShouldReturnInlineBinaryHeaders() throws Exception {
+        when(reviewTaskService.previewMaterial(eq("task-1"), eq("APPLICATION_FORM"), eq("session-1"), any()))
+                .thenReturn(new MaterialPreviewResource(
+                        new ByteArrayInputStream("preview".getBytes()),
+                        "application/pdf",
+                        "application.pdf"
+                ));
+        String token = loginAs("reviewer", "reviewer123");
+
+        mockMvc.perform(get("/task/task-1/material/APPLICATION_FORM/preview")
+                        .header("Authorization", "Bearer " + token)
+                        .param("sessionId", "session-1"))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header().string("Content-Type", "application/pdf"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header().string("X-Content-Type-Options", "nosniff"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header().string("Content-Security-Policy", "default-src 'none'; frame-ancestors 'self'; sandbox"));
+    }
+
+    @Test
+    void previewMaterialShouldReturnBusinessErrorWhenAccessDenied() throws Exception {
+        when(reviewTaskService.previewMaterial(eq("task-1"), eq("APPLICATION_FORM"), eq("session-1"), any()))
+                .thenThrow(new BusinessException(403, "无权访问该任务"));
+        String token = loginAs("applicant", "applicant123");
+
+        mockMvc.perform(get("/task/task-1/material/APPLICATION_FORM/preview")
+                        .header("Authorization", "Bearer " + token)
+                        .param("sessionId", "session-1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(403));
     }
 
     @Test

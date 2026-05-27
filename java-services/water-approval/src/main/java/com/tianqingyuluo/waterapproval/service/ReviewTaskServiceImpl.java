@@ -159,9 +159,11 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
             if (slot.isPresent()) {
                 status.setUploaded(true);
                 status.setOriginalFileName(slot.get().getOriginalFileName());
+                status.setPreviewPath(buildPreviewPath(taskId, type));
             } else {
                 status.setUploaded(false);
                 status.setOriginalFileName(null);
+                status.setPreviewPath(null);
             }
 
             materialStatuses.add(status);
@@ -703,6 +705,38 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
         log.info("Result written for task: taskId={}, status={}", taskId, request.getStatus());
     }
 
+    @Override
+    public MaterialPreviewResource previewMaterial(
+            String taskId,
+            String materialType,
+            String sessionId,
+            UserProfileResponse currentUser) {
+        validateMaterialType(materialType);
+        getTaskWithAccessCheck(taskId, sessionId, currentUser);
+
+        MaterialSlot slot = materialSlotMapper.selectOne(
+                new LambdaQueryWrapper<MaterialSlot>()
+                        .eq(MaterialSlot::getTaskId, taskId)
+                        .eq(MaterialSlot::getMaterialType, materialType)
+        );
+        if (slot == null) {
+            throw new BusinessException(404, "鏉愭枡涓嶅瓨鍦ㄦ垨灏氭湭涓婁紶");
+        }
+
+        String contentType = normalizePreviewContentType(slot);
+        if (contentType == null) {
+            throw new BusinessException(400, "褰撳墠鏉愭枡鏍煎紡鏆備笉鏀寔棰勮");
+        }
+
+        try {
+            InputStream inputStream = storageService.download(slot.getStorageKey());
+            return new MaterialPreviewResource(inputStream, contentType, slot.getOriginalFileName());
+        } catch (Exception e) {
+            log.error("Failed to preview material: taskId={}, materialType={}", taskId, materialType, e);
+            throw new BusinessException(404, "鏉愭枡鏂囦欢涓嶅瓨鍦ㄦ垨鏃犳硶璁块棶");
+        }
+    }
+
     private void saveResult(String taskId, String resultType, Map<String, Object> content) {
         ReviewResult existing = resultMapper.selectOne(
                 new LambdaQueryWrapper<ReviewResult>()
@@ -764,6 +798,42 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
 
     private boolean isAdmin(UserProfileResponse currentUser) {
         return currentUser != null && RoleConstants.ADMIN.equals(currentUser.getRole());
+    }
+
+    private String buildPreviewPath(String taskId, String materialType) {
+        return "/task/" + taskId + "/material/" + materialType + "/preview";
+    }
+
+    private void validateMaterialType(String materialType) {
+        if (!MATERIAL_TYPES.contains(materialType)) {
+            throw new BusinessException(400, "闈炴硶鐨勬潗鏂欑被鍨? " + materialType);
+        }
+    }
+
+    private String normalizePreviewContentType(MaterialSlot slot) {
+        String contentType = slot.getContentType();
+        if (contentType != null && !contentType.isBlank()) {
+            if ("application/pdf".equalsIgnoreCase(contentType)) {
+                return "application/pdf";
+            }
+            if ("image/jpeg".equalsIgnoreCase(contentType) || "image/jpg".equalsIgnoreCase(contentType)) {
+                return "image/jpeg";
+            }
+            if ("image/png".equalsIgnoreCase(contentType)) {
+                return "image/png";
+            }
+        }
+
+        String extension = slot.getFileExtension();
+        if (extension == null) {
+            return null;
+        }
+        return switch (extension.toLowerCase()) {
+            case "pdf" -> "application/pdf";
+            case "jpg", "jpeg" -> "image/jpeg";
+            case "png" -> "image/png";
+            default -> null;
+        };
     }
 
     private String trimToNull(String value) {
