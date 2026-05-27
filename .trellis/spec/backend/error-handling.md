@@ -152,6 +152,91 @@ return payload["data"]
 
 ---
 
+## Scenario: CP3.5 Real-Chain Failure Semantics
+
+### 1. Scope / Trigger
+
+- Trigger: CP3.5 Java 主动调度、对象存储材料读取、文档解析/OCR、MCP Client、LLM Agent、Python 回写 Java 或真实联机验收证据发生变化时。
+- Goal: 关键智能依赖失败时，系统保留明确失败、阻塞或待重试状态，不产出看似成功的智能审查结论。
+
+### 2. Signatures
+
+Affected boundaries:
+
+```http
+POST /api/review/tasks
+PUT /api/task/{taskId}/status
+PUT /api/task/{taskId}/result
+GET /api/task/{taskId}/status
+GET /api/task/{taskId}/result/reviewer
+```
+
+Runtime dependencies:
+
+```text
+Frontend -> Java -> RustFS -> Python FastAPI -> OCR/parser -> MCP Client -> LLM Agent -> Java callback -> Frontend
+```
+
+### 3. Contracts
+
+| Dependency | Success contract | Failure contract |
+|---|---|---|
+| Java dispatch to Python | Python accepts the task and returns traceable task status | Java records dispatch failure and exposes failed/retryable state; no AI result is created |
+| Object storage download | Python reads the real uploaded bytes through controlled Java/storage boundary | Download/auth/storage failure maps to failed/retryable processing state |
+| OCR/parser | Real PDF/DOCX/image content becomes text blocks, tables, or extracted fields | Parser/OCR failure is explicit; no mock text or empty success payload |
+| MCP Client | Agent discovers and calls tools, preserving tool-call trace | MCP unavailable means failed/blocked/retryable, not internal-function fake success |
+| LLM Agent | Structured result passes local schema validation and includes model metadata | LLM/auth/rate/schema failure is explicit; rules-only output is diagnostic only |
+| Java callback | Java persists status, result, metadata, and sanitized errors | Callback retry exhaustion writes failed/retryable state and queryable error summary |
+
+### 4. Validation & Error Matrix
+
+| Condition | Expected behavior |
+|---|---|
+| Python FastAPI unavailable | Java task enters `FAILED`, `RETRYABLE_FAILED`, or equivalent retryable state; frontend shows failure summary. |
+| Object storage download fails | Python does not fabricate fields; task result records storage/download failure. |
+| OCR returns auth/400/5xx after retry | No fake `extractedFields`; reviewer sees sanitized OCR failure. |
+| MCP Server unavailable | Agent does not call internal function fallback as final success evidence. |
+| LLM returns invalid JSON after repair | Worker records schema failure and does not write partial invalid AI result. |
+| Java callback retries exhausted | Python marks task failed when possible and keeps queryable local failure state. |
+
+### 5. Good/Base/Bad Cases
+
+- Good: OCR provider failure is logged as `dependency=OCR`, `failureCategory=UPSTREAM_5XX`, `retryable=true`, then surfaced as failed/retryable.
+- Good: rules checks remain available as reviewer-only diagnostic context with copy that says intelligent review was unavailable.
+- Base: missing materials can still produce explicit business findings; this is not the same as a technical OCR/LLM/MCP outage.
+- Bad: return `PARTIAL_SUCCESS` with polished draft opinion when OCR, MCP, or LLM never succeeded.
+- Bad: use mock/stub text, hard-coded issues, static screenshots, or hidden frontend state as CP3.5 final evidence.
+
+### 6. Tests Required
+
+- Java tests for Python unavailable, callback failure, status query, and frontend-visible failure summary.
+- Python tests for OCR/parser/MCP/LLM failure classification and no fake result writeback.
+- Cross-service or integration tests for bounded retry and sanitized error propagation.
+- CP3.5 final manual or automated E2E evidence with real OCR/LLM/MCP plus failure-injection cases.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```python
+if llm_failed:
+    return build_success_result_from_rules()
+```
+
+#### Correct
+
+```python
+if llm_failed:
+    return ProcessingFailure(
+        dependency="LLM",
+        failure_category="SCHEMA_MISMATCH",
+        retryable=False,
+        user_summary="智能审查输出结构异常，未生成AI审查结论。",
+    )
+```
+
+---
+
 ## 禁止事项
 
 - 不要把业务错误编码塞进 `message`，却让 `code` 永远是 `200`。

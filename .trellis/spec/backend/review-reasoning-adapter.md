@@ -187,6 +187,17 @@ ReviewTaskOrchestrator.process_task(task_data: dict[str, Any]) -> ProcessingResu
 | OCR/download/extraction error field appears | Keep processing other materials and add reviewer-only issue. |
 | Knowledge search returns no usable fragments | Fall back to normalized static pack fragments. |
 
+### CP3.5 Guardrail
+
+The fallback behavior above documents the CP3-era compatibility path. It is not sufficient as final CP3.5 real-chain acceptance evidence.
+
+For CP3.5 real-chain runs:
+
+- Agent, LLM, MCP, OCR, or Java writeback failure must be surfaced as failed, retryable, or blocked instead of being persisted or displayed as AI review success.
+- Rules-only results may be retained as diagnostic context or manual-review hints, but the payload must explicitly say the intelligent review dependency was unavailable.
+- A PR or evidence document must not claim real AI review success unless it includes model metadata, cited basis, tool-call trace, and real extracted material input.
+- Unit tests may still mock the adapter to cover schema and error branches, but final CP3.5 E2E evidence must use real online dependencies.
+
 ### 5. Good/Base/Bad Cases
 
 - Good: missing ID card produces applicant-visible missing-material issue, while
