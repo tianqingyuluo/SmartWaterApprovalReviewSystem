@@ -16,10 +16,21 @@ _GLM_OCR_PATH = "layout_parsing"
 _OCR_MARKDOWN_FIELD_KEY = "ocr_markdown"
 _DEFAULT_OCR_CONFIDENCE = 1.0
 _SUPPORTED_EXTENSIONS = {"jpg", "jpeg", "png", "pdf"}
+_DATA_URI_MIME_TYPES = {
+    "jpg": "image/jpeg",
+    "jpeg": "image/jpeg",
+    "png": "image/png",
+    "pdf": "application/pdf",
+}
 
 
-def _encode_file_payload(file_bytes: bytes) -> str:
-    return base64.b64encode(file_bytes).decode("utf-8")
+def _encode_file_payload(file_bytes: bytes, extension: str) -> str:
+    mime_type = _DATA_URI_MIME_TYPES.get(extension)
+    if not mime_type:
+        raise ValueError(f"Unsupported OCR file type: {extension}")
+
+    encoded = base64.b64encode(file_bytes).decode("utf-8")
+    return f"data:{mime_type};base64,{encoded}"
 
 
 def _safe_key_fragment(value: Any) -> str:
@@ -108,12 +119,12 @@ class GlmOcrAdapter(OcrAdapter):
             logger.warning("Unsupported OCR file type: %s", ext)
             return []
 
-        return self._extract_document(file_bytes)
+        return self._extract_document(file_bytes, ext)
 
-    def _extract_document(self, file_bytes: bytes) -> list[ExtractedField]:
+    def _extract_document(self, file_bytes: bytes, extension: str) -> list[ExtractedField]:
         payload = {
             "model": _GLM_OCR_MODEL,
-            "file": _encode_file_payload(file_bytes),
+            "file": _encode_file_payload(file_bytes, extension),
         }
         return self._call_api(payload)
 
