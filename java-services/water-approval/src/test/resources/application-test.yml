@@ -33,6 +33,10 @@ water-approval:
     timeout: 1s
     mcp-transport: streamable-http
     mcp-path: /mcp
+    review-task:
+      enabled: false
+      path: /api/review/tasks
+      max-attempts: 1
     ingest:
       workdir: ../../python-services/smart-water-approval-review-system-py
       source-dir: ../../docs/参考资料

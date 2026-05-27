@@ -1,6 +1,10 @@
 package com.tianqingyuluo.waterapproval.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tianqingyuluo.waterapproval.ai.AiReviewTaskDispatchException;
+import com.tianqingyuluo.waterapproval.ai.AiServiceClient;
+import com.tianqingyuluo.waterapproval.dto.AiReviewTaskRequest;
+import com.tianqingyuluo.waterapproval.dto.AiReviewTaskResponse;
 import com.tianqingyuluo.waterapproval.common.BusinessException;
 import com.tianqingyuluo.waterapproval.dto.PendingTaskResponse;
 import com.tianqingyuluo.waterapproval.dto.ResultWriteRequest;
@@ -21,6 +25,7 @@ import com.tianqingyuluo.waterapproval.mapper.ReviewResultMapper;
 import com.tianqingyuluo.waterapproval.mapper.ReviewTaskMapper;
 import com.tianqingyuluo.waterapproval.storage.StorageService;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -62,6 +67,12 @@ class ReviewTaskServiceImplTest {
     @Autowired
     private ReviewActionLogMapper reviewActionLogMapper;
 
+    @Autowired
+    private StorageService storageService;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
     private static UserProfileResponse applicantUser(long id) {
         UserProfileResponse user = new UserProfileResponse();
         user.setUserId(id);
@@ -87,6 +98,29 @@ class ReviewTaskServiceImplTest {
         user.setDisplayName("管理员");
         user.setRole("ADMIN");
         return user;
+    }
+
+    private ReviewTaskServiceImpl newReviewTaskService(AiServiceClient aiServiceClient) {
+        return new ReviewTaskServiceImpl(
+                taskMapper,
+                materialSlotMapper,
+                resultMapper,
+                reviewActionLogMapper,
+                storageService,
+                objectMapper,
+                aiServiceClient
+        );
+    }
+
+    private static SubmitRequest singleMaterialRequest(String fileName) {
+        SubmitRequest request = new SubmitRequest();
+        request.setApplicationForm(new MockMultipartFile(
+                "applicationForm",
+                fileName,
+                "application/pdf",
+                "application content".getBytes(StandardCharsets.UTF_8)
+        ));
+        return request;
     }
 
     @Test
@@ -181,6 +215,85 @@ class ReviewTaskServiceImplTest {
                         reviewerUser()
                 ).getSummary()
         );
+    }
+
+    @Test
+    void submitShouldActivelyDispatchTaskToPythonFastApi() {
+        AiServiceClient mockedAiServiceClient = mock(AiServiceClient.class);
+        when(mockedAiServiceClient.isReviewTaskDispatchEnabled()).thenReturn(true);
+        AiReviewTaskResponse dispatchResponse = new AiReviewTaskResponse();
+        dispatchResponse.setAiTaskId("python-task-accepted");
+        dispatchResponse.setStatus("QUEUED");
+        when(mockedAiServiceClient.dispatchReviewTask(ArgumentMatchers.any())).thenReturn(dispatchResponse);
+        ReviewTaskServiceImpl service = newReviewTaskService(mockedAiServiceClient);
+
+        SubmitResponse response = service.submit(singleMaterialRequest("dispatch-success.pdf"), applicantUser(8111L));
+
+        assertEquals("PROCESSING", response.getStatus());
+        ReviewTask task = taskMapper.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ReviewTask>()
+                        .eq(ReviewTask::getTaskId, response.getTaskId())
+        );
+        assertNotNull(task);
+        assertEquals("PROCESSING", task.getStatus());
+        assertFalse(service.getPendingTasks().stream().anyMatch(item -> item.getTaskId().equals(response.getTaskId())));
+
+        ArgumentCaptor<AiReviewTaskRequest> captor = ArgumentCaptor.forClass(AiReviewTaskRequest.class);
+        verify(mockedAiServiceClient).dispatchReviewTask(captor.capture());
+        AiReviewTaskRequest request = captor.getValue();
+        assertEquals(response.getTaskId(), request.getTaskId());
+        assertEquals(response.getSessionId(), request.getSessionId());
+        assertEquals(response.getTaskId(), request.getIdempotencyKey());
+        assertEquals(3, request.getMaterials().size());
+        AiReviewTaskRequest.Material applicationForm = request.getMaterials().stream()
+                .filter(item -> "APPLICATION_FORM".equals(item.getMaterialType()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(Boolean.TRUE, applicationForm.getUploaded());
+        assertEquals("dispatch-success.pdf", applicationForm.getOriginalFileName());
+        assertNotNull(applicationForm.getStorageKey());
+        AiReviewTaskRequest.Material idCard = request.getMaterials().stream()
+                .filter(item -> "ID_CARD".equals(item.getMaterialType()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(Boolean.FALSE, idCard.getUploaded());
+        assertNull(idCard.getStorageKey());
+    }
+
+    @Test
+    void submitShouldPersistFailureWhenPythonDispatchIsUnavailable() {
+        AiServiceClient mockedAiServiceClient = mock(AiServiceClient.class);
+        when(mockedAiServiceClient.isReviewTaskDispatchEnabled()).thenReturn(true);
+        when(mockedAiServiceClient.dispatchReviewTask(ArgumentMatchers.any())).thenThrow(
+                new AiReviewTaskDispatchException(
+                        "AI service review task dispatch returned HTTP 503",
+                        "UPSTREAM_5XX",
+                        true,
+                        503,
+                        null
+                )
+        );
+        ReviewTaskServiceImpl service = newReviewTaskService(mockedAiServiceClient);
+        UserProfileResponse applicant = applicantUser(8112L);
+
+        SubmitResponse response = service.submit(singleMaterialRequest("dispatch-failure.pdf"), applicant);
+
+        assertEquals("FAILED", response.getStatus());
+        ReviewTask task = taskMapper.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ReviewTask>()
+                        .eq(ReviewTask::getTaskId, response.getTaskId())
+        );
+        assertNotNull(task);
+        assertEquals("FAILED", task.getStatus());
+        assertEquals(
+                "AI审查服务调度失败，未生成智能审查结论。",
+                service.getApplicantResult(response.getTaskId(), response.getSessionId(), applicant).getSummary()
+        );
+        ReviewerResultResponse reviewerResult =
+                service.getReviewerResult(response.getTaskId(), null, reviewerUser());
+        assertEquals("Java主动调度Python FastAPI失败，未生成AI审查结论。", reviewerResult.getSummary());
+        assertEquals("UPSTREAM_5XX", reviewerResult.getIssues().get(0).getCode());
+        assertTrue(reviewerResult.getModelMetadata().contains("UPSTREAM_5XX"));
     }
 
     @Test
@@ -578,13 +691,15 @@ class ReviewTaskServiceImplTest {
         ReviewResultMapper mockedResultMapper = mock(ReviewResultMapper.class);
         ReviewActionLogMapper mockedLogMapper = mock(ReviewActionLogMapper.class);
         StorageService mockedStorageService = mock(StorageService.class);
+        AiServiceClient mockedAiServiceClient = mock(AiServiceClient.class);
         ReviewTaskServiceImpl service = new ReviewTaskServiceImpl(
                 mockedTaskMapper,
                 mockedMaterialSlotMapper,
                 mockedResultMapper,
                 mockedLogMapper,
                 mockedStorageService,
-                new ObjectMapper()
+                new ObjectMapper(),
+                mockedAiServiceClient
         );
 
         String taskId = "task-review-action-stale-" + System.nanoTime();

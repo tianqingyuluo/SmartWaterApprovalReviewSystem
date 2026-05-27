@@ -5,6 +5,8 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tianqingyuluo.waterapproval.ai.AiReviewTaskDispatchException;
+import com.tianqingyuluo.waterapproval.ai.AiServiceClient;
 import com.tianqingyuluo.waterapproval.common.BusinessException;
 import com.tianqingyuluo.waterapproval.common.InitialReviewAction;
 import com.tianqingyuluo.waterapproval.common.ProcessingStatus;
@@ -41,6 +43,7 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
     private final ReviewActionLogMapper reviewActionLogMapper;
     private final StorageService storageService;
     private final ObjectMapper objectMapper;
+    private final AiServiceClient aiServiceClient;
 
     private static final List<String> ACCEPTED_FILE_TYPES = Arrays.asList("jpg", "jpeg", "png", "pdf");
     private static final List<String> MATERIAL_TYPES = Arrays.asList("APPLICATION_FORM", "BUSINESS_LICENSE", "ID_CARD");
@@ -73,15 +76,119 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
         materialInfos.add(processMaterial(taskId, "BUSINESS_LICENSE", request.getBusinessLicense()));
         materialInfos.add(processMaterial(taskId, "ID_CARD", request.getIdCard()));
 
+        String submissionStatus = dispatchSubmittedTask(task);
+
         SubmitResponse response = new SubmitResponse();
         response.setTaskId(taskId);
         response.setSessionId(sessionId);
-        response.setStatus("SUBMITTED");
+        response.setStatus(submissionStatus);
         response.setSubmittedAt(task.getSubmittedAt());
         response.setMaterials(materialInfos);
 
         log.info("Task submitted: taskId={}, ownerUserId={}", taskId, currentUser.getUserId());
         return response;
+    }
+
+    private String dispatchSubmittedTask(ReviewTask task) {
+        if (!aiServiceClient.isReviewTaskDispatchEnabled()) {
+            return "SUBMITTED";
+        }
+
+        AiReviewTaskRequest request = buildAiReviewTaskRequest(task);
+        try {
+            aiServiceClient.dispatchReviewTask(request);
+            transitionTask(task, "PROCESSING");
+            log.info("Task dispatched to AI service: taskId={}, status=PROCESSING", task.getTaskId());
+            return "PROCESSING";
+        } catch (AiReviewTaskDispatchException e) {
+            markDispatchFailure(task, e);
+            log.warn(
+                    "Task dispatch failed and was marked FAILED: taskId={}, category={}, retryable={}, statusCode={}",
+                    task.getTaskId(),
+                    e.getFailureCategory(),
+                    e.isRetryable(),
+                    e.getStatusCode()
+            );
+            return "FAILED";
+        }
+    }
+
+    private AiReviewTaskRequest buildAiReviewTaskRequest(ReviewTask task) {
+        List<MaterialSlot> slots = materialSlotMapper.selectList(
+                new LambdaQueryWrapper<MaterialSlot>().eq(MaterialSlot::getTaskId, task.getTaskId())
+        );
+
+        AiReviewTaskRequest request = new AiReviewTaskRequest();
+        request.setTaskId(task.getTaskId());
+        request.setSessionId(task.getSessionId());
+        request.setIdempotencyKey(task.getTaskId());
+
+        List<AiReviewTaskRequest.Material> materials = new ArrayList<>();
+        for (String type : MATERIAL_TYPES) {
+            Optional<MaterialSlot> slot = slots.stream()
+                    .filter(item -> item.getMaterialType().equals(type))
+                    .findFirst();
+
+            AiReviewTaskRequest.Material material = new AiReviewTaskRequest.Material();
+            material.setMaterialType(type);
+            material.setUploaded(slot.isPresent());
+            material.setOriginalFileName(slot.map(MaterialSlot::getOriginalFileName).orElse(null));
+            material.setStorageKey(slot.map(MaterialSlot::getStorageKey).orElse(null));
+            material.setFileExtension(slot.map(MaterialSlot::getFileExtension).orElse(null));
+            materials.add(material);
+        }
+        request.setMaterials(materials);
+        return request;
+    }
+
+    private void transitionTask(ReviewTask task, String status) {
+        ProcessingStatus.validateTransition(task.getStatus(), status);
+        task.setStatus(status);
+        task.setUpdatedAt(LocalDateTime.now());
+        taskMapper.updateById(task);
+    }
+
+    private void markDispatchFailure(ReviewTask task, AiReviewTaskDispatchException e) {
+        transitionTask(task, "FAILED");
+
+        Map<String, Object> applicantResult = new LinkedHashMap<>();
+        applicantResult.put("summary", "AI审查服务调度失败，未生成智能审查结论。");
+        applicantResult.put("issues", List.of(Map.of(
+                "code", e.getFailureCategory(),
+                "severity", "BLOCKER",
+                "message", "AI审查服务暂不可用，请稍后重试或联系管理员。"
+        )));
+        applicantResult.put("materialCompleteness", Map.of("missing", List.of()));
+
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("provider", "python-fastapi");
+        metadata.put("failureCategory", e.getFailureCategory());
+        metadata.put("retryable", e.isRetryable());
+        if (e.getStatusCode() != null) {
+            metadata.put("statusCode", e.getStatusCode());
+        }
+
+        Map<String, Object> reviewerIssue = new LinkedHashMap<>();
+        reviewerIssue.put("code", e.getFailureCategory());
+        reviewerIssue.put("severity", "BLOCKER");
+        reviewerIssue.put("message", e.getMessage());
+        reviewerIssue.put("applicantVisible", false);
+
+        Map<String, Object> reviewerResult = new LinkedHashMap<>();
+        reviewerResult.put("summary", "Java主动调度Python FastAPI失败，未生成AI审查结论。");
+        reviewerResult.put("issues", List.of(reviewerIssue));
+        reviewerResult.put("riskHints", List.of(Map.of(
+                "riskLevel", "HIGH",
+                "description", "Python审查服务不可用时不得伪造成功结果，需要人工复核或重试调度。",
+                "requiresManualReview", true
+        )));
+        reviewerResult.put("draftOpinion", "");
+        reviewerResult.put("manualReviewNotice", "AI审查服务调度失败，本次任务没有智能审查结论。");
+        reviewerResult.put("materialCompleteness", Map.of("missing", List.of()));
+        reviewerResult.put("modelMetadata", metadata);
+
+        saveResult(task.getTaskId(), "APPLICANT", applicantResult);
+        saveResult(task.getTaskId(), "REVIEWER", reviewerResult);
     }
 
     private SubmitResponse.MaterialInfo processMaterial(String taskId, String materialType, MultipartFile file) {
