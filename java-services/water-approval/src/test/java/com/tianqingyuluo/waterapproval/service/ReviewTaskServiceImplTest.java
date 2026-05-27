@@ -261,6 +261,49 @@ class ReviewTaskServiceImplTest {
     }
 
     @Test
+    void submitShouldAcceptDocxMaterialAndDispatchExtensionToPythonPipeline() {
+        AiServiceClient mockedAiServiceClient = mock(AiServiceClient.class);
+        when(mockedAiServiceClient.isReviewTaskDispatchEnabled()).thenReturn(true);
+        AiReviewTaskResponse dispatchResponse = new AiReviewTaskResponse();
+        dispatchResponse.setAiTaskId("python-task-docx");
+        dispatchResponse.setStatus("QUEUED");
+        when(mockedAiServiceClient.dispatchReviewTask(ArgumentMatchers.any())).thenReturn(dispatchResponse);
+        ReviewTaskServiceImpl service = newReviewTaskService(mockedAiServiceClient);
+
+        SubmitRequest request = new SubmitRequest();
+        request.setApplicationForm(new MockMultipartFile(
+                "applicationForm",
+                "application.docx",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "docx application content".getBytes(StandardCharsets.UTF_8)
+        ));
+
+        SubmitResponse response = service.submit(request, applicantUser(8113L));
+
+        assertEquals("PROCESSING", response.getStatus());
+        MaterialSlot slot = materialSlotMapper.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<MaterialSlot>()
+                        .eq(MaterialSlot::getTaskId, response.getTaskId())
+                        .eq(MaterialSlot::getMaterialType, "APPLICATION_FORM")
+        );
+        assertNotNull(slot);
+        assertEquals("application.docx", slot.getOriginalFileName());
+        assertEquals("docx", slot.getFileExtension());
+        assertTrue(slot.getStorageKey().endsWith(".docx"));
+
+        ArgumentCaptor<AiReviewTaskRequest> captor = ArgumentCaptor.forClass(AiReviewTaskRequest.class);
+        verify(mockedAiServiceClient).dispatchReviewTask(captor.capture());
+        AiReviewTaskRequest.Material applicationForm = captor.getValue().getMaterials().stream()
+                .filter(item -> "APPLICATION_FORM".equals(item.getMaterialType()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(Boolean.TRUE, applicationForm.getUploaded());
+        assertEquals("application.docx", applicationForm.getOriginalFileName());
+        assertEquals("docx", applicationForm.getFileExtension());
+        assertTrue(applicationForm.getStorageKey().endsWith(".docx"));
+    }
+
+    @Test
     void submitShouldPersistFailureWhenPythonDispatchIsUnavailable() {
         AiServiceClient mockedAiServiceClient = mock(AiServiceClient.class);
         when(mockedAiServiceClient.isReviewTaskDispatchEnabled()).thenReturn(true);

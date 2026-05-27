@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { isReviewerActionCompleted, toApplicantResultView, toApplicantTaskResultView, toReviewerResultView } from './task'
+import { ACCEPTED_EXTENSIONS } from '@/types'
 import type { ApplicantResultResponse, ReviewerResultResponse, TaskStatusResponse } from '@/types'
 
 describe('task API adapters', () => {
+  it('keeps frontend upload extensions aligned with CP3.5 docx backend support', () => {
+    expect(ACCEPTED_EXTENSIONS).toEqual(['jpg', 'jpeg', 'png', 'pdf', 'docx'])
+  })
+
   it('maps applicant Java DTO issue fields to page findings', () => {
     const dto: ApplicantResultResponse = {
       taskId: 'task-1',

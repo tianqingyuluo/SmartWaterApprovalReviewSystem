@@ -23,7 +23,7 @@ export const MATERIAL_LABELS: Record<MaterialType, string> = {
 
 export const MATERIAL_SLOTS: MaterialType[] = ['APPLICATION_FORM', 'BUSINESS_LICENSE', 'ID_CARD']
 
-export const ACCEPTED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'pdf']
+export const ACCEPTED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'pdf', 'docx']
 
 export const REVIEWER_ACTION_LABELS: Record<ReviewerActionCode, string> = {
   APPROVE_INITIAL_REVIEW: '通过初审',

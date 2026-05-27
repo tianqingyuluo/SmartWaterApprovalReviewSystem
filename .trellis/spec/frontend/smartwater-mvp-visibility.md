@@ -36,7 +36,7 @@ Rules:
 
 - Allow submitting with missing materials.
 - Allow at most one file per slot.
-- Allow only `jpg`, `jpeg`, `png`, and `pdf` in MVP; display Word/Docx as a full-version requirement, not an MVP-supported upload type.
+- Allow `jpg`, `jpeg`, `png`, `pdf`, and `docx` in CP3.5 because the backend accepts DOCX and the Python document pipeline parses DOCX directly. Legacy `.doc` remains out of scope until a conversion path exists.
 - Show frontend validation as a convenience, but treat backend validation errors as authoritative.
 - After successful submission, store/display `taskId` and `sessionId` for result lookup.
 

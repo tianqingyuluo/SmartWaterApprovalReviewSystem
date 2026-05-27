@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Required test and quality gate for backend/Python Worker changes."}
+{"file": ".trellis/spec/backend/ocr-adapter.md", "reason": "OCR adapter and failure semantics for document/OCR parsing boundary."}
+{"file": ".trellis/spec/backend/smartwater-mvp-contracts.md", "reason": "Accepted file types and cross-service material parsing contract."}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "CP3.5 real-chain failure semantics: parser/OCR failures must be explicit."}
+{"file": ".trellis/spec/frontend/index.md", "reason": "Frontend validation and visibility conventions for upload UX changes."}
