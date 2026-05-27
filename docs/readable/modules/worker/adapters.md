@@ -15,7 +15,7 @@ Python Worker 的 `src/adapters/` 用来隔离外部 OCR 和审核模型的供�
 
 - `POST {OCR_GLM_BASE_URL}/layout_parsing`
 - `model: "glm-ocr"`
-- `file`: base64 字符串或 URL
+- `file`: 带 MIME 前缀的 data URI，例如 `data:image/jpeg;base64,...`、`data:image/png;base64,...`、`data:application/pdf;base64,...`
 
 当前映射规则：
 
@@ -23,6 +23,7 @@ Python Worker 的 `src/adapters/` 用来隔离外部 OCR 和审核模型的供�
 - 如果没有可用的 `md_results`，再从 `layout_details` 转换出一组 `ExtractedField`。
 - `jpg`、`jpeg`、`png`、`pdf` 以外的扩展名直接返回空结果。
 - 请求或响应异常返回 `ocr_error` 字段，避免 Worker 主流程崩溃。
+- 如果 GLM 返回 HTTP 4xx/5xx，适配器优先提取上游业务错误摘要，但会脱敏 `Bearer` token、`data:...;base64,...` 这类敏感内容，不把原始文件内容或密钥写入日志/结果。
 
 这个适配器不再走 `chat/completions`，也不再使用 `glm-4v` 作为 OCR 模型。
 

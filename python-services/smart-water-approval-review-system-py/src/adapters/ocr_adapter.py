@@ -16,16 +16,78 @@ _GLM_OCR_PATH = "layout_parsing"
 _OCR_MARKDOWN_FIELD_KEY = "ocr_markdown"
 _DEFAULT_OCR_CONFIDENCE = 1.0
 _SUPPORTED_EXTENSIONS = {"jpg", "jpeg", "png", "pdf"}
+_ERROR_SUMMARY_MAX_LENGTH = 240
+_DATA_URI_MIME_TYPES = {
+    "jpg": "image/jpeg",
+    "jpeg": "image/jpeg",
+    "png": "image/png",
+    "pdf": "application/pdf",
+}
 
 
-def _encode_file_payload(file_bytes: bytes) -> str:
-    return base64.b64encode(file_bytes).decode("utf-8")
+def _encode_file_payload(file_bytes: bytes, extension: str) -> str:
+    mime_type = _DATA_URI_MIME_TYPES.get(extension)
+    if not mime_type:
+        raise ValueError(f"Unsupported OCR file type: {extension}")
+
+    encoded = base64.b64encode(file_bytes).decode("utf-8")
+    return f"data:{mime_type};base64,{encoded}"
 
 
 def _safe_key_fragment(value: Any) -> str:
     text = str(value or "text").strip().lower()
     text = re.sub(r"[^a-z0-9_]+", "_", text)
     return text.strip("_") or "text"
+
+
+def _sanitize_error_text(text: str) -> str:
+    sanitized = re.sub(r"data:[^;,\s]+;base64,[A-Za-z0-9+/=_-]+", "data:[REDACTED]", text)
+    sanitized = re.sub(r"Bearer\s+[A-Za-z0-9._\-]+", "Bearer [REDACTED]", sanitized)
+    sanitized = re.sub(r"\s+", " ", sanitized).strip()
+    if len(sanitized) > _ERROR_SUMMARY_MAX_LENGTH:
+        sanitized = f"{sanitized[:_ERROR_SUMMARY_MAX_LENGTH - 3]}..."
+    return sanitized
+
+
+def _extract_error_message(data: Any) -> str | None:
+    if isinstance(data, dict):
+        for key in ("message", "detail"):
+            value = data.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+
+        error = data.get("error")
+        if isinstance(error, dict):
+            return _extract_error_message(error)
+        if isinstance(error, str) and error.strip():
+            return error.strip()
+
+    if isinstance(data, list):
+        for item in data:
+            message = _extract_error_message(item)
+            if message:
+                return message
+
+    return None
+
+
+def _summarize_exception(exc: Exception) -> str:
+    if isinstance(exc, httpx.HTTPStatusError):
+        response = exc.response
+        message: str | None = None
+        try:
+            message = _extract_error_message(response.json())
+        except ValueError:
+            body = response.text.strip()
+            if body:
+                message = body
+
+        if message:
+            return _sanitize_error_text(f"HTTP {response.status_code}: {message}")
+        return f"HTTP {response.status_code}: {response.reason_phrase}"
+
+    sanitized = _sanitize_error_text(str(exc))
+    return sanitized or exc.__class__.__name__
 
 
 def _coerce_markdown_results(md_results: Any) -> str:
@@ -108,12 +170,12 @@ class GlmOcrAdapter(OcrAdapter):
             logger.warning("Unsupported OCR file type: %s", ext)
             return []
 
-        return self._extract_document(file_bytes)
+        return self._extract_document(file_bytes, ext)
 
-    def _extract_document(self, file_bytes: bytes) -> list[ExtractedField]:
+    def _extract_document(self, file_bytes: bytes, extension: str) -> list[ExtractedField]:
         payload = {
             "model": _GLM_OCR_MODEL,
-            "file": _encode_file_payload(file_bytes),
+            "file": _encode_file_payload(file_bytes, extension),
         }
         return self._call_api(payload)
 
@@ -136,11 +198,12 @@ class GlmOcrAdapter(OcrAdapter):
                 return _parse_ocr_response(data)
 
         except Exception as exc:
-            logger.error("GLM OCR API call failed: %s", exc)
+            summary = _summarize_exception(exc)
+            logger.error("GLM OCR API call failed: %s", summary)
             return [
                 ExtractedField(
                     field_key="ocr_error",
-                    field_value=str(exc),
+                    field_value=summary,
                     confidence=0.0,
                 )
             ]
