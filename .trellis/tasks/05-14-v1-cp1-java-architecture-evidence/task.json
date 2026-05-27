@@ -1,0 +1,35 @@
+{
+  "id": "v1-cp1-java-architecture-evidence",
+  "name": "v1-cp1-java-architecture-evidence",
+  "title": "CP1-A Java 基础架构证据",
+  "description": "补齐并结构化呈现 MVP Java 架构证据，形成 CP1 可验收材料。",
+  "status": "locked",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P1",
+  "creator": "tianqingyuluo",
+  "assignee": "tianqingyuluo",
+  "createdAt": "2026-05-14",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "mvp/smartwater",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "05-13-v1-system-design-checkpoints",
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {
+    "checkpoint": "CP1",
+    "lane": "java",
+    "wave": 2,
+    "dependsOn": [
+      "v1-cp1-docs-git-demo-evidence"
+    ],
+    "unlockCriteria": "CP1-D evidence baseline completed and parent approves Wave 2.",
+    "gatePolicy": "Do not start locked tasks until dependencies are completed and parent task approves next wave."
+  }
+}

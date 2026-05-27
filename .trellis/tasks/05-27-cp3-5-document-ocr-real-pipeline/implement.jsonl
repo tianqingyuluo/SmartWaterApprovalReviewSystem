@@ -1,0 +1,7 @@
+{"file": ".trellis/tasks/05-27-cp3-5-document-ocr-real-pipeline/prd.md", "reason": "本任务 PRD：生产级文档解析与 OCR"}
+{"file": ".trellis/tasks/05-26-cp3-5-agent/prd.md", "reason": "CP3.5 父任务真实链路路线和硬约束"}
+{"file": ".trellis/tasks/05-26-cp3-5-agent/research/cp3-failure-root-cause.md", "reason": "CP3 旧证据未覆盖真实 OCR/对象存储联机链路"}
+{"file": ".trellis/tasks/05-26-v1-cp3-glm-ocr-data-uri-fix/prd.md", "reason": "已确认的 GLM OCR data URI 缺陷修复任务"}
+{"file": ".trellis/spec/backend/ocr-adapter.md", "reason": "OCR 适配器契约、字段输出和错误语义"}
+{"file": ".trellis/spec/backend/smartwater-mvp-contracts.md", "reason": "Python 从 Java 下载材料并回写抽取字段的跨服务契约"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "解析/OCR 失败时禁止伪造成功结论"}

@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/frontend/smartwater-mvp-visibility.md", "reason": "Verify role-scoped visibility and AI assistive wording"}
+{"file": ".trellis/spec/frontend/type-safety.md", "reason": "Verify DTO/view model typing and no any shortcuts"}
+{"file": ".trellis/spec/frontend/component-guidelines.md", "reason": "Verify component/page boundaries"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "Verify adapter tests and build gate"}
+{"file": ".trellis/spec/backend/smartwater-mvp-contracts.md", "reason": "Verify frontend matches backend reviewer-action and result projection contracts"}

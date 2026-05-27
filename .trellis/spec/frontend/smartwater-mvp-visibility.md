@@ -6,14 +6,17 @@
 
 ## MVP Pages
 
-The MVP frontend is a two-page demo application:
+The MVP started as a two-page demo application and CP3 extends it into a
+minimal authenticated workflow:
 
 1. Applicant submission page.
 2. Reviewer read-only result page.
+3. Login page backed by Java `/auth/login`.
+4. Role-scoped application list / review entry.
 
 Out of scope:
 
-- Login, role management, task list, workflow actions, correction loop, or result export.
+- Full role management UI, workflow actions, correction loop, or result export.
 - Editing AI review output.
 - Free material upload classification.
 
@@ -66,6 +69,8 @@ Applicant view may show:
 
 - Missing materials.
 - Obvious upload or field issues marked `applicantVisible`.
+- CP3 initial-review handling result: `handlingStatus`, `handlingStatusLabel`,
+  `reviewerRemark`, and action time.
 - Basic retry or resubmission guidance for a new task.
 - Short AI-assist disclaimer.
 
@@ -86,7 +91,91 @@ Reviewer view may show:
 - Draft review opinion.
 - Basis references.
 - Manual review notice.
+- CP3 initial-review action controls and action log after the backend exposes
+  a reviewer result for the task.
 - Failure category and redacted failure reason.
+
+## CP3 Role Routing And Token State
+
+Frontend auth state is a convenience layer over backend enforcement. It must not
+be the only permission boundary.
+
+### 1. Scope / Trigger
+
+- Trigger: login page, request interceptor, role-based routing/menu, task list
+  links, applicant/reviewer result lookup, or auth error handling.
+
+### 2. Signatures
+
+```ts
+login({ username, password }) -> R<LoginResponse>
+getCurrentUser() -> R<UserProfile>
+```
+
+```ts
+export type UserRole = 'APPLICANT' | 'REVIEWER' | 'ADMIN'
+```
+
+### 3. Contracts
+
+| Item | Contract |
+|---|---|
+| Token storage | Store only the Sa-Token value and current user profile in localStorage. |
+| Request header | Send `Authorization: Bearer <token>` for normal business APIs. |
+| Business `401` | Clear token/user state and redirect to `/login`. |
+| Applicant menu | Show application list and new application entry; hide CP2 MCP demo. |
+| Reviewer menu | Hide new application; route result/list actions to reviewer workflow. |
+| Admin menu | May see all entries needed for demo and troubleshooting. |
+| Applicant result link | Must call `/task/{taskId}/result/applicant`, not reviewer result APIs. |
+| Reviewer result link | May call `/task/{taskId}/result/reviewer` only for reviewer/admin roles. |
+| Reviewer action submit | Reviewer/admin may call `POST /task/{taskId}/reviewer-action` with one of `APPROVE_INITIAL_REVIEW`, `RETURN_FOR_CORRECTION`, or `TRANSFER_MANUAL_REVIEW`. |
+
+### 4. Validation & Error Matrix
+
+| Condition | Expected behavior |
+|---|---|
+| No token and opening business route | Redirect to `/login?redirect=<path>`. |
+| Stored user profile missing or malformed | Redirect to login; do not guess a role. |
+| Applicant opens `/knowledge-mcp` | Redirect to application list. |
+| Reviewer opens `/apply` | Redirect to application list. |
+| Java returns business `401` with HTTP 200 | Clear auth state and redirect to login. |
+| Reviewer action returns `409` | Treat as already handled or no longer actionable; refresh the task detail before enabling another submit. |
+
+### 5. Good/Base/Bad Cases
+
+- Good: page code chooses applicant vs reviewer result projection based on the
+  stored role and still relies on backend errors for authority.
+- Good: adapters normalize unknown `extractedFields` payloads before rendering.
+- Base: frontend role menu is minimal; CP4 can add richer workbench navigation.
+- Bad: link applicants to reviewer result pages and hide fields after fetching.
+- Bad: keep stale token after Java returns business `401`.
+
+### 6. Tests Required
+
+- Request utility test for business `401` clearing auth state.
+- Task adapter test for `extractedFields[]` array normalization.
+- Result page/component test or equivalent regression that applicant flow uses
+  applicant projection only.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```ts
+getReviewerResult(taskId, sessionId)
+```
+
+for applicant result display.
+
+#### Correct
+
+```ts
+role === 'APPLICANT'
+  ? getApplicantResult(taskId, sessionId)
+  : getReviewerResult(taskId, sessionId)
+```
+
+with reviewer-only panels hidden unless reviewer data was fetched.
 
 ---
 

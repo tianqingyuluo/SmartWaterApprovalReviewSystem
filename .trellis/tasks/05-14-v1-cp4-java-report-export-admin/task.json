@@ -1,0 +1,38 @@
+{
+  "id": "v1-cp4-java-report-export-admin",
+  "name": "v1-cp4-java-report-export-admin",
+  "title": "CP4-A Java 报告导出与管理能力收口",
+  "description": "完成 Java 报告导出与用户管理 API 收口，支撑最终答辩闭环。",
+  "status": "locked",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P1",
+  "creator": "tianqingyuluo",
+  "assignee": "tianqingyuluo",
+  "createdAt": "2026-05-14",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "mvp/smartwater",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "05-13-v1-system-design-checkpoints",
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {
+    "checkpoint": "CP4",
+    "lane": "java",
+    "wave": 4,
+    "dependsOn": [
+      "v1-cp3-java-ai-task-callback-results",
+      "v1-cp3-python-fastapi-rules-agent",
+      "v1-cp3-frontend-review-workbench",
+      "v1-cp3-integration-stability-tests"
+    ],
+    "unlockCriteria": "CP3 acceptance completed and parent approves Wave 4 Java closure.",
+    "gatePolicy": "Do not start locked tasks until dependencies are completed and parent task approves next wave."
+  }
+}

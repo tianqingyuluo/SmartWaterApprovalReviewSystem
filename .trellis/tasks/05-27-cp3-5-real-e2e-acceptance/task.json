@@ -1,0 +1,50 @@
+{
+  "id": "cp3-5-real-e2e-acceptance",
+  "name": "cp3-5-real-e2e-acceptance",
+  "title": "CP3.5-F 真实端到端验收与答辩证据",
+  "description": "用真实账号、真实材料、真实中间件和真实外部 AI 调用完成 CP3.5 端到端验收证据。",
+  "status": "locked",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P0",
+  "creator": "tianqingyuluo",
+  "assignee": "tianqingyuluo",
+  "createdAt": "2026-05-27",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "v1",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "05-26-cp3-5-agent",
+  "relatedFiles": [],
+  "notes": "Final CP3.5 evidence task. It must close the old CP3 evidence gap with true online E2E proof.",
+  "meta": {
+    "checkpoint": "CP3.5",
+    "checkpointScope": "CP3 recovery",
+    "lane": "docs-tests-e2e",
+    "wave": 5,
+    "owner": "tianqingyuluo",
+    "collaborators": [
+      "ymx545",
+      "yuexianwei3699",
+      "6newuser6"
+    ],
+    "responsibility": "tianqingyuluo owns final real E2E acceptance and defense evidence; each member contributes module logs, screenshots, tests, and Git account evidence.",
+    "lockReason": "Final acceptance must not start before the real chain exists; otherwise it will repeat CP3's demo-evidence failure.",
+    "unlockCriteria": "CP3.5-B/C/D/E/G/H have real integration outputs ready for full-chain verification.",
+    "dependsOn": [
+      "cp3-5-real-chain-guardrails",
+      "cp3-5-java-python-real-dispatch",
+      "cp3-5-document-ocr-real-pipeline",
+      "cp3-5-mcp-client-tool-chain",
+      "cp3-5-intelligent-compliance-result",
+      "v1-cp3-material-safe-preview",
+      "v1-cp3-glm-ocr-data-uri-fix"
+    ],
+    "gatePolicy": "Final evidence must use real accounts, real materials, real middleware, real OCR/LLM/MCP calls, and per-account Git evidence."
+  }
+}

@@ -1,0 +1,137 @@
+{
+  "id": "cp3-5-agent",
+  "name": "cp3-5-agent",
+  "title": "CP3.5 生产级初审Agent重构任务组",
+  "description": "CP3 失败后的修复主线：放弃演示玩具路线，交付真实材料、真实对象存储、真实 OCR/LLM/MCP、真实 Java-Python 调度和真实前端证据查看的生产级初审 Agent 链路。",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P0",
+  "creator": "tianqingyuluo",
+  "assignee": "tianqingyuluo",
+  "createdAt": "2026-05-26",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "v1",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "05-27-cp3-5-real-chain-guardrails",
+    "05-27-cp3-5-java-python-real-dispatch",
+    "05-27-cp3-5-document-ocr-real-pipeline",
+    "05-27-cp3-5-mcp-client-tool-chain",
+    "05-27-cp3-5-intelligent-compliance-result",
+    "05-27-cp3-5-real-e2e-acceptance",
+    "05-26-v1-cp3-material-safe-preview",
+    "05-26-v1-cp3-glm-ocr-data-uri-fix"
+  ],
+  "parent": "05-13-v1-system-design-checkpoints",
+  "relatedFiles": [],
+  "notes": "CP3.5 is a CP3 recovery track. CP3 failed because the system optimized for demo proof instead of a real intelligent product chain; this group must keep the work on real OCR, real LLM, real MCP, real object storage, real Java-Python integration, and real frontend evidence.",
+  "meta": {
+    "checkpoint": "CP3.5",
+    "checkpointScope": "CP3 recovery",
+    "lane": "full-real-agent",
+    "failureReason": "CP3 used demo-oriented mock/stub/fallback/placeholders and did not prove a full real OCR/LLM/MCP/object-storage/Java-Python/frontend chain.",
+    "hardRules": [
+      "No demo-only fake data as acceptance evidence.",
+      "No mock/stub results in final CP3.5 E2E evidence.",
+      "No rule fallback that substitutes for failed Agent/OCR/MCP/LLM conclusions.",
+      "Critical dependency failure must be visible as failed/blocked/retryable state.",
+      "Frontend review evidence must include safe original material preview."
+    ],
+    "teamAssignment": {
+      "owner": "tianqingyuluo",
+      "rule": "Primary assignee owns implementation, tests, and task evidence; collaborators own cross-layer contract support and final real E2E proof.",
+      "tasks": [
+        {
+          "task": "cp3-5-real-chain-guardrails",
+          "assignee": "tianqingyuluo",
+          "collaborators": [
+            "ymx545",
+            "yuexianwei3699",
+            "6newuser6"
+          ]
+        },
+        {
+          "task": "cp3-5-java-python-real-dispatch",
+          "assignee": "ymx545",
+          "collaborators": [
+            "6newuser6"
+          ]
+        },
+        {
+          "task": "cp3-5-document-ocr-real-pipeline",
+          "assignee": "6newuser6",
+          "collaborators": [
+            "tianqingyuluo"
+          ]
+        },
+        {
+          "task": "cp3-5-mcp-client-tool-chain",
+          "assignee": "6newuser6",
+          "collaborators": [
+            "tianqingyuluo"
+          ]
+        },
+        {
+          "task": "cp3-5-intelligent-compliance-result",
+          "assignee": "6newuser6",
+          "collaborators": [
+            "ymx545",
+            "yuexianwei3699"
+          ]
+        },
+        {
+          "task": "cp3-5-real-e2e-acceptance",
+          "assignee": "tianqingyuluo",
+          "collaborators": [
+            "ymx545",
+            "yuexianwei3699",
+            "6newuser6"
+          ]
+        },
+        {
+          "task": "v1-cp3-material-safe-preview",
+          "assignee": "yuexianwei3699",
+          "collaborators": [
+            "ymx545"
+          ]
+        },
+        {
+          "task": "v1-cp3-glm-ocr-data-uri-fix",
+          "assignee": "6newuser6",
+          "collaborators": [
+            "tianqingyuluo"
+          ]
+        }
+      ]
+    },
+    "executionMemo": {
+      "date": "2026-05-27",
+      "currentWave": [
+        "cp3-5-real-chain-guardrails",
+        "cp3-5-java-python-real-dispatch",
+        "v1-cp3-glm-ocr-data-uri-fix",
+        "v1-cp3-material-safe-preview"
+      ],
+      "lockedUntilReady": [
+        "cp3-5-document-ocr-real-pipeline",
+        "cp3-5-mcp-client-tool-chain",
+        "cp3-5-intelligent-compliance-result",
+        "cp3-5-real-e2e-acceptance"
+      ],
+      "rule": "Do not fully parallelize CP3.5. Start A/B/H immediately; allow G frontend preparation only. Unlock C after B+H, D after C, E after B+C+D, and F only after B/C/D/E/G/H produce real chain evidence."
+    },
+    "dependsOn": [
+      "v1-cp3-java-ai-task-callback-results",
+      "v1-cp3-python-fastapi-rules-agent",
+      "v1-cp3-frontend-review-workbench",
+      "v1-cp3-integration-stability-tests"
+    ],
+    "gatePolicy": "Implement CP3.5 as a production-grade real chain; do not expand into CP4 version correction/report export/deployment defense scope."
+  }
+}

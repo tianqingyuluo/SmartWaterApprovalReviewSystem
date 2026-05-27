@@ -1,0 +1,7 @@
+{"file": ".trellis/tasks/05-26-cp3-5-agent/prd.md", "reason": "CP3.5 父任务要求真实 OCR 进入全链路验收"}
+{"file": ".trellis/tasks/05-26-cp3-5-agent/research/cp3-failure-root-cause.md", "reason": "GLM 裸 base64 400 是 CP3 未覆盖真实 OCR 联机的直接证据"}
+{"file": ".trellis/spec/backend/ocr-adapter.md", "reason": "Project OCR contract, GLM OCR layout_parsing expectations, extracted field semantics, and failure handling."}
+{"file": ".trellis/spec/backend/review-reasoning-adapter.md", "reason": "Downstream review reasoning expectations when OCR fields are present or missing."}
+{"file": ".trellis/spec/backend/smartwater-mvp-contracts.md", "reason": "Material slot types, Worker download boundary, task states, and reviewer result field contracts."}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "How OCR/download/upstream failures should become structured errors without leaking secrets."}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Python Worker test and quality gate expectations."}

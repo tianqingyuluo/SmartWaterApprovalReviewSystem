@@ -47,6 +47,17 @@ def _result_to_dict(result: ReviewResult | None) -> dict | None:
             "missing": result.material_completeness.missing,
             "unrecognized": result.material_completeness.unrecognized,
         }
+    if result.extracted_fields:
+        d["extractedFields"] = [
+            {
+                "fieldKey": field.field_key,
+                "fieldValue": field.field_value,
+                "confidence": field.confidence,
+                "sourceMaterial": field.source_material,
+                "evidence": field.evidence,
+            }
+            for field in result.extracted_fields
+        ]
     if result.basis_refs:
         d["basisRefs"] = result.basis_refs
     if result.manual_review_notice:
@@ -109,12 +120,9 @@ class ResultWriter:
                     return True
             except Exception as e:
                 last_error = e
-                logger.error(
-                    "Failed to write result for task %s (attempt %d/%d): %s",
-                    task_id, attempt + 1, retries, e
-                )
+                logger.error("Failed to write result for task %s (attempt %d/%d): %s", task_id, attempt + 1, retries, e)
                 if attempt < retries - 1:
-                    time.sleep(2 ** attempt)
+                    time.sleep(2**attempt)
 
         logger.error("Giving up writing result for task %s after %d retries: %s", task_id, retries, last_error)
         return False
@@ -133,11 +141,10 @@ class ResultWriter:
             except Exception as e:
                 last_error = e
                 logger.error(
-                    "Failed to update status for task %s (attempt %d/%d): %s",
-                    task_id, attempt + 1, retries, e
+                    "Failed to update status for task %s (attempt %d/%d): %s", task_id, attempt + 1, retries, e
                 )
                 if attempt < retries - 1:
-                    time.sleep(2 ** attempt)
+                    time.sleep(2**attempt)
 
         logger.error(
             "Giving up updating status for task %s after %d retries: %s",

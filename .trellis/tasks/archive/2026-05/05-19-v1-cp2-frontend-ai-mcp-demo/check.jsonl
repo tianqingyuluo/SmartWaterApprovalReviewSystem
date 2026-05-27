@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "验收前按前端质量规范执行自检"}
+{"file": ".trellis/spec/frontend/type-safety.md", "reason": "接口字段和状态渲染分支的类型完整性检查"}
+{"file": ".trellis/spec/frontend/state-management.md", "reason": "加载/空/失败状态路径覆盖检查"}
+{"file": ".trellis/tasks/05-13-v1-system-design-checkpoints/v1-checkpoint-task-list.md", "reason": "对照 CP2-C 新验收标准逐项核对演示台输出"}

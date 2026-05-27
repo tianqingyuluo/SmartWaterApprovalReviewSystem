@@ -119,7 +119,7 @@ Stable contract changes that should normally be tested first or with the same co
 - `ProcessingStatus` allowed transitions.
 - Worker `X-Worker-Token` authentication.
 - Applicant/reviewer visibility filtering.
-- Result writeback schema, including `materialCompleteness.missing` to API `missingMaterials`.
+- Result writeback schema, including `materialCompleteness.missing` to API `missingMaterials` and reviewer-only `extractedFields`.
 - File extension validation and material slot count.
 - Object storage key persistence and backend-mediated material download.
 
@@ -131,6 +131,7 @@ Stable contract changes that should normally be tested first or with the same co
 | Java context test initializes real RustFS/S3 client | Fail the PR; use conditional bean, mock `StorageService`, fake implementation, or integration profile. |
 | Python Worker downloads material without `X-Worker-Token` when token is configured | Unit test must fail; request must include the header. |
 | Worker writes `materialCompleteness.missing` but Java API returns empty `missingMaterials` | Unit/service test must fail; mapping must read the canonical field. |
+| Worker writes OCR field snapshots but Java reviewer API cannot return `extractedFields` | Unit/service test must fail; snapshots must round-trip through `reviewerResult`. |
 | Code review fix has no regression test | Request changes unless the fix is documentation-only or explicitly untestable. |
 | PR has no CI/test evidence | Request changes or require a documented manual verification exception. |
 
@@ -149,9 +150,12 @@ Minimum tests for backend/Worker PRs:
 | Change | Required assertions |
 |---|---|
 | Material submission | 0-3 fixed slots create a task; invalid extension returns a controlled error; storage upload is mocked. |
+| CP3 acceptance trigger | Submitted material tasks must be claimable through the implemented AI trigger path. If Java direct FastAPI dispatch is not wired, acceptance evidence must explicitly use the Worker polling path: `SUBMITTED`/`QUEUED` -> pending claim -> `PROCESSING` -> result writeback/query. |
 | Access control | wrong or missing `sessionId` cannot read task/result; Worker API rejects missing/wrong token. |
 | Status updates | valid transitions pass; invalid transitions fail deterministically. |
 | Result writeback | applicant/reviewer payloads are saved separately; `materialCompleteness.missing` appears as API `missingMaterials`. |
+| Callback idempotency | repeated result callbacks update existing `APPLICANT` / `REVIEWER` rows and do not duplicate results. |
+| Reviewer field snapshot | Python serializes `extractedFields`; Java reviewer query returns it; applicant result does not expose it. |
 | Storage integration boundary | unit tests do not construct a real RustFS client; integration tests use an explicit profile/command. |
 | Worker material download | request includes `X-Worker-Token`; download failure maps to partial failure, not lost task state. |
 | AI/OCR failures | retryable categories are retried within bounds; exhausted failures map to `PARTIAL_SUCCESS` or `FAILED`. |

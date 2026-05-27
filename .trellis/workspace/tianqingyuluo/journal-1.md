@@ -250,3 +250,81 @@ Switched Worker OCR from glm-4v chat completions to the official GLM OCR layout_
 ### Next Steps
 
 - None - task complete
+
+
+## Session 8: CP1-D 证据文档整理
+
+**Date**: 2026-05-14
+**Task**: CP1-D 证据文档整理
+**Branch**: `v1`
+
+### Summary
+
+完成 CP1-D 任务：建立 CP1 评分点到 MVP 证据映射总表，整理本地启动步骤、Git 分工与提交证明，更新开发日志。覆盖 19 个评分项，8 项待补齐已关联后续子任务。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `fdd4138` | (see git log) |
+| `c576c5d` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 9: CP2-C MCP Server 工具实现
+
+**Date**: 2026-05-14
+**Task**: CP2-C MCP Server 工具实现
+**Branch**: `v1`
+
+### Summary
+
+实现 SmartWater Python MCP Server，提供 knowledge_search 和 check_completeness 工具、demo 命令、测试覆盖，并同步后端 spec 契约。
+
+### Main Changes
+
+- 在 Python 服务中新增 `src/services/knowledge_tools.py`，提供可单测的 `knowledge_search` 与 `check_completeness` 核心逻辑。
+- 新增 `src/mcp_server/`，用官方 `FastMCP` 注册 MCP 工具，并提供 stdio / sse / streamable-http 启动入口。
+- 新增本地 demo CLI，可在没有 MCP 客户端时列出工具并运行样例调用。
+- 补充 README、pytest 配置、`mcp` 依赖和锁文件。
+- 同步 `.trellis/spec/backend/` 中 Python MCP 目录与工具契约。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `016382a` | feat(cp2): add smartwater mcp tools |
+
+### Testing
+
+- [OK] `uv run python -m compileall src main.py knowledge_pack`
+- [OK] `uv run python -m pytest`，30 passed
+- [OK] `uv run pytest`，30 passed
+- [OK] `uv run ruff check .`
+- [OK] `uv run mypy src main.py knowledge_pack`
+- [OK] `uv run python -m src.mcp_server.demo --list-tools`
+- [OK] `uv run python -m src.mcp_server.demo --run-samples --query 营业执照 --top-k 3 --materials-json '["APPLICATION_FORM","BUSINESS_LICENSE"]'`
+- [OK] `git diff --check`
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

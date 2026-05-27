@@ -9,6 +9,9 @@ import java.util.List;
 public class TaskStatusResponse {
     private String taskId;
     private String status;
+    private String handlingStatus;
+    private String handlingStatusLabel;
+    private String reviewerRemark;
     private LocalDateTime submittedAt;
     private LocalDateTime updatedAt;
     private List<MaterialStatus> materials;
@@ -18,5 +21,6 @@ public class TaskStatusResponse {
         private String materialType;
         private String originalFileName;
         private Boolean uploaded;
+        private String previewPath;
     }
 }

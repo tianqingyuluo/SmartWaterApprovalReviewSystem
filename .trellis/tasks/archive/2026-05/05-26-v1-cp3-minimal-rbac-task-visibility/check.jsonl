@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Verify login, role authorization, task visibility, and test coverage"}
+{"file": ".trellis/spec/backend/smartwater-mvp-contracts.md", "reason": "Verify applicant/reviewer projection boundaries remain intact"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "Verify frontend business error handling and role UI tests/build"}
+{"file": ".trellis/spec/frontend/smartwater-mvp-visibility.md", "reason": "Verify applicant cannot see reviewer-only payloads"}

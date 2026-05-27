@@ -1,0 +1,7 @@
+{"file": ".trellis/tasks/05-27-cp3-5-mcp-client-tool-chain/prd.md", "reason": "本任务 PRD：MCP Client 真实工具调用"}
+{"file": ".trellis/tasks/05-26-cp3-5-agent/prd.md", "reason": "CP3.5 父任务要求 Agent 真实调用 MCP 工具"}
+{"file": ".trellis/tasks/05-26-cp3-5-agent/research/cp3-failure-root-cause.md", "reason": "CP3 MCP 主要停留在演示服务而非审查主链路的背景"}
+{"file": ".trellis/spec/backend/review-reasoning-adapter.md", "reason": "审查推理适配器与工具调用/结构化输出契约"}
+{"file": ".trellis/spec/backend/smartwater-mvp-contracts.md", "reason": "工具调用结果进入 Java 回写和前端展示的跨服务契约"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "MCP 不可用时失败状态语义"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "MCP 工具结果贯穿 Python、Java 和前端展示"}

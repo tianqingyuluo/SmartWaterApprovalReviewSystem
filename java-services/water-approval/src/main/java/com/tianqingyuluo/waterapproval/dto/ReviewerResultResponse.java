@@ -2,12 +2,21 @@ package com.tianqingyuluo.waterapproval.dto;
 
 import lombok.Data;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
 public class ReviewerResultResponse {
     private String taskId;
     private String status;
+    private String handlingStatus;
+    private String handlingStatusLabel;
+    private String reviewerRemark;
+    private String reviewerActionCode;
+    private Long reviewerUserId;
+    private String reviewerDisplayName;
+    private LocalDateTime reviewerActionAt;
+    private List<ReviewActionLogItem> actionLogs;
     private String summary;
     private List<IssueItem> issues;
     private List<RiskHint> riskHints;

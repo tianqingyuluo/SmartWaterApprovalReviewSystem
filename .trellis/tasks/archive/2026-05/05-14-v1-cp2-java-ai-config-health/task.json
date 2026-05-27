@@ -1,0 +1,38 @@
+{
+  "id": "v1-cp2-java-ai-config-health",
+  "name": "v1-cp2-java-ai-config-health",
+  "title": "CP2-A Java 配置与知识库触发入口",
+  "description": "在 Java 侧补齐 AI 服务配置、健康检查与 ingest 触发入口约定。",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P1",
+  "creator": "tianqingyuluo",
+  "assignee": "ymx545",
+  "createdAt": "2026-05-14",
+  "completedAt": "2026-05-25",
+  "branch": "task/v1-cp2-java-ai-config-health",
+  "base_branch": "v1",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "05-13-v1-system-design-checkpoints",
+  "relatedFiles": [],
+  "notes": "feat: 接入AI服务配置与健康检查。该任务已派发给 ymx545，在 v1 分支基线上实现 Java 侧 AI 服务地址、内部 token、健康检查与 ingest 触发入口约定。",
+  "meta": {
+    "checkpoint": "CP2",
+    "lane": "java",
+    "wave": 2,
+    "dependsOn": [
+      "v1-cp2-python-ingest-chromadb-embedding",
+      "v1-cp2-mcp-server-tools"
+    ],
+    "unlockCriteria": "CP2 Python ingest and MCP tool baseline completed; parent approves Wave 2.",
+    "gatePolicy": "Do not start locked tasks until dependencies are completed and parent task approves next wave.",
+    "assignedBy": "tianqingyuluo",
+    "assignedAt": "2026-05-19"
+  }
+}

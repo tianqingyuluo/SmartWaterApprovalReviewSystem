@@ -1,0 +1,35 @@
+{
+  "id": "v1-cp1-frontend-evidence",
+  "name": "v1-cp1-frontend-evidence",
+  "title": "CP1-C 前端基础页面证据",
+  "description": "整理前端基线页面与路由证据，明确 V1 角色化改造缺口。",
+  "status": "locked",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P1",
+  "creator": "tianqingyuluo",
+  "assignee": "tianqingyuluo",
+  "createdAt": "2026-05-14",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "mvp/smartwater",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "05-13-v1-system-design-checkpoints",
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {
+    "checkpoint": "CP1",
+    "lane": "frontend",
+    "wave": 2,
+    "dependsOn": [
+      "v1-cp1-docs-git-demo-evidence"
+    ],
+    "unlockCriteria": "CP1-D evidence baseline completed and parent approves Wave 2.",
+    "gatePolicy": "Do not start locked tasks until dependencies are completed and parent task approves next wave."
+  }
+}

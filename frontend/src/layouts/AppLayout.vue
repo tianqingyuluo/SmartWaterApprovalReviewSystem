@@ -59,6 +59,7 @@
           <strong>{{ currentTitle }}</strong>
         </div>
         <div class="flex items-center gap-4 max-[980px]:w-full max-[980px]:justify-between">
+          <button type="button" class="sw-btn sw-btn-ghost max-[980px]:w-auto" @click="handleLogout">退出</button>
           <label
             class="flex h-9 w-[238px] items-center gap-2 rounded-[18px] border border-sw-line-strong bg-white px-[14px] text-[#8a99ad] max-[980px]:hidden"
           >
@@ -76,10 +77,10 @@
             </svg>
             <input class="min-w-0 flex-1 border-0 bg-transparent text-[#8a99ad] outline-0" disabled placeholder="按页面筛选区查询" />
           </label>
-          <span class="rounded-2xl bg-[#eef6ff] px-3 py-1.5 text-xs font-bold text-[#1763b8]">无账号模式</span>
+          <span class="rounded-2xl bg-[#eef6ff] px-3 py-1.5 text-xs font-bold text-[#1763b8]">{{ roleBadge }}</span>
           <div class="flex items-center gap-[9px] font-bold text-slate-700" aria-label="当前演示用户">
             <span class="grid h-8 w-8 place-items-center rounded-full bg-[linear-gradient(135deg,#d9ebff,#fff)] text-sw-primary shadow-[inset_0_0_0_1px_#cfe1f7]">水</span>
-            <span>张管理员</span>
+            <span>{{ displayName }}</span>
           </div>
         </div>
       </header>
@@ -93,34 +94,86 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useRoute } from 'vue-router'
+import { getCurrentRole, getCurrentUser, clearAuthState } from '@/utils/auth'
 
 const route = useRoute()
+const router = useRouter()
 
-const menuItems = [
-  {
-    path: '/',
-    label: '申请列表',
-    icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg>',
-  },
-  {
-    path: '/apply',
-    label: '新水务申请',
-    icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="M9 15h6"/></svg>',
-  },
-  {
-    path: '/review',
-    label: 'AI 初审结果',
-    icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>',
-  },
-]
+const currentUser = computed(() => getCurrentUser())
+const currentRole = computed(() => getCurrentRole())
+
+const menuItems = computed(() => {
+  if (currentRole.value === 'APPLICANT') {
+    return [
+      {
+        path: '/',
+        label: '我的申请',
+        icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg>',
+      },
+      {
+        path: '/apply',
+        label: '新建申请',
+        icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="M9 15h6"/></svg>',
+      },
+    ]
+  }
+  if (currentRole.value === 'REVIEWER') {
+    return [
+      {
+        path: '/',
+        label: '审批待办',
+        icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>',
+      },
+      {
+        path: '/review',
+        label: '结果查询',
+        icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h5"/></svg>',
+      },
+    ]
+  }
+  return [
+    {
+      path: '/',
+      label: '申请列表',
+      icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg>',
+    },
+    {
+      path: '/apply',
+      label: '新水务申请',
+      icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="M9 15h6"/></svg>',
+    },
+    {
+      path: '/review',
+      label: 'AI 初审结果',
+      icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>',
+    },
+    {
+      path: '/knowledge-mcp',
+      label: 'AI 知识库 MCP',
+      icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"/><path d="M19 12h2"/><path d="M3 12h2"/></svg>',
+    },
+  ]
+})
 
 const currentTitle = computed(() => route.meta.title?.toString() || '申请列表')
+const displayName = computed(() => currentUser.value?.displayName || currentUser.value?.username || '未知用户')
+const roleBadge = computed(() => {
+  if (currentRole.value === 'APPLICANT') return '申请人'
+  if (currentRole.value === 'REVIEWER') return '审批员'
+  return '管理员'
+})
 
 function isActive(path: string) {
   if (path === '/') {
     return route.path === '/'
   }
   return route.path.startsWith(path)
+}
+
+function handleLogout() {
+  clearAuthState()
+  router.push('/login')
 }
 </script>

@@ -1,0 +1,6 @@
+{"file": ".trellis/tasks/05-13-v1-system-design-checkpoints/prd.md", "reason": "V1 role, authentication, task visibility, and CP3 real-flow decisions"}
+{"file": ".trellis/spec/backend/smartwater-mvp-contracts.md", "reason": "Existing task, material, applicant/reviewer projection, and status contracts"}
+{"file": ".trellis/spec/backend/database-guidelines.md", "reason": "Schema and migration rules for user, role, task owner, and authorization tables"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Access control and service test expectations"}
+{"file": ".trellis/spec/frontend/smartwater-mvp-visibility.md", "reason": "Frontend applicant/reviewer visibility boundary to preserve while adding roles"}
+{"file": ".trellis/spec/frontend/state-management.md", "reason": "Frontend auth and server-state handling conventions"}

@@ -93,18 +93,16 @@
           <div class="grid items-center gap-5 max-[1080px]:grid-cols-2 max-md:grid-cols-1 [grid-template-columns:1fr_minmax(280px,0.7fr)_auto]">
             <div>
               <strong class="text-[17px] text-[#087443]">提交成功</strong>
-              <p class="mt-2 leading-[1.7] text-sw-muted">后端已创建审核任务，请保存任务 ID 和会话 ID。MVP 无账号模式下，结果页需要这两个标识访问。</p>
+              <p class="mt-2 leading-[1.7] text-sw-muted">后端已创建审核任务。可直接进入结果页查看当前任务状态。</p>
             </div>
             <dl class="m-0 grid [grid-template-columns:auto_1fr] gap-x-3 gap-y-2">
               <dt class="text-sw-muted">任务 ID</dt>
               <dd class="m-0"><code>{{ result.taskId }}</code></dd>
-              <dt class="text-sw-muted">会话 ID</dt>
-              <dd class="m-0"><code>{{ result.sessionId }}</code></dd>
               <dt class="text-sw-muted">当前状态</dt>
               <dd class="m-0"><StatusTag :status="taskStatus" /></dd>
             </dl>
             <div class="flex justify-center gap-[18px] max-[1080px]:col-span-2 max-md:flex-col">
-              <router-link class="sw-btn sw-btn-primary" :to="`/review?taskId=${result.taskId}&sessionId=${result.sessionId}`">
+              <router-link class="sw-btn sw-btn-primary" :to="`/review?taskId=${result.taskId}`">
                 查看 AI 初审结果
               </router-link>
               <button type="button" class="sw-btn sw-btn-ghost" @click="resetForm">继续新建</button>
@@ -196,7 +194,7 @@ const submitting = ref(false)
 const submitError = ref('')
 const result = ref<SubmitResponse | null>(null)
 const taskId = ref('')
-const sessionId = ref('')
+const sessionId = ref<string | null>(null)
 const taskStatus = ref<ProcessingStatus>('SUBMITTED')
 const taskData = ref<ApplicantResultView | null>(null)
 const polling = usePolling(
@@ -274,7 +272,7 @@ async function handleSubmit() {
     const data = res.data.data
     result.value = data
     taskId.value = data.taskId
-    sessionId.value = data.sessionId
+    sessionId.value = data.sessionId ?? null
     taskStatus.value = data.status ?? 'SUBMITTED'
     polling.start()
   } catch (error) {
@@ -302,7 +300,7 @@ function resetForm() {
   polling.stop()
   result.value = null
   taskId.value = ''
-  sessionId.value = ''
+  sessionId.value = null
   taskStatus.value = 'SUBMITTED'
   taskData.value = null
   submitError.value = ''

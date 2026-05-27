@@ -38,6 +38,19 @@ storage:
 water-approval:
   worker:
     token: ${WORKER_TOKEN:}
+  ai-service:
+    base-url: ${AI_SERVICE_BASE_URL:http://localhost:8000}
+    health-path: ${AI_SERVICE_HEALTH_PATH:/health}
+    internal-token: ${AI_SERVICE_INTERNAL_TOKEN:}
+    timeout: ${AI_SERVICE_TIMEOUT:3s}
+    mcp-transport: ${AI_SERVICE_MCP_TRANSPORT:streamable-http}
+    mcp-path: ${AI_SERVICE_MCP_PATH:/mcp}
+    ingest:
+      workdir: ${AI_INGEST_WORKDIR:../../python-services/smart-water-approval-review-system-py}
+      source-dir: ${AI_INGEST_SOURCE_DIR:../../docs/参考资料}
+      chunk-size: ${AI_INGEST_CHUNK_SIZE:512}
+      chunk-overlap: ${AI_INGEST_CHUNK_OVERLAP:64}
+      rebuild: ${AI_INGEST_REBUILD:false}
 
 server:
   port: 8080
@@ -47,3 +60,16 @@ server:
 logging:
   level:
     com.tianqingyuluo.waterapproval: INFO
+
+sa-token:
+  token-name: Authorization
+  token-prefix: Bearer
+  timeout: 604800
+  active-timeout: -1
+  is-concurrent: true
+  is-share: true
+  token-style: uuid
+  is-read-header: true
+  is-read-cookie: false
+  is-read-body: false
+  is-read-param: false

@@ -28,9 +28,7 @@ class FieldExtractor:
                 return self._download_error_result(material.material_type)
 
             name = material.original_file_name or f"unknown.{material.file_extension or 'pdf'}"
-            fields = self.ocr.extract_fields(
-                file_bytes, material.material_type, name
-            )
+            fields = self.ocr.extract_fields(file_bytes, material.material_type, name)
 
             for f in fields:
                 f.source_material = material.material_type

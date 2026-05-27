@@ -1,0 +1,39 @@
+{
+  "id": "v1-cp4-docs-api-deploy-defense",
+  "name": "v1-cp4-docs-api-deploy-defense",
+  "title": "CP4-D README、部署、API 和答辩材料",
+  "description": "汇总 V1 全量文档、部署脚本、API 说明与答辩材料，形成最终验收包。",
+  "status": "locked",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P1",
+  "creator": "tianqingyuluo",
+  "assignee": "tianqingyuluo",
+  "createdAt": "2026-05-14",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "mvp/smartwater",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "05-13-v1-system-design-checkpoints",
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {
+    "checkpoint": "CP4",
+    "lane": "docs-tests",
+    "wave": 5,
+    "dependsOn": [
+      "v1-cp2-docs-tests-demo",
+      "v1-cp3-integration-stability-tests",
+      "v1-cp4-java-report-export-admin",
+      "v1-cp4-python-deploy-degrade-demo",
+      "v1-cp4-frontend-correction-version-diff"
+    ],
+    "unlockCriteria": "All delivery lanes completed and parent approves final defense pack.",
+    "gatePolicy": "Do not start locked tasks until dependencies are completed and parent task approves next wave."
+  }
+}

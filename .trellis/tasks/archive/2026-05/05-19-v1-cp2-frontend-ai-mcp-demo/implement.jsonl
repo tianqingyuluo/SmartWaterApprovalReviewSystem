@@ -1,0 +1,7 @@
+{"file": ".trellis/tasks/05-13-v1-system-design-checkpoints/v1-checkpoint-task-list.md", "reason": "对齐 CP2-C 前端演示台任务定义、分工和验收口径"}
+{"file": ".trellis/spec/frontend/index.md", "reason": "前端任务实现前读取目录、状态管理与类型安全规范入口"}
+{"file": ".trellis/spec/frontend/state-management.md", "reason": "状态面板与加载/空/失败态需要统一状态管理约束"}
+{"file": ".trellis/spec/frontend/type-safety.md", "reason": "knowledge_search 与 check_completeness 响应结构需要类型约束"}
+{"file": ".trellis/spec/frontend/component-guidelines.md", "reason": "演示台组件拆分与可复用 UI 规范"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "CP2 前端演示台交付质量与验证标准"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "前端演示台与 Python MCP 接口契约跨层一致性检查"}

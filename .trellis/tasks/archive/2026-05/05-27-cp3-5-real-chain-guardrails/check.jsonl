@@ -1,0 +1,5 @@
+{"file": ".trellis/tasks/05-27-cp3-5-real-chain-guardrails/prd.md", "reason": "验证护栏任务是否满足自身验收标准"}
+{"file": ".trellis/tasks/05-26-cp3-5-agent/prd.md", "reason": "验证父任务真实链路路线是否被正确固化"}
+{"file": ".trellis/tasks/05-26-cp3-5-agent/research/cp3-failure-root-cause.md", "reason": "验证 CP3 失败原因是否被保留"}
+{"file": "docs/readable/cp3-test-evidence.md", "reason": "对照旧证据缺口检查 CP3.5 验收模板"}
+{"file": ".trellis/spec/project-documentation.md", "reason": "验证可读文档证据要求"}

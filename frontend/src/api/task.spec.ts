@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { toApplicantResultView, toReviewerResultView } from './task'
+import { isReviewerActionCompleted, toApplicantResultView, toApplicantTaskResultView, toReviewerResultView } from './task'
 import type { ApplicantResultResponse, ReviewerResultResponse, TaskStatusResponse } from '@/types'
 
 describe('task API adapters', () => {
@@ -32,6 +32,95 @@ describe('task API adapters', () => {
     expect(view.suggestions).toContain('请补充缺失材料后重新提交，以获取完整的审核辅助结果。')
   })
 
+  it('keeps applicant projection free of reviewer-only fields', () => {
+    const dto: ApplicantResultResponse = {
+      taskId: 'task-1',
+      status: 'COMPLETED',
+      summary: '申请人可见结果',
+      missingMaterials: [],
+      issues: [
+        {
+          code: 'MISSING_FIELD',
+          severity: 'WARNING',
+          message: '请补充联系电话',
+        },
+      ],
+    }
+
+    const view = toApplicantResultView(dto)
+
+    expect(view).toEqual({
+      status: 'COMPLETED',
+      missingMaterials: [],
+      fieldIssues: [
+        {
+          findingType: 'MISSING_FIELD',
+          severity: 'WARNING',
+          audience: 'APPLICANT',
+          description: '请补充联系电话',
+          basis: null,
+        },
+      ],
+      suggestions: ['材料预检查已完成，审批人员将进行进一步审核。'],
+      handlingStatus: null,
+      handlingStatusLabel: '',
+      reviewerRemark: '',
+      reviewerActionAt: null,
+    })
+    expect('riskHints' in view).toBe(false)
+    expect('draftOpinion' in view).toBe(false)
+    expect('extractedFields' in view).toBe(false)
+  })
+
+  it('builds applicant task result view from applicant projection and status snapshot only', () => {
+    const statusDto: TaskStatusResponse = {
+      taskId: 'task-1',
+      status: 'COMPLETED',
+      handlingStatus: 'CORRECTION_REQUIRED',
+      handlingStatusLabel: '退回补正',
+      reviewerRemark: '请补充营业执照副本',
+      submittedAt: '2026-05-08T10:00:00',
+      updatedAt: '2026-05-08T10:01:00',
+      materials: [
+        {
+          materialType: 'BUSINESS_LICENSE',
+          originalFileName: null,
+          uploaded: false,
+        },
+      ],
+    }
+    const resultDto: ApplicantResultResponse = {
+      taskId: 'task-1',
+      status: 'COMPLETED',
+      handlingStatus: 'CORRECTION_REQUIRED',
+      handlingStatusLabel: '退回补正',
+      reviewerRemark: '请补充营业执照副本',
+      reviewerActionAt: '2026-05-08T10:02:00',
+      summary: '申请人可见结果',
+      missingMaterials: ['BUSINESS_LICENSE'],
+      issues: [
+        {
+          code: 'MISSING_MATERIAL',
+          severity: 'BLOCKER',
+          message: '营业执照缺失',
+        },
+      ],
+    }
+
+    const view = toApplicantTaskResultView(statusDto, toApplicantResultView(resultDto))
+
+    expect(view.viewMode).toBe('APPLICANT')
+    expect(view.handlingStatus).toBe('CORRECTION_REQUIRED')
+    expect(view.handlingStatusLabel).toBe('退回补正')
+    expect(view.reviewerRemark).toBe('请补充营业执照副本')
+    expect(view.reviewActionLogs).toEqual([])
+    expect(view.extractedFields).toEqual({})
+    expect(view.riskHints).toEqual([])
+    expect(view.draftOpinion).toBe('')
+    expect(view.materials).toEqual(statusDto.materials)
+    expect(view.requiresManualReview).toBe(true)
+  })
+
   it('maps reviewer Java DTO objects to displayable view fields', () => {
     const statusDto: TaskStatusResponse = {
       taskId: 'task-1',
@@ -52,7 +141,6 @@ describe('task API adapters', () => {
       summary: '审核辅助结果已生成',
       missingMaterials: [],
       draftOpinion: '建议人工复核后继续办理。',
-      manualReviewNotice: '请人工复核证照一致性。',
       extractedFields: {
         applicantName: '某公司',
         annualWaterUse: 1200,
@@ -61,7 +149,7 @@ describe('task API adapters', () => {
         {
           code: 'WATER_AMOUNT_REVIEW_REQUIRED',
           severity: 'WARNING',
-          message: '取水量需人工复核',
+          message: '取水量需要人工复核',
           basisRefs: ['water-permit:mvp:process'],
           applicantVisible: false,
         },
@@ -74,6 +162,27 @@ describe('task API adapters', () => {
           requiresManualReview: true,
         },
       ],
+      manualReviewNotice: '请人工复核证照一致性。',
+      handlingStatus: 'MANUAL_REVIEW_REQUIRED',
+      handlingStatusLabel: '转人工复核',
+      reviewerRemark: '需要核对证照一致性',
+      reviewerActionCode: 'TRANSFER_MANUAL_REVIEW',
+      reviewerUserId: 2001,
+      reviewerDisplayName: '审批员甲',
+      reviewerActionAt: '2026-05-08T10:02:00',
+      actionLogs: [
+        {
+          actionCode: 'TRANSFER_MANUAL_REVIEW',
+          actionLabel: '转人工复核',
+          reviewerRemark: '需要核对证照一致性',
+          operatorUserId: 2001,
+          operatorDisplayName: '审批员甲',
+          fromHandlingStatus: null,
+          toHandlingStatus: 'MANUAL_REVIEW_REQUIRED',
+          operatedAt: '2026-05-08T10:02:00',
+        },
+      ],
+      modelMetadata: null,
     }
 
     const view = toReviewerResultView(statusDto, resultDto)
@@ -90,11 +199,142 @@ describe('task API adapters', () => {
     })
     expect(view.findings[0]).toMatchObject({
       findingType: 'WATER_AMOUNT_REVIEW_REQUIRED',
-      description: '取水量需人工复核',
+      description: '取水量需要人工复核',
       basis: 'water-permit:mvp:process',
     })
     expect(view.riskHints[0]).toContain('取水量字段与材料描述需要复核')
     expect(view.manualReviewNotice).toBe('请人工复核证照一致性。')
+    expect(view.handlingStatus).toBe('MANUAL_REVIEW_REQUIRED')
+    expect(view.handlingStatusLabel).toBe('转人工复核')
+    expect(view.reviewerRemark).toBe('需要核对证照一致性')
+    expect(view.reviewerActionCode).toBe('TRANSFER_MANUAL_REVIEW')
+    expect(view.reviewActionLogs).toHaveLength(1)
+    expect(view.reviewActionLogs[0]).toMatchObject({
+      actionCode: 'TRANSFER_MANUAL_REVIEW',
+      actionLabel: '转人工复核',
+      toHandlingStatus: 'MANUAL_REVIEW_REQUIRED',
+    })
+    expect(view.requiresManualReview).toBe(true)
+  })
+
+  it('accepts legacy reviewActionLogs alias when actionLogs is empty', () => {
+    const statusDto: TaskStatusResponse = {
+      taskId: 'task-1',
+      status: 'COMPLETED',
+      submittedAt: '2026-05-08T10:00:00',
+      updatedAt: '2026-05-08T10:01:00',
+      materials: [],
+    }
+    const resultDto: ReviewerResultResponse = {
+      taskId: 'task-1',
+      status: 'COMPLETED',
+      summary: '审核辅助结果已生成',
+      missingMaterials: [],
+      draftOpinion: '',
+      extractedFields: {},
+      issues: [],
+      riskHints: [],
+      actionLogs: [],
+      reviewActionLogs: [
+        {
+          actionCode: 'APPROVE_INITIAL_REVIEW',
+          reviewerRemark: '已通过',
+          operatorUserId: 2002,
+          operatorDisplayName: '审批员乙',
+          toHandlingStatus: 'INITIAL_REVIEW_PASSED',
+          operatedAt: '2026-05-08T10:05:00',
+        },
+      ],
+      modelMetadata: null,
+    }
+
+    const view = toReviewerResultView(statusDto, resultDto)
+
+    expect(view.reviewActionLogs).toHaveLength(1)
+    expect(view.reviewActionLogs[0]).toMatchObject({
+      actionCode: 'APPROVE_INITIAL_REVIEW',
+      actionLabel: '通过初审',
+      reviewerRemark: '已通过',
+      operatorDisplayName: '审批员乙',
+      toHandlingStatus: 'INITIAL_REVIEW_PASSED',
+    })
+  })
+
+  it('falls back to shared action labels for action logs without backend labels', () => {
+    const statusDto: TaskStatusResponse = {
+      taskId: 'task-1',
+      status: 'COMPLETED',
+      submittedAt: '2026-05-08T10:00:00',
+      updatedAt: '2026-05-08T10:01:00',
+      materials: [],
+    }
+    const resultDto: ReviewerResultResponse = {
+      taskId: 'task-1',
+      status: 'COMPLETED',
+      summary: '审核辅助结果已生成',
+      missingMaterials: [],
+      draftOpinion: '',
+      extractedFields: {},
+      issues: [],
+      riskHints: [],
+      actionLogs: [
+        {
+          actionCode: 'RETURN_FOR_CORRECTION',
+          reviewerRemark: '补正材料',
+          operatorUserId: 2002,
+          operatorDisplayName: '审批员乙',
+          toHandlingStatus: 'CORRECTION_REQUIRED',
+          operatedAt: '2026-05-08T10:05:00',
+        },
+      ],
+    }
+
+    const view = toReviewerResultView(statusDto, resultDto)
+
+    expect(view.reviewActionLogs[0].actionLabel).toBe('退回补正')
+  })
+
+  it('detects completed initial-review handling statuses', () => {
+    expect(isReviewerActionCompleted(null)).toBe(false)
+    expect(isReviewerActionCompleted('INITIAL_REVIEW_PASSED')).toBe(true)
+    expect(isReviewerActionCompleted('CORRECTION_REQUIRED')).toBe(true)
+    expect(isReviewerActionCompleted('MANUAL_REVIEW_REQUIRED')).toBe(true)
+  })
+
+  it('normalizes reviewer extracted field snapshots from worker array payloads', () => {
+    const statusDto: TaskStatusResponse = {
+      taskId: 'task-1',
+      status: 'COMPLETED',
+      submittedAt: '2026-05-08T10:00:00',
+      updatedAt: '2026-05-08T10:01:00',
+      materials: [],
+    }
+    const resultDto: ReviewerResultResponse = {
+      taskId: 'task-1',
+      status: 'COMPLETED',
+      summary: '字段快照已生成',
+      missingMaterials: [],
+      draftOpinion: '',
+      extractedFields: [
+        {
+          fieldKey: 'applicant.name',
+          fieldValue: '某某科技有限公司',
+          confidence: 0.93,
+          sourceMaterial: 'APPLICATION_FORM',
+        },
+      ],
+      issues: [],
+      riskHints: [],
+    }
+
+    const view = toReviewerResultView(statusDto, resultDto)
+
+    expect(view.extractedFields).toEqual({
+      'applicant.name': '某某科技有限公司',
+    })
+    expect(view.fieldConfidence).toEqual({
+      'applicant.name': 0.93,
+    })
   })
 
   it('maps FAILED status to failure category and reason', () => {
@@ -111,7 +351,6 @@ describe('task API adapters', () => {
       summary: '模型返回格式错误',
       missingMaterials: [],
       draftOpinion: '',
-      manualReviewNotice: '',
       extractedFields: {},
       issues: [],
       riskHints: [],
@@ -140,13 +379,12 @@ describe('task API adapters', () => {
       summary: '审核辅助结果已生成',
       missingMaterials: [],
       draftOpinion: '建议人工复核后继续办理。',
-      manualReviewNotice: '',
       extractedFields: {},
       issues: [
         {
           code: 'INCONSISTENT_IDENTITY',
           severity: 'BLOCKER',
-          message: '身份不一致需人工复核',
+          message: '身份信息不一致需人工复核',
           applicantVisible: true,
         },
       ],
@@ -175,13 +413,12 @@ describe('task API adapters', () => {
       summary: 'AI审核输出格式校验失败',
       missingMaterials: [],
       draftOpinion: '',
-      manualReviewNotice: 'AI审核输出格式校验失败，请人工审核所有材料。',
       extractedFields: {},
       issues: [
         {
           code: 'SCHEMA_MISMATCH',
           severity: 'BLOCKER',
-          message: '审核推理输出格式不符合预期，需要人工复核。',
+          message: '审核输出格式不符合预期，需要人工复核。',
           applicantVisible: false,
         },
       ],
@@ -210,7 +447,6 @@ describe('task API adapters', () => {
       summary: '审核辅助结果已生成',
       missingMaterials: [],
       draftOpinion: '建议通过。',
-      manualReviewNotice: '',
       extractedFields: {},
       issues: [
         {
@@ -241,10 +477,9 @@ describe('task API adapters', () => {
     const resultDto: ReviewerResultResponse = {
       taskId: 'task-1',
       status: 'PROCESSING',
-      summary: '审核结果处理中，请稍后查询',
+      summary: '审核结果处理中，请稍后查询。',
       missingMaterials: [],
       draftOpinion: '',
-      manualReviewNotice: '',
       extractedFields: undefined,
       issues: [],
       riskHints: [],
@@ -257,5 +492,101 @@ describe('task API adapters', () => {
     expect(view.findings).toEqual([])
     expect(view.riskHints).toEqual([])
     expect(view.requiresManualReview).toBe(false)
+  })
+
+  it('derives preview material metadata from status dto', () => {
+    const statusDto: TaskStatusResponse = {
+      taskId: 'task-preview',
+      status: 'COMPLETED',
+      submittedAt: '2026-05-08T10:00:00',
+      updatedAt: '2026-05-08T10:01:00',
+      materials: [
+        {
+          materialType: 'APPLICATION_FORM',
+          originalFileName: 'application.pdf',
+          uploaded: true,
+          previewPath: '/task/task-preview/material/APPLICATION_FORM/preview',
+        },
+        {
+          materialType: 'BUSINESS_LICENSE',
+          originalFileName: 'license.png',
+          uploaded: true,
+          previewPath: '/task/task-preview/material/BUSINESS_LICENSE/preview',
+        },
+        {
+          materialType: 'ID_CARD',
+          originalFileName: null,
+          uploaded: false,
+          previewPath: null,
+        },
+      ],
+    }
+    const resultDto: ReviewerResultResponse = {
+      taskId: 'task-preview',
+      status: 'COMPLETED',
+      summary: '',
+      missingMaterials: [],
+      draftOpinion: '',
+      extractedFields: {},
+      issues: [],
+      riskHints: [],
+    }
+
+    const view = toReviewerResultView(statusDto, resultDto)
+
+    expect(view.previewMaterials).toEqual([
+      {
+        materialType: 'APPLICATION_FORM',
+        originalFileName: 'application.pdf',
+        uploaded: true,
+        previewPath: '/task/task-preview/material/APPLICATION_FORM/preview',
+        kind: 'pdf',
+      },
+      {
+        materialType: 'BUSINESS_LICENSE',
+        originalFileName: 'license.png',
+        uploaded: true,
+        previewPath: '/task/task-preview/material/BUSINESS_LICENSE/preview',
+        kind: 'image',
+      },
+      {
+        materialType: 'ID_CARD',
+        originalFileName: null,
+        uploaded: false,
+        previewPath: null,
+        kind: 'missing',
+      },
+    ])
+  })
+
+  it('keeps backend preview path contract stable for safe preview endpoint', () => {
+    const statusDto: TaskStatusResponse = {
+      taskId: 'task-contract',
+      status: 'COMPLETED',
+      submittedAt: '2026-05-08T10:00:00',
+      updatedAt: '2026-05-08T10:01:00',
+      materials: [
+        {
+          materialType: 'APPLICATION_FORM',
+          originalFileName: 'application.pdf',
+          uploaded: true,
+          previewPath: '/task/task-contract/material/APPLICATION_FORM/preview',
+        },
+      ],
+    }
+    const resultDto: ReviewerResultResponse = {
+      taskId: 'task-contract',
+      status: 'COMPLETED',
+      summary: '',
+      missingMaterials: [],
+      draftOpinion: '',
+      extractedFields: {},
+      issues: [],
+      riskHints: [],
+    }
+
+    const view = toReviewerResultView(statusDto, resultDto)
+
+    expect(view.previewMaterials[0].previewPath).toBe('/task/task-contract/material/APPLICATION_FORM/preview')
   })
 })

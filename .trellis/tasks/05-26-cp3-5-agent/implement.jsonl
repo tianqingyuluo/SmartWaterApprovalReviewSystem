@@ -1,0 +1,10 @@
+{"file": ".trellis/tasks/05-26-cp3-5-agent/prd.md", "reason": "CP3.5 父任务 PRD，定义真实链路路线、硬约束和子任务边界"}
+{"file": ".trellis/tasks/05-26-cp3-5-agent/info.md", "reason": "CP3.5 技术路线与验收门禁"}
+{"file": ".trellis/tasks/05-26-cp3-5-agent/research/cp3-failure-root-cause.md", "reason": "CP3 失败根因，防止实现重新退回演示玩具路线"}
+{"file": "docs/readable/cp3-test-evidence.md", "reason": "现有 CP3 证据边界，明确哪些真实链路此前未覆盖"}
+{"file": ".trellis/spec/backend/smartwater-mvp-contracts.md", "reason": "Java/Python/Worker/前端跨服务契约"}
+{"file": ".trellis/spec/backend/ocr-adapter.md", "reason": "真实 OCR 适配器契约与错误语义"}
+{"file": ".trellis/spec/backend/review-reasoning-adapter.md", "reason": "审查推理与结构化输出契约"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "关键依赖失败时记录错误状态，不伪造成功结论"}
+{"file": ".trellis/spec/frontend/smartwater-mvp-visibility.md", "reason": "前端按角色展示真实任务、材料和审查结果"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "CP3.5 涉及前端、Java、Python、对象存储、MCP 和外部 AI 的跨层数据流"}

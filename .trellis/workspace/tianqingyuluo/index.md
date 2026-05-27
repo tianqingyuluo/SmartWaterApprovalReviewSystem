@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 7
-- **Last Active**: 2026-05-13
+- **Total Sessions**: 9
+- **Last Active**: 2026-05-14
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~246 | Active |
+| `journal-1.md` | ~319 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,8 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 9 | 2026-05-14 | CP2-C MCP Server 工具实现 | `016382a` | `v1` |
+| 8 | 2026-05-14 | CP1-D 证据文档整理 | `fdd4138`, `c576c5d` | `v1` |
 | 7 | 2026-05-13 | 前端 Tailwind 样式体系重构 | `e1723d8` | `mvp/smartwater` |
 | 6 | 2026-05-11 | Wrap up OCR model selection fix | `3c95685`, `444248f`, `219000f`, `610f4fb` | `mvp/smartwater` |
 | 5 | 2026-05-05 | 法规知识包 MVP 收尾 | `8f1fada` | `task/smartwater-regulation-knowledge-pack-mvp` |

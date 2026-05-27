@@ -16,7 +16,23 @@ public class ReviewTask {
 
     private String sessionId;
 
+    private Long ownerUserId;
+
     private String status;
+
+    private String handlingStatus;
+
+    private String handlingStatusLabel;
+
+    private String reviewerActionCode;
+
+    private String reviewerRemark;
+
+    private Long reviewerUserId;
+
+    private String reviewerDisplayName;
+
+    private LocalDateTime reviewerActionAt;
 
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime submittedAt;

@@ -1,0 +1,7 @@
+{"file": ".trellis/tasks/05-27-cp3-5-intelligent-compliance-result/prd.md", "reason": "本任务 PRD：智能合规审查与结构化结论"}
+{"file": ".trellis/tasks/05-26-cp3-5-agent/prd.md", "reason": "CP3.5 父任务禁止规则兜底替代智能审查"}
+{"file": ".trellis/tasks/05-26-cp3-5-agent/research/cp3-failure-root-cause.md", "reason": "CP3 旧兜底策略不能证明智能审查能力的背景"}
+{"file": ".trellis/spec/backend/review-reasoning-adapter.md", "reason": "LLM 审查推理、结构化输出和模型元数据契约"}
+{"file": ".trellis/spec/backend/ocr-adapter.md", "reason": "合规审查输入依赖真实 OCR/抽取结果"}
+{"file": ".trellis/spec/backend/smartwater-mvp-contracts.md", "reason": "审查结论、问题、字段、依据回写展示契约"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "LLM/结构化解析失败时的失败状态语义"}

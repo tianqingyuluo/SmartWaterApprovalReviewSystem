@@ -1,0 +1,6 @@
+{"file": ".trellis/tasks/05-13-v1-system-design-checkpoints/prd.md", "reason": "CP3 stability and end-to-end acceptance requirements"}
+{"file": ".trellis/spec/backend/smartwater-mvp-contracts.md", "reason": "Cross-service Java-Python task/result/action contracts"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Backend/Python/frontend test gate and integration stability expectations"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "Frontend build/test gate for CP3 acceptance"}
+{"file": ".trellis/spec/project-documentation.md", "reason": "Readable CP3 evidence and dev-log documentation requirements"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Callback failure and query fallback error contracts"}

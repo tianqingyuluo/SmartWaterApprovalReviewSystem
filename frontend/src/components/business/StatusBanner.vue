@@ -19,17 +19,21 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { ProcessingStatus, ResultSummary } from '@/types'
-import { STATUS_LABELS_REVIEWER } from '@/types'
+import { STATUS_LABELS_APPLICANT, STATUS_LABELS_REVIEWER } from '@/types'
 
 interface Props {
   status: ProcessingStatus
   resultSummary: ResultSummary | null
   requiresManualReview?: boolean
+  audience?: 'APPLICANT' | 'REVIEWER'
 }
 
 const props = defineProps<Props>()
 
 const label = computed(() => {
+  if (props.audience === 'APPLICANT') {
+    return STATUS_LABELS_APPLICANT[props.status]
+  }
   if (props.status === 'COMPLETED' && props.requiresManualReview) {
     return '审核辅助结果已生成，需人工复核'
   }

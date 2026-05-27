@@ -1,0 +1,36 @@
+{
+  "id": "v1-cp4-frontend-correction-version-diff",
+  "name": "v1-cp4-frontend-correction-version-diff",
+  "title": "CP4-C 前端角色工作台、补正和版本差异收口",
+  "description": "完成三角色工作台、补正闭环与版本差异视图，并接入报告导出入口。",
+  "status": "locked",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P1",
+  "creator": "tianqingyuluo",
+  "assignee": "tianqingyuluo",
+  "createdAt": "2026-05-14",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "mvp/smartwater",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "05-13-v1-system-design-checkpoints",
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {
+    "checkpoint": "CP4",
+    "lane": "frontend",
+    "wave": 4,
+    "dependsOn": [
+      "v1-cp3-frontend-review-workbench",
+      "v1-cp4-java-report-export-admin"
+    ],
+    "unlockCriteria": "CP3 frontend chain and CP4-A export API completed; parent approves Wave 4.",
+    "gatePolicy": "Do not start locked tasks until dependencies are completed and parent task approves next wave."
+  }
+}

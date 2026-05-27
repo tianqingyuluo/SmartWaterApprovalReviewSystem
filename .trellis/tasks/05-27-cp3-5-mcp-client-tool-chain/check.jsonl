@@ -1,0 +1,6 @@
+{"file": ".trellis/tasks/05-27-cp3-5-mcp-client-tool-chain/prd.md", "reason": "验证 MCP Client 真实工具调用验收标准"}
+{"file": ".trellis/tasks/05-26-cp3-5-agent/prd.md", "reason": "验证没有用内部函数替代 MCP 验收"}
+{"file": ".trellis/spec/backend/review-reasoning-adapter.md", "reason": "验证审查推理和工具调用契约"}
+{"file": ".trellis/spec/backend/smartwater-mvp-contracts.md", "reason": "验证工具调用结果回写展示契约"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "验证 MCP 失败状态不伪装成功"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "后端质量检查标准"}

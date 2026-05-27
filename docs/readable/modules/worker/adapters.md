@@ -29,3 +29,15 @@ Python Worker 的 `src/adapters/` 用来隔离外部 OCR 和审核模型的供�
 ## 审核适配器
 
 审核推理适配器仍位于 `review_adapter.py`。它与 OCR 适配器分离，避免 OCR 接口格式和审核模型接口格式互相污染。
+
+## 规则、RAG 与 Agent 编排
+
+CP3-B 新增 `ReviewTaskOrchestrator`，轮询 Worker 和 FastAPI 后台任务都通过它执行同一条 AI 初评链路：
+
+1. 根据材料槽位执行下载、解析、OCR 和字段抽取。
+2. 使用静态知识包进行材料完整性规则检查。
+3. 调用知识检索工具组装可引用的 RAG 片段。
+4. 调用审核推理适配器生成结构化初评结果。
+5. 将规则问题和 Agent 问题合并后写回 Java。
+
+当 Agent 或 LLM 不可用、输出格式异常或返回失败分类时，orchestrator 不丢弃规则检查结果，而是生成 `PARTIAL_SUCCESS`，加入审批人员可见的 `MODEL_UNCERTAIN` 问题、人工复核提示和规则结论。申请人结果仍只包含申请人可见问题，不包含字段快照、模型失败细节或审批人员草拟意见。
