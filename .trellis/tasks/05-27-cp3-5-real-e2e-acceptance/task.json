@@ -27,6 +27,13 @@
     "checkpointScope": "CP3 recovery",
     "lane": "docs-tests-e2e",
     "wave": 5,
+    "owner": "tianqingyuluo",
+    "collaborators": [
+      "ymx545",
+      "yuexianwei3699",
+      "6newuser6"
+    ],
+    "responsibility": "tianqingyuluo owns final real E2E acceptance and defense evidence; each member contributes module logs, screenshots, tests, and Git account evidence.",
     "dependsOn": [
       "cp3-5-real-chain-guardrails",
       "cp3-5-java-python-real-dispatch",

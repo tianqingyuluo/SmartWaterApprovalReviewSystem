@@ -43,6 +43,73 @@
       "Critical dependency failure must be visible as failed/blocked/retryable state.",
       "Frontend review evidence must include safe original material preview."
     ],
+    "teamAssignment": {
+      "owner": "tianqingyuluo",
+      "rule": "Primary assignee owns implementation, tests, and task evidence; collaborators own cross-layer contract support and final real E2E proof.",
+      "tasks": [
+        {
+          "task": "cp3-5-real-chain-guardrails",
+          "assignee": "tianqingyuluo",
+          "collaborators": [
+            "ymx545",
+            "yuexianwei3699",
+            "6newuser6"
+          ]
+        },
+        {
+          "task": "cp3-5-java-python-real-dispatch",
+          "assignee": "ymx545",
+          "collaborators": [
+            "6newuser6"
+          ]
+        },
+        {
+          "task": "cp3-5-document-ocr-real-pipeline",
+          "assignee": "6newuser6",
+          "collaborators": [
+            "tianqingyuluo"
+          ]
+        },
+        {
+          "task": "cp3-5-mcp-client-tool-chain",
+          "assignee": "6newuser6",
+          "collaborators": [
+            "tianqingyuluo"
+          ]
+        },
+        {
+          "task": "cp3-5-intelligent-compliance-result",
+          "assignee": "6newuser6",
+          "collaborators": [
+            "ymx545",
+            "yuexianwei3699"
+          ]
+        },
+        {
+          "task": "cp3-5-real-e2e-acceptance",
+          "assignee": "tianqingyuluo",
+          "collaborators": [
+            "ymx545",
+            "yuexianwei3699",
+            "6newuser6"
+          ]
+        },
+        {
+          "task": "v1-cp3-material-safe-preview",
+          "assignee": "yuexianwei3699",
+          "collaborators": [
+            "ymx545"
+          ]
+        },
+        {
+          "task": "v1-cp3-glm-ocr-data-uri-fix",
+          "assignee": "6newuser6",
+          "collaborators": [
+            "tianqingyuluo"
+          ]
+        }
+      ]
+    },
     "dependsOn": [
       "v1-cp3-java-ai-task-callback-results",
       "v1-cp3-python-fastapi-rules-agent",

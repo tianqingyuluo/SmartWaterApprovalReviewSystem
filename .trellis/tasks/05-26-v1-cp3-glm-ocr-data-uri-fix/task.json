@@ -9,7 +9,7 @@
   "package": null,
   "priority": "P1",
   "creator": "tianqingyuluo",
-  "assignee": "tianqingyuluo",
+  "assignee": "6newuser6",
   "createdAt": "2026-05-26",
   "completedAt": null,
   "branch": null,
@@ -27,6 +27,11 @@
     "checkpointScope": "CP3 recovery",
     "lane": "python",
     "wave": 1,
+    "owner": "6newuser6",
+    "collaborators": [
+      "tianqingyuluo"
+    ],
+    "responsibility": "6newuser6 owns Python GLM OCR data URI fix and tests; tianqingyuluo provides real GLM probe evidence and acceptance sample.",
     "dependsOn": [
       "cp3-5-real-chain-guardrails",
       "v1-cp3-python-fastapi-rules-agent",

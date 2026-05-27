@@ -9,7 +9,7 @@
   "package": null,
   "priority": "P0",
   "creator": "tianqingyuluo",
-  "assignee": "tianqingyuluo",
+  "assignee": "6newuser6",
   "createdAt": "2026-05-27",
   "completedAt": null,
   "branch": null,
@@ -27,6 +27,12 @@
     "checkpointScope": "CP3 recovery",
     "lane": "python-agent",
     "wave": 4,
+    "owner": "6newuser6",
+    "collaborators": [
+      "ymx545",
+      "yuexianwei3699"
+    ],
+    "responsibility": "6newuser6 owns Python intelligent compliance reasoning and structured results; ymx545 supports persistence contract, yuexianwei3699 supports frontend display contract.",
     "dependsOn": [
       "cp3-5-real-chain-guardrails",
       "cp3-5-document-ocr-real-pipeline",

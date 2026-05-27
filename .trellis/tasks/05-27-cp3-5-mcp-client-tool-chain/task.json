@@ -9,7 +9,7 @@
   "package": null,
   "priority": "P0",
   "creator": "tianqingyuluo",
-  "assignee": "tianqingyuluo",
+  "assignee": "6newuser6",
   "createdAt": "2026-05-27",
   "completedAt": null,
   "branch": null,
@@ -27,6 +27,11 @@
     "checkpointScope": "CP3 recovery",
     "lane": "python-mcp",
     "wave": 3,
+    "owner": "6newuser6",
+    "collaborators": [
+      "tianqingyuluo"
+    ],
+    "responsibility": "6newuser6 owns MCP Client discovery/calls in the real Agent chain; tianqingyuluo reviews evidence to prevent demo-only internal function fallback.",
     "dependsOn": [
       "cp3-5-real-chain-guardrails",
       "cp3-5-document-ocr-real-pipeline"

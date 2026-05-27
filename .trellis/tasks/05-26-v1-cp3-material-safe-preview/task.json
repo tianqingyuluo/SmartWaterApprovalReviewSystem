@@ -9,7 +9,7 @@
   "package": null,
   "priority": "P1",
   "creator": "tianqingyuluo",
-  "assignee": "tianqingyuluo",
+  "assignee": "yuexianwei3699",
   "createdAt": "2026-05-26",
   "completedAt": null,
   "branch": null,
@@ -27,6 +27,11 @@
     "checkpointScope": "CP3 recovery",
     "lane": "fullstack",
     "wave": 4,
+    "owner": "yuexianwei3699",
+    "collaborators": [
+      "ymx545"
+    ],
+    "responsibility": "yuexianwei3699 owns frontend result page preview UX and state handling; ymx545 owns safe Java preview endpoint and authorization boundary.",
     "dependsOn": [
       "cp3-5-real-chain-guardrails",
       "cp3-5-java-python-real-dispatch",

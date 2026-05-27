@@ -27,6 +27,13 @@
     "checkpointScope": "CP3 recovery",
     "lane": "planning-docs",
     "wave": 0,
+    "owner": "tianqingyuluo",
+    "collaborators": [
+      "ymx545",
+      "yuexianwei3699",
+      "6newuser6"
+    ],
+    "responsibility": "tianqingyuluo owns CP3 failure review, acceptance guardrails, and final route alignment; all members confirm before implementation.",
     "dependsOn": [],
     "unblocks": [
       "cp3-5-java-python-real-dispatch",

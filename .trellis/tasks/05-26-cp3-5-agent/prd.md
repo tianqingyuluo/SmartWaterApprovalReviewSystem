@@ -54,6 +54,21 @@ CP3 失败的根因必须保留在任务上下文中：此前的系统用 mock/s
 | `05-26-v1-cp3-material-safe-preview` | 材料安全预览接口与前端嵌入 | 支撑前端对照原始 PDF/图片材料，不泄露内部下载密钥。 |
 | `05-26-v1-cp3-glm-ocr-data-uri-fix` | GLM OCR data URI 请求格式修复 | 修复真实 OCR 失败的已确认根因，让 OCR 文本能进入后续链路。 |
 
+## 团队分工
+
+| 子任务 | 主负责人 | 协作人 | 分工说明 |
+| --- | --- | --- | --- |
+| CP3.5-A 全真实链路护栏与失败复盘 | `tianqingyuluo` | `ymx545`、`yuexianwei3699`、`6newuser6` | 由项目负责人收口路线、验收口径和失败复盘，全员确认后再进入实现。 |
+| CP3.5-B Java 主动调度 Python 审查链路 | `ymx545` | `6newuser6` | Java 负责任务创建、调度、状态机、回写入口；Python 配合接口契约。 |
+| CP3.5-C 生产级文档解析与 OCR | `6newuser6` | `tianqingyuluo` | Python 负责 PDF/DOCX/OCR 管线；项目负责人提供真实样例、密钥和验收证据。 |
+| CP3.5-D MCP Client 真实工具调用 | `6newuser6` | `tianqingyuluo` | Python 负责 Agent 真实调用 MCP Client；项目负责人把关不要回退到内部函数演示。 |
+| CP3.5-E 智能合规审查与结构化结论 | `6newuser6` | `ymx545`、`yuexianwei3699` | Python 负责智能审查；Java 负责持久化契约，前端负责展示契约。 |
+| CP3.5-F 真实端到端验收与答辩证据 | `tianqingyuluo` | `ymx545`、`yuexianwei3699`、`6newuser6` | 项目负责人牵头最终联调和证据收口，全员提交各自模块日志、截图、测试结果。 |
+| CP3.5-G 材料安全预览接口与前端嵌入 | `yuexianwei3699` | `ymx545` | 前端负责审查结果页和预览交互；Java 负责安全预览接口和权限边界。 |
+| CP3.5-H GLM OCR data URI 请求格式修复 | `6newuser6` | `tianqingyuluo` | Python 负责 OCR bugfix；项目负责人提供真实 GLM 探测结果和验收样例。 |
+
+分工原则：主负责人对任务 PRD、实现、测试和提交说明负责；协作人必须在接口契约和真实 E2E 证据上配合。CP3.5-F 不提前开始伪造演示截图，必须等 B/C/D/E/G/H 的真实链路结果可用后收口。
+
 ## 依赖关系
 
 ```text

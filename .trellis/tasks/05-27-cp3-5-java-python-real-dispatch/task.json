@@ -9,7 +9,7 @@
   "package": null,
   "priority": "P0",
   "creator": "tianqingyuluo",
-  "assignee": "tianqingyuluo",
+  "assignee": "ymx545",
   "createdAt": "2026-05-27",
   "completedAt": null,
   "branch": null,
@@ -27,6 +27,11 @@
     "checkpointScope": "CP3 recovery",
     "lane": "java-python",
     "wave": 1,
+    "owner": "ymx545",
+    "collaborators": [
+      "6newuser6"
+    ],
+    "responsibility": "ymx545 owns Java task creation, Python dispatch, state machine, callback persistence, and Java-side tests; 6newuser6 supports Python API contract.",
     "dependsOn": [
       "cp3-5-real-chain-guardrails"
     ],
