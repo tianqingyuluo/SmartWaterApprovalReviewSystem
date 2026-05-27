@@ -244,7 +244,7 @@ class DocumentOcrPipeline:
                 block_index += 1
                 block_index = _extract_pdf_tables(result, page, page_index + 1, block_index)
 
-            if total_text >= _PDF_MIN_TEXT_LENGTH_BEFORE_OCR:
+            if total_text >= _PDF_MIN_TEXT_LENGTH_BEFORE_OCR or _has_parsed_content(result):
                 return result
         finally:
             doc.close()
@@ -284,10 +284,10 @@ class DocumentOcrPipeline:
                             retryable=True,
                         )
                     )
-            result.extracted_fields = fields
+            result.extracted_fields.extend(fields)
             return result
 
-        result.extracted_fields = fields
+        result.extracted_fields.extend(fields)
         text = _fields_to_text(fields)
         if text:
             result.content_blocks.append(
@@ -378,6 +378,10 @@ def _extract_pdf_tables(
         result.extracted_fields.extend(_extract_key_value_fields(rows, result.material_type))
 
     return block_index
+
+
+def _has_parsed_content(result: MaterialDocumentParseResult) -> bool:
+    return bool(result.content_blocks or result.tables or result.extracted_fields)
 
 
 def _normalize_table_rows(rows: Any) -> list[list[str]]:

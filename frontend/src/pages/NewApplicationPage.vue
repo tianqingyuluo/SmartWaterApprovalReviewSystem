@@ -68,7 +68,7 @@
 
       <PageCard title="上传附件" subtitle="MVP 固定材料槽位：取水许可申请书、营业执照、身份证。允许缺失材料提交，但会产生部分结果或缺失材料提示。">
         <div class="mb-4 mt-[-4px] flex flex-wrap gap-3 text-[13px] text-sw-muted">
-          <span class="rounded-full bg-[#f3f8ff] px-2.5 py-1.5">支持格式：jpg / jpeg / png / pdf</span>
+          <span class="rounded-full bg-[#f3f8ff] px-2.5 py-1.5">支持格式：jpg / jpeg / png / pdf / docx</span>
           <span class="rounded-full bg-[#f3f8ff] px-2.5 py-1.5">每类材料最多上传 1 个文件</span>
         </div>
         <div class="grid gap-[14px]">
@@ -228,7 +228,7 @@ function onFileChange(event: Event, type: MaterialType) {
 
   const extension = file.name.split('.').pop()?.toLowerCase() || ''
   if (!ACCEPTED_EXTENSIONS.includes(extension)) {
-    slot.error = '不支持的文件格式，请上传 jpg、jpeg、png 或 pdf 文件。'
+    slot.error = '不支持的文件格式，请上传 jpg、jpeg、png、pdf 或 docx 文件。'
     slot.file = null
     input.value = ''
     return

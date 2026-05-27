@@ -63,7 +63,7 @@ const emit = defineEmits<{
 }>()
 
 const inputId = computed(() => `file-${props.materialType}`)
-const description = computed(() => '支持 jpg / jpeg / png / pdf，单槽位最多 1 个文件')
+const description = computed(() => '支持 jpg / jpeg / png / pdf / docx，单槽位最多 1 个文件')
 const fileExt = computed(() => props.file?.name.split('.').pop()?.toUpperCase() || 'FILE')
 
 const slotStateClasses = computed(() => {
