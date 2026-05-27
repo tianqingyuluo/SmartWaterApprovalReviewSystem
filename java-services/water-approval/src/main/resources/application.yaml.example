@@ -54,6 +54,10 @@ water-approval:
     timeout: ${AI_SERVICE_TIMEOUT:3s}
     mcp-transport: ${AI_SERVICE_MCP_TRANSPORT:streamable-http}
     mcp-path: ${AI_SERVICE_MCP_PATH:/mcp}
+    review-task:
+      enabled: ${AI_REVIEW_TASK_DISPATCH_ENABLED:true}
+      path: ${AI_REVIEW_TASK_PATH:/api/review/tasks}
+      max-attempts: ${AI_REVIEW_TASK_MAX_ATTEMPTS:3}
     ingest:
       # 当前 Python 提供 ingest CLI；Java /ai/ingest 输出运维触发命令，不在 Java 进程内执行。
       workdir: ${AI_INGEST_WORKDIR:../../python-services/smart-water-approval-review-system-py}

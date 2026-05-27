@@ -18,6 +18,7 @@ public class AiServiceProperties {
     private String mcpTransport = "streamable-http";
     private String mcpPath = "/mcp";
     private Ingest ingest = new Ingest();
+    private ReviewTask reviewTask = new ReviewTask();
 
     public String normalizedBaseUrl() {
         return trimTrailingSlash(baseUrl);
@@ -37,6 +38,14 @@ public class AiServiceProperties {
 
     public String mcpUrl() {
         return normalizedBaseUrl() + normalizedMcpPath();
+    }
+
+    public String normalizedReviewTaskPath() {
+        return normalizePath(reviewTask.getPath());
+    }
+
+    public String reviewTaskUrl() {
+        return normalizedBaseUrl() + normalizedReviewTaskPath();
     }
 
     public boolean hasInternalToken() {
@@ -69,5 +78,16 @@ public class AiServiceProperties {
         private int chunkSize = 512;
         private int chunkOverlap = 64;
         private boolean rebuild = false;
+    }
+
+    @Data
+    public static class ReviewTask {
+        private boolean enabled = true;
+        private String path = "/api/review/tasks";
+        private int maxAttempts = 3;
+
+        public int safeMaxAttempts() {
+            return Math.max(maxAttempts, 1);
+        }
     }
 }
