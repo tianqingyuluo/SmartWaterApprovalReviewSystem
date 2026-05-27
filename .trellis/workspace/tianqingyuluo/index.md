@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 9
-- **Last Active**: 2026-05-14
+- **Total Sessions**: 10
+- **Last Active**: 2026-05-27
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~319 | Active |
+| `journal-1.md` | ~370 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 10 | 2026-05-27 | CP3.5 真实链路收口 | `c580a3d`, `792ea88` | `v1` |
 | 9 | 2026-05-14 | CP2-C MCP Server 工具实现 | `016382a` | `v1` |
 | 8 | 2026-05-14 | CP1-D 证据文档整理 | `fdd4138`, `c576c5d` | `v1` |
 | 7 | 2026-05-13 | 前端 Tailwind 样式体系重构 | `e1723d8` | `mvp/smartwater` |

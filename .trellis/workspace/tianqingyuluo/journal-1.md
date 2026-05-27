@@ -328,3 +328,43 @@ Switched Worker OCR from glm-4v chat completions to the official GLM OCR layout_
 ### Next Steps
 
 - None - task complete
+
+
+## Session 10: CP3.5 真实链路收口
+
+**Date**: 2026-05-27
+**Task**: CP3.5 真实链路收口
+**Branch**: `v1`
+
+### Summary
+
+完成 CP3.5 真实 MCP/LLM/OCR/Java-Python 链路、安全材料预览、Qwen basis_refs 归一化、真实 E2E 验收与任务归档。
+
+### Main Changes
+
+- Java 新增网页登录安全材料预览接口，按 taskId + materialType 读取 RustFS 文件，不向浏览器暴露 storageKey 或 Worker token。
+- 前端结果页接入 blob 预览真实 PDF/JPG/PNG，DOCX 显示不支持预览但继续参与后端解析。
+- Python review adapter 支持 Qwen bracket/title/prefix basis_refs 别名归一化，仍保持 allow-list 校验。
+- 真实 E2E 任务 SW1F9B70302CD14DAE 达到 COMPLETED，包含 modelMetadata、3 条 toolCallTraces、54 个 extractedFields。
+- 更新 CP3.5 E2E 证据、5 月开发日志、后端/前端/LLM 规格，并归档 CP3.5 父任务与子任务。
+- 验证：Java 102 tests；Frontend 20 tests + build；Python ruff、compileall、109 tests / 4 subtests；git diff --check；真实预览 JPG 200 image/jpeg + nosniff，DOCX 415。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c580a3d` | (see git log) |
+| `792ea88` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
