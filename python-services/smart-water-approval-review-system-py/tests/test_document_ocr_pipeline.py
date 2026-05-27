@@ -187,6 +187,23 @@ class DocumentOcrPipelineContractTests(unittest.TestCase):
         self.assertIn("Applicant: Acme Water Co", block_text)
         self.assertEqual([], ocr_adapter.calls)
 
+    def test_parse_failure_records_explicit_error_instead_of_empty_success(self) -> None:
+        ocr_adapter = _StubOcrAdapter([])
+        result = _parse_material(
+            self._pipeline(ocr_adapter),
+            material_type="APPLICATION_FORM",
+            source_file_name="broken.docx",
+            file_bytes=b"this is not a docx file",
+        )
+
+        data = _contract_dict(result)
+
+        self.assertEqual([], data["contentBlocks"])
+        self.assertEqual([], data["tables"])
+        self.assertEqual([], data["extractedFields"])
+        self.assertIn("PARSE_ERROR", {_error_code(error) for error in data["errors"]})
+        self.assertEqual([], ocr_adapter.calls)
+
     def test_image_ocr_success_maps_to_unified_content_fields_and_metadata(self) -> None:
         ocr_adapter = _StubOcrAdapter(
             [
