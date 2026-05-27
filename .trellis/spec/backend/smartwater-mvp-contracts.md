@@ -579,6 +579,131 @@ The response contains `mode=ops-command`, `command[]`, and `verificationCommand`
 
 ---
 
+## CP3.5 Java Active Review Dispatch Contract
+
+Java must actively dispatch submitted review tasks to the Python FastAPI review
+task API when CP3.5 active dispatch is enabled. The Worker polling path remains
+a compatibility fallback only when dispatch is explicitly disabled.
+
+### 1. Scope / Trigger
+
+- Trigger: Java submission flow, `AiServiceClient`, Python FastAPI review-task
+  API, dispatch config, task status semantics, or Python unavailable behavior.
+- Java package: `java-services/water-approval/src/main/java/com/tianqingyuluo/waterapproval/`.
+- Python endpoint: `POST /api/review/tasks`.
+
+### 2. Signatures
+
+Java config keys:
+
+```yaml
+water-approval:
+  ai-service:
+    base-url: http://localhost:8000
+    internal-token: ""
+    timeout: 3s
+    review-task:
+      enabled: true
+      path: /api/review/tasks
+      max-attempts: 3
+```
+
+Java -> Python request:
+
+```json
+{
+  "taskId": "SW...",
+  "sessionId": "...",
+  "idempotencyKey": "SW...",
+  "materials": [
+    {
+      "materialType": "APPLICATION_FORM",
+      "originalFileName": "apply.pdf",
+      "storageKey": "SW.../APPLICATION_FORM/...",
+      "fileExtension": "pdf",
+      "uploaded": true
+    }
+  ]
+}
+```
+
+Python response:
+
+```json
+{
+  "aiTaskId": "SW...",
+  "status": "QUEUED",
+  "createdAt": "2026-05-27T01:00:00Z"
+}
+```
+
+### 3. Contracts
+
+| Item | Contract |
+|---|---|
+| Dispatch trigger | `ReviewTaskService.submit` creates the Java task/material rows, then calls Python when `review-task.enabled=true`. |
+| Auth header | Java sends `X-Internal-Token` only when `internal-token` is configured; it must never be logged or echoed. |
+| Payload casing | Wire payload uses camelCase to match FastAPI aliases. |
+| Materials | Java sends all MVP material slots; missing slots are present with `uploaded=false`. |
+| Idempotency | Java uses `taskId` as `idempotencyKey`; Python may safely dedupe by task ID. |
+| Java status on accept | After Python accepts the task, Java marks the task `PROCESSING` so legacy Worker polling will not claim it again. |
+| Java status on dispatch failure | Java marks the task `FAILED` and writes applicant/reviewer failure projections. |
+| Disabled dispatch | When `review-task.enabled=false`, Java keeps the existing `SUBMITTED` state so Worker polling can process the task. |
+
+### 4. Validation & Error Matrix
+
+| Condition | Expected behavior |
+|---|---|
+| Python accepts task with 2xx | Java returns submit response with `status=PROCESSING`; frontend polling sees processing. |
+| Python returns `401` or `403` | Java stores `FAILED` with `AUTH_ERROR`; no AI result is fabricated. |
+| Python returns `408` or times out | Java stores `FAILED` with `TIMEOUT`; the failure is retryable evidence, not a success result. |
+| Python returns `429` | Java stores `FAILED` with `RATE_LIMIT`. |
+| Python returns `5xx` | Java stores `FAILED` with `UPSTREAM_5XX`. |
+| Python returns malformed/empty accepted body | Java treats it as `SCHEMA_MISMATCH` and fails the task. |
+| Dispatch disabled in tests/local fallback | Worker polling path may still claim `SUBMITTED` tasks. |
+
+### 5. Good/Base/Bad Cases
+
+- Good: Java records `PROCESSING` only after Python accepted the task.
+- Good: Python outage writes a reviewer-visible failure category and manual-review notice.
+- Base: Unit tests may disable active dispatch to keep Worker polling tests stable.
+- Bad: Leave a Python-dispatched task in `QUEUED` while Worker polling also claims `QUEUED` tasks.
+- Bad: Return a polished draft opinion when Java never reached Python.
+
+### 6. Tests Required
+
+- Unit test `AiServiceClient` sends `POST /api/review/tasks`, camelCase payload,
+  timeout config, and `X-Internal-Token` when configured.
+- Unit test maps Python HTTP failures to `AUTH_ERROR`, `RATE_LIMIT`, `TIMEOUT`,
+  `UPSTREAM_5XX`, or `SYSTEM_ERROR`.
+- Service test proves submit success calls Python and stores Java status
+  `PROCESSING`.
+- Service test proves Python unavailable stores Java status `FAILED`, applicant
+  failure summary, reviewer failure issue, and metadata category.
+- Regression test keeps `review-task.enabled=false` fallback compatible with
+  `GET /api/task/pending`.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```java
+SubmitResponse response = reviewTaskService.submit(request, user);
+// task remains SUBMITTED while Java never calls Python
+```
+
+#### Correct
+
+```java
+aiServiceClient.dispatchReviewTask(aiReviewTaskRequest);
+transitionTask(task, "PROCESSING");
+```
+
+Python failures are caught, categorized, persisted as `FAILED`, and surfaced to
+frontend result queries.
+
+---
+
 ## CP2 Python Ingest And ChromaDB Contract
 
 Python CP2 ingest must be able to rebuild a knowledge base from an empty ChromaDB
