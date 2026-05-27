@@ -130,6 +130,10 @@ curl http://localhost:8080/api/task/SWA1B2C3D4E5F6G7H/status
 | COMPLETED | 已完成 |
 | FAILED | 失败 |
 
+CP3.5-B 起，默认配置下 `POST /task/submit` 会在 Java 创建任务和材料槽位后主动调用 Python FastAPI `POST /api/review/tasks`。Python 接受任务后，Java 会把任务状态推进到 `PROCESSING`，避免旧的 Worker 轮询路径重复领取；如果关闭 `water-approval.ai-service.review-task.enabled`，任务仍保持 `SUBMITTED`，由 Worker fallback 处理。
+
+Python 不可用、鉴权失败、超时、限流或返回 5xx 时，Java 会把任务写为 `FAILED`，并在申请人/审查人结果中保存失败原因，不会伪造成 AI 审查成功。
+
 ---
 
 ## 3. 查询申请人结果

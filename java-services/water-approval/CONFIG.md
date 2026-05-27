@@ -96,6 +96,9 @@ Java 侧通过 `water-approval.ai-service.*` 配置 Python AI/MCP 服务地址�
 | `water-approval.ai-service.timeout` | `3s` | 探活连接和读取超时。 |
 | `water-approval.ai-service.mcp-transport` | `streamable-http` | Python MCP Server transport 说明。 |
 | `water-approval.ai-service.mcp-path` | `/mcp` | MCP HTTP transport 入口路径说明。 |
+| `water-approval.ai-service.review-task.enabled` | `true` | 是否在提交材料后由 Java 主动调用 Python FastAPI 审查任务入口。 |
+| `water-approval.ai-service.review-task.path` | `/api/review/tasks` | Python FastAPI 审查任务创建路径。 |
+| `water-approval.ai-service.review-task.max-attempts` | `3` | Java 调度 Python 的最大尝试次数，至少为 `1`。 |
 | `water-approval.ai-service.ingest.workdir` | `../../python-services/smart-water-approval-review-system-py` | 从 `java-services/water-approval` 出发的 ingest 运维命令执行目录。 |
 | `water-approval.ai-service.ingest.source-dir` | `../../docs/参考资料` | 进入 Python 服务目录后的知识库源资料目录。 |
 | `water-approval.ai-service.ingest.chunk-size` | `512` | ingest 分块长度。 |
@@ -110,6 +113,8 @@ curl -X POST http://localhost:8080/api/ai/ingest
 ```
 
 `/api/ai/ingest` 当前返回可复现运维命令，不在 Java 进程内启动 Python ingest。Python 侧正式 REST ingest API 补齐后，再把该入口升级为远程触发。
+
+`POST /api/task/submit` 默认会主动调用 Python FastAPI `POST /api/review/tasks`。如果 Python 接受任务，Java 将任务状态写为 `PROCESSING`；如果 Python 不可用或返回错误，Java 将任务写为 `FAILED` 并保存失败分类。普通单元测试或临时回退可设置 `AI_REVIEW_TASK_DISPATCH_ENABLED=false`，让旧 Worker 轮询路径继续处理 `SUBMITTED` 任务。
 
 ## 安全提醒
 
