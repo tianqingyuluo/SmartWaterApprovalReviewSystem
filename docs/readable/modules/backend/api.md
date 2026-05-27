@@ -67,6 +67,25 @@ CP3-F 增加审批人员初审动作接口：
 - 同一任务 CP3 内只允许提交一次初审动作；重复或陈旧提交返回业务 `409`。
 - 接口不改变 `ProcessingStatus`，处理结果写入初审快照和操作日志，供申请人和审批人员结果接口展示。
 
+## Java 主动调度 Python FastAPI
+
+CP3.5-B 之后，`POST /api/task/submit` 不再只依赖 Worker 轮询。默认配置下，Java 在创建 `review_task` 和三类材料槽位后，会主动调用 Python FastAPI：
+
+- Python 地址来自 `water-approval.ai-service.base-url`。
+- 调度路径来自 `water-approval.ai-service.review-task.path`，默认 `/api/review/tasks`。
+- 如果配置了 `water-approval.ai-service.internal-token`，Java 会在调度请求中携带 `X-Internal-Token`。
+- Java 发送的 payload 使用 camelCase，包含 `taskId`、`sessionId`、`idempotencyKey` 和三类材料槽位；缺失材料也会以 `uploaded=false` 出现在 `materials` 中。
+
+调度成功后，Java 将任务状态写为 `PROCESSING`，避免旧的 Worker 轮询路径再次领取同一个任务。前端继续通过 Java 的状态和结果接口轮询，不直接访问 Python。
+
+如果 Python 不可用、鉴权失败、超时、限流或返回 5xx，Java 会把任务写为 `FAILED`，并写入申请人/审查人两类失败结果：
+
+- 申请人结果说明“AI审查服务调度失败，未生成智能审查结论”。
+- 审查人结果包含失败分类，例如 `AUTH_ERROR`、`TIMEOUT`、`RATE_LIMIT`、`UPSTREAM_5XX` 或 `SYSTEM_ERROR`。
+- 失败时不会生成草稿审查意见，也不会伪造成 `COMPLETED` 或 `PARTIAL_SUCCESS`。
+
+当 `water-approval.ai-service.review-task.enabled=false` 时，Java 保留旧的 `SUBMITTED` 状态，允许 Worker 通过 `GET /api/task/pending` 继续处理任务。该模式主要用于普通单元测试或兼容性回退。
+
 ## Worker 回调边界
 
 Python Worker 接口保持独立的内部 token 边界，不要求网页登录态：
