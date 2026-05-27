@@ -110,10 +110,7 @@
 - `cd python-services/smart-water-approval-review-system-py && uv run python -m unittest discover -s tests -p test*.py`
 - `cd python-services/smart-water-approval-review-system-py && uv run python -m compileall src main.py`
 
-当前限制：
-
-- 本机当前未配置 `OCR_GLM_API_KEY` 与 `OCR_GLM_BASE_URL`，因此本次补充的是自动化回归证据，不宣称真实 GLM OCR 联机成功。
-- 若后续补真实营业执照样例证据，应追加记录：请求前后差异、GLM 返回 `200`、以及结果页不再出现 `ocr_error: 400 Bad Request`。
+本节先记录自动化回归证据；真实联机证据见 6.1 和 6.2。
 
 ## 6.1 真实 GLM OCR 探测补录
 
@@ -147,4 +144,47 @@
 结论：
 
 - 本任务“data URI 修复后真实 GLM OCR 从 400 变 200”的关键验收点已被真实联机探测证明。
-- 当前仍缺少的是“完整 Java -> Worker -> 结果页”联机截图或日志证据；但 OCR 适配器本身已确认可用。
+- OCR 适配器本身已确认可用。
+
+## 6.2 Java -> Worker -> GLM OCR -> 结果页联机补录
+
+记录日期：`2026-05-27`
+
+本次使用真实后端、真实对象存储、真实 Worker 与真实 GLM OCR 凭证执行完整链路：
+
+- MySQL：本机 `3306`，使用隔离库 `smartwater_e2e` 按 `schema.sql` 初始化。
+- 对象存储：本机 MinIO/S3 兼容服务 `http://localhost:9000`，bucket `smartwater`。
+- Java：`http://localhost:8080/api`，带 `--water-approval.worker.token=smartwater-worker-token` 启动。
+- Python Worker：从外部 `.env` 加载 `WORKER_TOKEN`、`OCR_GLM_API_KEY`、`OCR_GLM_BASE_URL` 与 LLM 配置。
+- 样例材料：`docs/参考资料/营业执照.jpg`，作为 `businessLicense` 上传。
+
+关键执行记录：
+
+- 申请人登录 `POST /api/auth/login` 返回 `code=200`。
+- 提交任务 `POST /api/task/submit` 返回：
+  - `taskId = SW252E98F23D714BB6`
+  - `sessionId = f41e523d58ea4122befc600a9eaa68d1`
+  - `status = SUBMITTED`
+  - `BUSINESS_LICENSE uploaded = true`
+- Worker 轮询 `GET /api/task/pending` 返回 HTTP `200`，并开始处理 `SW252E98F23D714BB6`。
+- Worker 状态回写 `PUT /api/task/SW252E98F23D714BB6/status` 返回 HTTP `200`。
+- Worker 下载材料 `GET /api/material/download?key=...BUSINESS_LICENSE...jpg` 返回 HTTP `200`。
+- Worker 调用 GLM `POST https://open.bigmodel.cn/api/paas/v4/layout_parsing` 返回 HTTP `200 OK`。
+- Worker 回写结果 `PUT /api/task/SW252E98F23D714BB6/result` 返回 HTTP `200`，任务最终为 `PARTIAL_SUCCESS`。
+
+结果查询：
+
+- 申请人结果 `GET /api/task/SW252E98F23D714BB6/result/applicant?sessionId=...` 返回 `code=200`，`status=PARTIAL_SUCCESS`。
+- 申请人结果 `missingMaterials` 为 `["APPLICATION_FORM", "ID_CARD"]`。
+- 审核人结果 `GET /api/task/SW252E98F23D714BB6/result/reviewer` 返回 `code=200`。
+- 审核人结果 `extractedFields[0].fieldKey = ocr_markdown`。
+- `ocr_markdown` 中可识别：
+  - `营业执照`
+  - `统一社会信用代码`
+  - `91441303MA531L6K37`
+
+注意事项：
+
+- 由于本次只上传营业执照，缺少申请书与身份证，业务结果为 `PARTIAL_SUCCESS` 是符合预期的。
+- Review LLM 返回 JSON 外层结构不符合当前严格 schema，Worker 降级为规则结果并保留 `MODEL_UNCERTAIN`；这不影响本任务的 OCR data URI 验收结论。
+- 本次结果页没有出现 `ocr_error: 400 Bad Request`，证明 Java 存储材料经 Worker 下载后已按 data URI 成功进入 GLM OCR。
