@@ -15,7 +15,7 @@
   "branch": "task/cp3-5-document-ocr-red-tests",
   "base_branch": "v1",
   "worktree_path": null,
-  "commit": "b938229c677bf7ee70bbdc2d958bbc87d88fcf3d",
+  "commit": "9e80e9f6d1c6f960da19b2f4880c2b229cf9b8b1",
   "pr_url": "https://github.com/tianqingyuluo/SmartWaterApprovalReviewSystem/pull/23",
   "subtasks": [],
   "children": [],

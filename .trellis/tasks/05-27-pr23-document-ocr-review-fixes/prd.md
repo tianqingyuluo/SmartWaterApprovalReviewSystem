@@ -37,7 +37,24 @@
 - Frontend tests: `npm run test -- --run` passed (`19 passed`).
 - Frontend build: `npm run build` passed.
 - Java tests: `./mvnw test` passed (`93 passed`).
-- Real-chain note: this fix did not run real OCR/LLM/MCP/backend E2E. The local environment had no `OCR_GLM_API_KEY`, `REVIEW_LLM_API_KEY`, `BACKEND_API_BASE`, `WORKER_TOKEN`, or `INTERNAL_API_TOKEN`; PR task directory also had no persisted E2E evidence file.
+- Real component checks passed:
+  - GLM OCR on `docs/参考资料/营业执照.jpg` succeeded and extracted `ocr_markdown`.
+  - `docs/参考资料/申请书.docx` parsed with 5 blocks, 1 table, and 45 extracted fields.
+  - `docs/参考资料/取水许可办理需资料及流程.docx` parsed with 50 blocks.
+  - MCP demo `knowledge_search` sample completed.
+- Real HTTP E2E passed for the document/OCR/writeback path:
+  - Task ID: `SWD1D632319D3D48F0`.
+  - Submitted materials: `申请书.docx` and `营业执照.jpg`; `ID_CARD` intentionally omitted.
+  - Chain exercised: Java upload to RustFS -> Java dispatch to Python FastAPI -> Python download via Java -> DOCX parser -> real GLM OCR -> Java result writeback -> applicant/reviewer result query.
+  - Final status: `PARTIAL_SUCCESS`.
+  - Applicant/reviewer missing materials: `["ID_CARD"]`.
+  - Reviewer extracted fields: `52`.
+  - Reviewer field snapshot contains business-license code `91441303MA531L6K37`.
+  - Reviewer issues include `MISSING_MATERIAL` and `MODEL_UNCERTAIN`.
+- Real Review LLM limitation:
+  - Direct LLM smoke reached the provider but returned schema-mismatched output.
+  - E2E reviewer summary was `规则检查完成，Agent汇总不可用，已降级为规则结果`.
+  - This proves the degradation path is honest, but does not prove full intelligent compliance reasoning success.
 
 ## Out Of Scope
 
