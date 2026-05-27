@@ -376,6 +376,8 @@ const reviewerActionSubmitting = ref(false)
 const actionErrorMessage = ref('')
 const actionSuccessMessage = ref('')
 const previewStates = ref<Record<string, PreviewLoadState>>({})
+let lookupSequence = 0
+let previewLoadSequence = 0
 
 const uploadedCount = computed(() => task.value?.materials.filter((slot) => slot.uploaded).length ?? 0)
 const isApplicantView = computed(() => task.value?.viewMode === 'APPLICANT')
@@ -400,19 +402,23 @@ async function lookup() {
     return
   }
 
+  const currentLookup = ++lookupSequence
   lookupError.value = ''
   loading.value = true
   try {
     const taskId = inputTaskId.value.trim()
     const statusRes = await getTaskStatus(taskId)
+    if (currentLookup !== lookupSequence) return
     if (getCurrentRole() === 'APPLICANT') {
       const resultRes = await getApplicantResult(taskId)
+      if (currentLookup !== lookupSequence) return
       task.value = toApplicantTaskResultView(
         statusRes.data.data,
         toApplicantResultView(resultRes.data.data),
       )
     } else {
       const resultRes = await getReviewerResult(taskId)
+      if (currentLookup !== lookupSequence) return
       task.value = {
         viewMode: 'REVIEWER',
         ...toReviewerResultView(statusRes.data.data, resultRes.data.data),
@@ -433,8 +439,10 @@ async function lookup() {
 }
 
 async function loadPreviewAssets(items: MaterialPreviewItem[]) {
+  const currentLoad = ++previewLoadSequence
   await Promise.all(items.map(async (item) => {
     if (!item.previewPath || item.kind === 'missing' || item.kind === 'unsupported') {
+      if (currentLoad !== previewLoadSequence) return
       previewStates.value[item.materialType] = {
         status: 'idle',
         objectUrl: null,
@@ -452,12 +460,17 @@ async function loadPreviewAssets(items: MaterialPreviewItem[]) {
     try {
       const blob = await fetchMaterialPreviewBlob(item.previewPath)
       const objectUrl = URL.createObjectURL(blob)
+      if (currentLoad !== previewLoadSequence) {
+        URL.revokeObjectURL(objectUrl)
+        return
+      }
       previewStates.value[item.materialType] = {
         status: 'ready',
         objectUrl,
         message: '',
       }
     } catch (error) {
+      if (currentLoad !== previewLoadSequence) return
       previewStates.value[item.materialType] = {
         status: 'error',
         objectUrl: null,
@@ -468,6 +481,7 @@ async function loadPreviewAssets(items: MaterialPreviewItem[]) {
 }
 
 function resetPreviewStates() {
+  previewLoadSequence += 1
   Object.values(previewStates.value).forEach((state) => {
     if (state.objectUrl) {
       URL.revokeObjectURL(state.objectUrl)
