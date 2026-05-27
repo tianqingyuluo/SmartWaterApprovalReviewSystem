@@ -60,22 +60,4 @@ describe('request client', () => {
 
     expect(clearAuthState).toHaveBeenCalled()
   })
-
-  it('passes through blob preview responses without business-json interception', async () => {
-    const blob = new Blob(['preview'], { type: 'application/pdf' })
-
-    const response = await request.get('/task/task-1/material/APPLICATION_FORM/preview', {
-      responseType: 'blob',
-      adapter: async (config) => ({
-        data: blob,
-        status: 200,
-        statusText: 'OK',
-        headers: { 'content-type': 'application/pdf' },
-        config,
-        request: {},
-      }),
-    })
-
-    expect(response.data).toBe(blob)
-  })
 })

@@ -82,20 +82,9 @@ export interface MaterialSlot {
   materialType: MaterialType
   originalFileName: string | null
   uploaded: boolean
-  previewPath?: string | null
   fileSize?: number | null
   fileExtension?: string | null
   uploadedAt?: string | null
-}
-
-export type MaterialPreviewKind = 'pdf' | 'image' | 'unsupported' | 'missing'
-
-export interface MaterialPreviewItem {
-  materialType: MaterialType
-  originalFileName: string | null
-  uploaded: boolean
-  previewPath: string | null
-  kind: MaterialPreviewKind
 }
 
 export interface Finding {
@@ -275,7 +264,6 @@ export interface ReviewerResultView {
   reviewerActionAt: string | null
   reviewActionLogs: ReviewActionLogView[]
   materials: MaterialSlot[]
-  previewMaterials: MaterialPreviewItem[]
   summary: ResultSummary | null
   extractedFields: Record<string, string>
   fieldConfidence: Record<string, number> | null
