@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tianqingyuluo.waterapproval.common.BusinessException;
 import com.tianqingyuluo.waterapproval.dto.ApplicantResultResponse;
 import com.tianqingyuluo.waterapproval.dto.LoginRequest;
+import com.tianqingyuluo.waterapproval.dto.MaterialPreviewResource;
 import com.tianqingyuluo.waterapproval.dto.PendingTaskResponse;
 import com.tianqingyuluo.waterapproval.dto.ResultWriteRequest;
 import com.tianqingyuluo.waterapproval.dto.ReviewerActionResponse;
