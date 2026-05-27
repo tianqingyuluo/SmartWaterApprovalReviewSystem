@@ -18,5 +18,8 @@ public class SubmitResponse {
         private String materialType;
         private String originalFileName;
         private Boolean uploaded;
+        private Long fileSize;
+        private String fileExtension;
+        private LocalDateTime uploadedAt;
     }
 }

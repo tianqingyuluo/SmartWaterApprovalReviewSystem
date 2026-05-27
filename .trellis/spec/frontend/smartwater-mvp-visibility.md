@@ -86,6 +86,7 @@ Reviewer view may show:
 
 - Extracted fields and confidence.
 - Material summaries.
+- Browser-safe original material preview for uploaded PDF/JPG/JPEG/PNG files.
 - Full issue list.
 - Risk hints.
 - Draft review opinion.
@@ -94,6 +95,93 @@ Reviewer view may show:
 - CP3 initial-review action controls and action log after the backend exposes
   a reviewer result for the task.
 - Failure category and redacted failure reason.
+
+## Browser Material Preview
+
+Result pages may embed original materials only through the Java task preview
+endpoint. The frontend must never use object-storage keys or Worker download
+APIs for browser display.
+
+### 1. Scope / Trigger
+
+- Trigger: reviewer/applicant result page, material slot status display, preview
+  API adapter, or file-extension UI logic.
+
+### 2. Signatures
+
+```ts
+getMaterialPreviewUrl(taskId: string, materialType: MaterialType): string
+fetchMaterialPreview(taskId: string, materialType: MaterialType): Promise<AxiosResponse<Blob>>
+```
+
+Backend path:
+
+```http
+GET /api/task/{taskId}/material/{materialType}/preview
+Authorization: Bearer <token>
+```
+
+Preview state:
+
+```ts
+export type MaterialPreviewKind = 'IMAGE' | 'PDF' | 'UNSUPPORTED'
+```
+
+### 3. Contracts
+
+| Item | Contract |
+|---|---|
+| Blob fetch | Use axios `responseType: 'blob'`; preview API is binary, not `R<T>`. |
+| URL construction | Encode `taskId` and `materialType` path segments. |
+| Supported embed | `jpg`, `jpeg`, `png` render as `<img>`; `pdf` renders as `<iframe>` or equivalent viewer. |
+| Unsupported embed | `docx` and unknown extensions show a clear unsupported-preview message. |
+| Object URL lifecycle | Revoke old object URLs on task change and component unmount. |
+| Auth | Rely on the existing request interceptor to send `Authorization: Bearer <token>`. |
+| Secret boundary | Do not add `storageKey`, signed URLs, Worker token, or object-store credentials to frontend DTOs or state. |
+
+### 4. Validation & Error Matrix
+
+| Condition | Expected behavior |
+|---|---|
+| Uploaded image/PDF preview succeeds | Display the material beside task/result information. |
+| Preview returns `415` for DOCX | Display unsupported-preview copy; task/result page remains usable. |
+| Preview returns `401` / business auth failure | Existing auth handling clears token and redirects when required. |
+| Preview returns `403` / `404` | Show per-material preview error, not a full-page crash. |
+| User switches task while blob request is inflight | Ignore stale response and revoke any old object URL. |
+
+### 5. Good/Base/Bad Cases
+
+- Good: result page can show real uploaded business license image while also
+  showing OCR fields and AI issues.
+- Good: DOCX application form is parsed by backend/Worker but displayed as
+  "browser preview unsupported".
+- Base: applicant and reviewer result pages can share preview adapter behavior,
+  while backend remains the authority for visibility.
+- Bad: generate preview URLs from `storageKey`.
+- Bad: treat binary preview errors as normal JSON `R<T>` responses.
+
+### 6. Tests Required
+
+- API adapter test for URL encoding and blob response type.
+- Result page or state regression for image/PDF supported branch, DOCX
+  unsupported branch, and object URL cleanup.
+- Cross-layer E2E evidence for actual HTTP status, `Content-Type`, `inline`,
+  and `nosniff` headers.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```ts
+const url = `/material/download?key=${slot.storageKey}`
+```
+
+#### Correct
+
+```ts
+const response = await fetchMaterialPreview(taskId, slot.materialType)
+const objectUrl = URL.createObjectURL(response.data)
+```
 
 ## CP3 Role Routing And Token State
 

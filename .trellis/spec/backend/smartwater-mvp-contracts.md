@@ -237,12 +237,118 @@ Rules:
 | Concern | Owner | Notes |
 |---|---|---|
 | Slot name and file count | Java backend | Frontend can pre-check, but backend is authoritative. |
-| File extension and MIME | Java backend | Reject Word/Docx in MVP. |
+| File extension and MIME | Java backend | CP3.5 accepts `docx` for Python parsing; legacy `.doc` may still be rejected until conversion exists. |
 | Object storage reference | Java backend | Python consumes references, not upload ownership. |
 | OCR and extraction confidence | Python Worker | Return confidence and evidence references where available. Parsing/OCR failures may be retried with bounded retry policy. |
 | Review result schema | Python Worker + Java backend | Worker validates before writeback; Java rejects invalid result snapshots. |
 | Applicant/reviewer visibility | Java backend | Frontend should not filter from a full reviewer payload for applicant display. |
 | Knowledge basis IDs | Knowledge pack + Python Worker | Model may only cite provided knowledge fragments. |
+
+---
+
+## Browser-Safe Material Preview Contract
+
+### 1. Scope / Trigger
+
+- Trigger: browser material preview, result page evidence display, Java task
+  visibility, object storage reads, or binary HTTP error handling.
+- Goal: allow logged-in users to preview uploaded PDF/image materials without
+  exposing `storageKey`, Worker token, RustFS credentials, or signed storage
+  URLs to the browser.
+
+### 2. Signatures
+
+Browser preview API:
+
+```http
+GET /api/task/{taskId}/material/{materialType}/preview
+Authorization: Bearer <sa-token>
+```
+
+Allowed `materialType` path values:
+
+```json
+["APPLICATION_FORM", "BUSINESS_LICENSE", "ID_CARD"]
+```
+
+Previewable extensions:
+
+```json
+["pdf", "jpg", "jpeg", "png"]
+```
+
+### 3. Contracts
+
+| Item | Contract |
+|---|---|
+| Auth | Normal网页登录态，not `@WorkerApi`; unauthenticated requests fail before storage access. |
+| Access | Reuse task visibility: applicant owns task, reviewer sees reviewer-visible terminal tasks, admin sees all. |
+| Lookup | Browser sends only `taskId + materialType`; never sends `storageKey`. |
+| Storage | Java reads object storage through `StorageService.download(storageKey)` after access check. |
+| Success response | HTTP `200`, raw binary body, no `R<T>` wrapper. |
+| Content type | Use extension allow-list mapping: `pdf -> application/pdf`, `jpg/jpeg -> image/jpeg`, `png -> image/png`. |
+| Content disposition | `inline` with sanitized original file name when available. |
+| Security headers | Set `X-Content-Type-Options: nosniff` and `Cache-Control: no-store`. |
+| DOCX | `docx` may be uploaded and parsed by Python, but browser preview returns HTTP `415 text/plain;charset=UTF-8`. |
+| Worker download | `/api/material/download?key=<storageKey>` remains Worker-only with `X-Worker-Token`; frontend must not call it. |
+
+### 4. Validation & Error Matrix
+
+| Condition | Expected behavior |
+|---|---|
+| No login token | Login/auth error; do not read storage. |
+| Applicant requests another applicant's task | Access denied; do not reveal material existence. |
+| Reviewer requests non-reviewer-visible task | Access denied before storage read. |
+| Unknown `materialType` | HTTP `400` with plain text on preview endpoint. |
+| Slot missing or no `storageKey` | HTTP `404` with plain text. |
+| Extension is `docx` or any non-previewable type | HTTP `415 text/plain;charset=UTF-8`. |
+| Storage download fails | HTTP `404` with plain text; do not leak storage key. |
+| Success for image/PDF | HTTP `200` binary, `inline`, `nosniff`, `no-store`. |
+
+### 5. Good/Base/Bad Cases
+
+- Good: frontend fetches preview as `Blob` from
+  `/task/{taskId}/material/{materialType}/preview` and creates an object URL for
+  image/PDF embedding.
+- Good: DOCX upload still participates in Python parsing while the browser page
+  shows an unsupported-preview message.
+- Base: unit tests may fake `StorageService`, but real CP3.5 evidence must use
+  RustFS-backed uploaded files.
+- Bad: expose `storageKey` in task status/result DTOs for frontend preview.
+- Bad: return JSON `R.fail(...)` from a binary preview endpoint and make blob
+  callers parse business envelopes.
+
+### 6. Tests Required
+
+- Java controller/service tests for success image/PDF preview, missing material,
+  invalid material type, unsupported DOCX, and access-denied cases.
+- Java exception handling test that preview failures use HTTP status with
+  `text/plain;charset=UTF-8`, not JSON `R<T>`.
+- Frontend API test that `fetchMaterialPreview()` uses `responseType: 'blob'`.
+- Frontend result-page regression that unsupported DOCX does not crash the page
+  and image/PDF object URLs are revoked on task change or unmount.
+- Real E2E evidence with uploaded RustFS files and actual preview HTTP headers.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```http
+GET /api/material/download?key=task/SW123/secret/object.jpg
+Authorization: Bearer <user-token>
+```
+
+This leaks the internal storage reference and mixes browser auth with the Worker
+download boundary.
+
+#### Correct
+
+```http
+GET /api/task/SW123/material/BUSINESS_LICENSE/preview
+Authorization: Bearer <sa-token>
+```
+
+Java performs task access checks first, then reads object storage internally.
 
 ---
 

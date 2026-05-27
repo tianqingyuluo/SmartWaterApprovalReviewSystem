@@ -204,6 +204,7 @@ class ReviewReasoningAdapter(ReviewAdapter):
     ) -> ReviewResult:
         client = self._build_client()
         allowed_basis_refs = _knowledge_fragment_ids(knowledge_fragments)
+        basis_ref_aliases = _knowledge_fragment_aliases(knowledge_fragments)
         user_prompt = self._build_user_prompt(extracted_fields, material_types, missing_materials, knowledge_fragments)
 
         messages: list[dict[str, str]] = [
@@ -246,7 +247,7 @@ class ReviewReasoningAdapter(ReviewAdapter):
                 content = resp.choices[0].message.content or ""
                 finish = resp.choices[0].finish_reason
 
-                parsed, failure = self._parse_and_validate(content, task_id, allowed_basis_refs)
+                parsed, failure = self._parse_and_validate(content, task_id, allowed_basis_refs, basis_ref_aliases)
                 if parsed is not None:
                     parsed.model_metadata = ModelMetadata(
                         provider=config.REVIEW_LLM_PROVIDER,
@@ -355,6 +356,7 @@ class ReviewReasoningAdapter(ReviewAdapter):
         content: str,
         task_id: str,
         allowed_basis_refs: set[str] | None = None,
+        basis_ref_aliases: dict[str, str] | None = None,
     ) -> tuple[ReviewResult | None, str | None]:
         if not content or not content.strip():
             logger.warning("Empty content from review for task %s", task_id)
@@ -375,6 +377,8 @@ class ReviewReasoningAdapter(ReviewAdapter):
             logger.warning("Review output is not a JSON object for task %s", task_id)
             return None, "SCHEMA_MISMATCH"
         data = _normalize_review_payload(data)
+        if basis_ref_aliases:
+            data = _canonicalize_basis_refs_in_payload(data, basis_ref_aliases, allowed_basis_refs or set())
 
         missing_top = _SCHEMA_REQUIRED_TOP - set(data.keys())
         if missing_top:
@@ -560,7 +564,7 @@ def _normalize_issue(issue: dict[str, Any]) -> dict[str, Any]:
     normalized["code"] = _normalize_issue_code(normalized.get("code"))
     normalized["severity"] = _normalize_severity(normalized.get("severity"))
     normalized["message"] = str(normalized.get("message") or normalized.get("code") or "模型返回问题项未提供描述。")
-    normalized["basis_refs"] = _normalize_string_list(normalized.get("basis_refs"))
+    normalized["basis_refs"] = _normalize_basis_refs(normalized.get("basis_refs"))
     normalized["applicant_visible"] = _normalize_bool(normalized.get("applicant_visible"), default=True)
     if normalized.get("material_type") is not None:
         normalized["material_type"] = str(normalized.get("material_type"))
@@ -573,7 +577,7 @@ def _normalize_risk_hint(hint: dict[str, Any]) -> dict[str, Any]:
     normalized = _normalize_aliases(hint, _RISK_HINT_ALIASES)
     normalized["risk_level"] = _normalize_risk_level(normalized.get("risk_level"))
     normalized["description"] = str(normalized.get("description") or "模型返回风险项未提供描述。")
-    normalized["basis_refs"] = _normalize_string_list(normalized.get("basis_refs"))
+    normalized["basis_refs"] = _normalize_basis_refs(normalized.get("basis_refs"))
     normalized["requires_manual_review"] = _normalize_bool(normalized.get("requires_manual_review"), default=False)
     return normalized
 
@@ -597,13 +601,13 @@ def _apply_review_defaults(data: dict[str, Any]) -> dict[str, Any]:
         refs: list[str] = []
         for issue in normalized.get("issues", []):
             if isinstance(issue, dict):
-                refs.extend(_normalize_string_list(issue.get("basis_refs")))
+                refs.extend(_normalize_basis_refs(issue.get("basis_refs")))
         for hint in normalized.get("risk_hints", []):
             if isinstance(hint, dict):
-                refs.extend(_normalize_string_list(hint.get("basis_refs")))
+                refs.extend(_normalize_basis_refs(hint.get("basis_refs")))
         normalized["basis_refs"] = _dedupe_strings(refs)
     else:
-        normalized["basis_refs"] = _normalize_string_list(normalized.get("basis_refs"))
+        normalized["basis_refs"] = _normalize_basis_refs(normalized.get("basis_refs"))
     if "manual_review_notice" not in normalized:
         normalized["manual_review_notice"] = "AI审核结果为辅助建议，不构成最终审批意见。"
     return normalized
@@ -650,6 +654,79 @@ def _normalize_string_list(value: Any) -> list[str]:
         parts = re.split(r"[、,，;；\\s]+", value.strip())
         return _dedupe_strings(part for part in parts if part)
     return [str(value)]
+
+
+def _normalize_basis_refs(value: Any) -> list[str]:
+    return _dedupe_strings(_strip_basis_ref_wrapper(item) for item in _normalize_string_list(value))
+
+
+def _canonicalize_basis_refs_in_payload(
+    data: dict[str, Any],
+    aliases: dict[str, str],
+    allowed_basis_refs: set[str],
+) -> dict[str, Any]:
+    normalized = dict(data)
+    normalized["basis_refs"] = [
+        _canonicalize_basis_ref(ref, aliases, allowed_basis_refs)
+        for ref in _normalize_basis_refs(normalized.get("basis_refs"))
+    ]
+
+    issues = normalized.get("issues")
+    if isinstance(issues, list):
+        normalized["issues"] = [
+            _canonicalize_basis_refs_in_item(item, aliases, allowed_basis_refs) if isinstance(item, dict) else item
+            for item in issues
+        ]
+
+    risk_hints = normalized.get("risk_hints")
+    if isinstance(risk_hints, list):
+        normalized["risk_hints"] = [
+            _canonicalize_basis_refs_in_item(item, aliases, allowed_basis_refs) if isinstance(item, dict) else item
+            for item in risk_hints
+        ]
+
+    return normalized
+
+
+def _canonicalize_basis_refs_in_item(
+    item: dict[str, Any],
+    aliases: dict[str, str],
+    allowed_basis_refs: set[str],
+) -> dict[str, Any]:
+    normalized = dict(item)
+    normalized["basis_refs"] = [
+        _canonicalize_basis_ref(ref, aliases, allowed_basis_refs)
+        for ref in _normalize_basis_refs(normalized.get("basis_refs"))
+    ]
+    return normalized
+
+
+def _canonicalize_basis_ref(value: str, aliases: dict[str, str], allowed_basis_refs: set[str]) -> str:
+    text = _strip_basis_ref_wrapper(value)
+    if text in aliases:
+        return aliases[text]
+
+    prefix = re.split(r"[:：]", text, maxsplit=1)[0].strip()
+    if prefix in aliases:
+        return aliases[prefix]
+
+    for allowed in allowed_basis_refs:
+        if allowed and allowed in text:
+            return allowed
+
+    return text
+
+
+def _strip_basis_ref_wrapper(value: str) -> str:
+    text = str(value).strip()
+    while len(text) >= 2 and (
+        (text[0] == "[" and text[-1] == "]")
+        or (text[0] == "【" and text[-1] == "】")
+        or (text[0] == "(" and text[-1] == ")")
+        or (text[0] == "（" and text[-1] == "）")
+    ):
+        text = text[1:-1].strip()
+    return text
 
 
 def _dedupe_strings(values) -> list[str]:
@@ -749,6 +826,44 @@ def _knowledge_fragment_ids(knowledge_fragments: list) -> set[str]:
         if source_id:
             ids.add(str(source_id))
     return ids
+
+
+def _knowledge_fragment_aliases(knowledge_fragments: list) -> dict[str, str]:
+    aliases: dict[str, str] = {}
+    for fragment in knowledge_fragments:
+        if hasattr(fragment, "source_id"):
+            source_id = getattr(fragment, "source_id", None)
+            source_title = getattr(fragment, "source_title", None)
+        elif isinstance(fragment, dict):
+            source_id = fragment.get("source_id") or fragment.get("sourceId") or fragment.get("id")
+            source_title = fragment.get("source_title") or fragment.get("sourceTitle") or fragment.get("title")
+        else:
+            source_id = None
+            source_title = None
+
+        if not source_id:
+            continue
+        canonical = str(source_id).strip()
+        if not canonical:
+            continue
+        aliases[canonical] = canonical
+        for alias in _basis_ref_alias_candidates(canonical, source_title):
+            aliases.setdefault(alias, canonical)
+    return aliases
+
+
+def _basis_ref_alias_candidates(source_id: str, source_title: Any) -> list[str]:
+    candidates = [source_id]
+    if source_title:
+        title = str(source_title).strip()
+        if title:
+            candidates.append(title)
+            candidates.append(re.sub(r"\.(docx?|pdf|jpe?g|png)$", "", title, flags=re.IGNORECASE))
+    source_prefix = re.split(r"[_#]", source_id, maxsplit=1)[0].strip()
+    if source_prefix:
+        candidates.append(source_prefix)
+        candidates.append(re.sub(r"\.(docx?|pdf|jpe?g|png)$", "", source_prefix, flags=re.IGNORECASE))
+    return _dedupe_strings(candidates)
 
 
 def _invalid_basis_refs(data: dict, allowed_basis_refs: set[str] | None) -> set[str]:

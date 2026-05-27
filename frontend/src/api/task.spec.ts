@@ -1,11 +1,25 @@
 import { describe, expect, it } from 'vitest'
-import { isReviewerActionCompleted, toApplicantResultView, toApplicantTaskResultView, toReviewerResultView } from './task'
+import {
+  getMaterialPreviewUrl,
+  isReviewerActionCompleted,
+  toApplicantResultView,
+  toApplicantTaskResultView,
+  toReviewerResultView,
+} from './task'
 import { ACCEPTED_EXTENSIONS } from '@/types'
 import type { ApplicantResultResponse, ReviewerResultResponse, TaskStatusResponse } from '@/types'
 
 describe('task API adapters', () => {
   it('keeps frontend upload extensions aligned with CP3.5 docx backend support', () => {
     expect(ACCEPTED_EXTENSIONS).toEqual(['jpg', 'jpeg', 'png', 'pdf', 'docx'])
+  })
+
+  it('builds browser-safe material preview URL without exposing storage key', () => {
+    const url = getMaterialPreviewUrl('SW task/1', 'BUSINESS_LICENSE')
+
+    expect(url).toBe('/task/SW%20task%2F1/material/BUSINESS_LICENSE/preview')
+    expect(url).not.toContain('storageKey')
+    expect(url).not.toContain('key=')
   })
 
   it('maps applicant Java DTO issue fields to page findings', () => {

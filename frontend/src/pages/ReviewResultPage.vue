@@ -31,17 +31,56 @@
             <strong>材料与任务信息</strong>
             <small class="justify-self-end text-[#cbd5e1] max-md:justify-self-center">{{ uploadedCount }}/{{ task.materials.length }} 已提交</small>
           </div>
-          <div class="grid min-h-[455px] place-items-center content-center gap-[14px] bg-[linear-gradient(90deg,rgba(15,23,42,0.035)_1px,transparent_1px),linear-gradient(rgba(15,23,42,0.035)_1px,transparent_1px),#fbfcff] bg-[length:24px_24px] px-11 py-11 text-center max-md:min-h-[300px] max-md:px-[18px] max-md:py-7">
-            <div class="grid h-[116px] w-[116px] place-items-center rounded-[28px] bg-[#eef6ff] text-[#6da9f5]" aria-hidden="true">
-              <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <path d="M14 2v6h6"/>
-                <path d="M8 13h8"/>
-                <path d="M8 17h5"/>
-              </svg>
+          <div class="min-h-[455px] bg-[linear-gradient(90deg,rgba(15,23,42,0.035)_1px,transparent_1px),linear-gradient(rgba(15,23,42,0.035)_1px,transparent_1px),#fbfcff] bg-[length:24px_24px] px-5 py-5 max-md:min-h-[300px] max-md:px-[18px] max-md:py-5">
+            <div v-if="materialPreviews.length" class="grid gap-4">
+              <article
+                v-for="preview in materialPreviews"
+                :key="preview.materialType"
+                class="overflow-hidden rounded-[18px] border border-[#dbe8f7] bg-white shadow-[0_10px_24px_rgba(15,23,42,0.06)]"
+              >
+                <div class="flex items-center justify-between gap-3 border-b border-[#edf2f7] px-4 py-3 max-md:block">
+                  <div>
+                    <strong class="text-[#20304a]">{{ preview.label }}</strong>
+                    <p class="mt-1 text-xs text-sw-muted">{{ preview.fileName }}</p>
+                  </div>
+                  <span class="rounded-full bg-[#f1f7ff] px-2.5 py-1 text-xs font-black text-sw-primary">
+                    {{ preview.fileExtension.toUpperCase() || 'FILE' }}
+                  </span>
+                </div>
+
+                <div class="min-h-[280px] bg-[#f8fbff]">
+                  <div v-if="preview.loading" class="grid min-h-[280px] place-items-center text-sw-muted">
+                    <span class="sw-spinner"></span>
+                    <span class="mt-3">正在加载原始材料预览</span>
+                  </div>
+                  <div v-else-if="preview.error" class="grid min-h-[280px] place-items-center px-6 text-center">
+                    <div>
+                      <strong class="text-sw-danger">预览加载失败</strong>
+                      <p class="mt-2 leading-[1.7] text-sw-muted">{{ preview.error }}</p>
+                    </div>
+                  </div>
+                  <img
+                    v-else-if="preview.kind === 'IMAGE' && preview.objectUrl"
+                    class="block max-h-[420px] w-full object-contain bg-[#eef4fb]"
+                    :src="preview.objectUrl"
+                    :alt="`${preview.label} 原始材料预览`"
+                  />
+                  <iframe
+                    v-else-if="preview.kind === 'PDF' && preview.objectUrl"
+                    class="block h-[420px] w-full border-0 bg-white"
+                    :src="preview.objectUrl"
+                    :title="`${preview.label} PDF 原始材料预览`"
+                  />
+                  <div v-else class="grid min-h-[280px] place-items-center px-6 text-center">
+                    <div>
+                      <strong class="text-[#20304a]">浏览器暂不支持该格式预览</strong>
+                      <p class="mt-2 leading-[1.7] text-sw-muted">该材料已上传并进入后端解析链路，可对照抽取字段查看。当前页面仅嵌入 PDF、JPG、PNG。</p>
+                    </div>
+                  </div>
+                </div>
+              </article>
             </div>
-            <h2 class="text-xl text-[#172033]">不提供伪造证照预览</h2>
-            <p class="max-w-[440px] leading-[1.8] text-sw-muted">当前后端返回材料元数据与抽取结果，未返回可安全嵌入的 PDF/图片预览地址。</p>
+            <EmptyState v-else title="暂无可预览材料" description="任务未上传 PDF、JPG 或 PNG 材料，或当前账号无权查看原始材料。" />
           </div>
           <div class="flex gap-3 border-t border-sw-line bg-white px-5 py-4">
             <div
@@ -274,9 +313,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import {
+  fetchMaterialPreview,
   getApplicantResult,
   getReviewerResult,
   getTaskStatus,
@@ -289,6 +329,7 @@ import {
 import { getCurrentRole } from '@/utils/auth'
 import type {
   MaterialType,
+  MaterialPreviewState,
   ReviewerActionCode,
   Severity,
   TaskResultView,
@@ -311,6 +352,8 @@ const reviewerRemarkInput = ref('')
 const reviewerActionSubmitting = ref(false)
 const actionErrorMessage = ref('')
 const actionSuccessMessage = ref('')
+const materialPreviews = ref<MaterialPreviewState[]>([])
+const materialPreviewVersion = ref(0)
 
 const uploadedCount = computed(() => task.value?.materials.filter((slot) => slot.uploaded).length ?? 0)
 const isApplicantView = computed(() => task.value?.viewMode === 'APPLICANT')
@@ -353,15 +396,112 @@ async function lookup() {
         ...toReviewerResultView(statusRes.data.data, resultRes.data.data),
       }
     }
+    loadMaterialPreviews(taskId)
     actionErrorMessage.value = ''
     actionSuccessMessage.value = ''
     reviewerRemarkInput.value = task.value?.reviewerRemark ?? ''
   } catch (error) {
     lookupError.value = error instanceof Error ? error.message : '查询失败，请确认任务 ID。'
     task.value = null
+    clearMaterialPreviews()
   } finally {
     loading.value = false
   }
+}
+
+function loadMaterialPreviews(taskId: string) {
+  clearMaterialPreviews()
+  const version = materialPreviewVersion.value
+  if (!task.value) return
+
+  const previews = task.value.materials
+    .filter((slot) => slot.uploaded)
+    .map((slot) => createPreviewState(slot.materialType, slot.originalFileName, slot.fileExtension))
+  materialPreviews.value = previews
+
+  for (const preview of previews) {
+    if (preview.kind === 'UNSUPPORTED') {
+      continue
+    }
+    loadPreviewBlob(taskId, preview, version)
+  }
+}
+
+function createPreviewState(
+  materialType: MaterialType,
+  fileName: string | null,
+  fileExtension: string | null | undefined,
+): MaterialPreviewState {
+  const extension = (fileExtension || inferExtension(fileName)).toLowerCase()
+  const kind = previewKind(extension)
+  return {
+    materialType,
+    label: MATERIAL_LABELS[materialType],
+    fileName: fileName || '未返回文件名',
+    fileExtension: extension,
+    kind,
+    objectUrl: null,
+    loading: kind !== 'UNSUPPORTED',
+    error: '',
+  }
+}
+
+async function loadPreviewBlob(taskId: string, preview: MaterialPreviewState, version: number) {
+  try {
+    const response = await fetchMaterialPreview(taskId, preview.materialType)
+    if (version !== materialPreviewVersion.value) {
+      return
+    }
+    const objectUrl = URL.createObjectURL(response.data)
+    updatePreview(preview.materialType, {
+      objectUrl,
+      loading: false,
+      error: '',
+    })
+  } catch (error) {
+    if (version !== materialPreviewVersion.value) {
+      return
+    }
+    updatePreview(preview.materialType, {
+      loading: false,
+      error: error instanceof Error ? error.message : '原始材料预览加载失败。',
+    })
+  }
+}
+
+function updatePreview(materialType: MaterialType, patch: Partial<MaterialPreviewState>) {
+  materialPreviews.value = materialPreviews.value.map((preview) => (
+    preview.materialType === materialType
+      ? { ...preview, ...patch }
+      : preview
+  ))
+}
+
+function clearMaterialPreviews() {
+  materialPreviewVersion.value += 1
+  for (const preview of materialPreviews.value) {
+    if (preview.objectUrl) {
+      URL.revokeObjectURL(preview.objectUrl)
+    }
+  }
+  materialPreviews.value = []
+}
+
+function inferExtension(fileName: string | null): string {
+  if (!fileName || !fileName.includes('.')) {
+    return ''
+  }
+  return fileName.slice(fileName.lastIndexOf('.') + 1)
+}
+
+function previewKind(extension: string): MaterialPreviewState['kind'] {
+  if (extension === 'pdf') {
+    return 'PDF'
+  }
+  if (extension === 'jpg' || extension === 'jpeg' || extension === 'png') {
+    return 'IMAGE'
+  }
+  return 'UNSUPPORTED'
 }
 
 async function submitAction(actionCode: ReviewerActionCode) {
@@ -421,4 +561,8 @@ function severityIcon(severity: Severity): string {
 if (inputTaskId.value) {
   lookup()
 }
+
+onBeforeUnmount(() => {
+  clearMaterialPreviews()
+})
 </script>

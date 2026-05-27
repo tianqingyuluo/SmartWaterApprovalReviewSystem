@@ -76,6 +76,90 @@ class ReviewReasoningAdapterValidationTests(unittest.TestCase):
         self.assertIsNone(failure)
         self.assertIsNotNone(parsed)
 
+    def test_parse_accepts_bracketed_basis_refs_from_qwen(self) -> None:
+        adapter = ReviewReasoningAdapter()
+        payload = {
+            "summary": "完成",
+            "issues": [
+                {
+                    "code": "INCONSISTENT_IDENTITY",
+                    "severity": "BLOCKER",
+                    "message": "申请人身份信息需要核对。",
+                    "basis_refs": ["[BASIS_FIELD_APPLICANT_IDENTITY]"],
+                }
+            ],
+            "risk_hints": [
+                {
+                    "risk_level": "HIGH",
+                    "description": "证照字段存在一致性风险。",
+                    "basis_refs": ["【BASIS_FIELD_APPLICANT_IDENTITY】"],
+                    "requires_manual_review": True,
+                }
+            ],
+            "draft_opinion": "建议人工复核。",
+            "material_completeness": {
+                "received": ["APPLICATION_FORM", "BUSINESS_LICENSE", "ID_CARD"],
+                "missing": [],
+                "unrecognized": [],
+            },
+            "basis_refs": ["[BASIS_FIELD_APPLICANT_IDENTITY]"],
+            "manual_review_notice": "AI审核结果为辅助建议。",
+        }
+
+        parsed, failure = adapter._parse_and_validate(
+            json.dumps(payload, ensure_ascii=False),
+            task_id="task-bracketed-basis",
+            allowed_basis_refs={"BASIS_FIELD_APPLICANT_IDENTITY"},
+        )
+
+        self.assertIsNone(failure)
+        self.assertIsNotNone(parsed)
+        assert parsed is not None
+        self.assertEqual(["BASIS_FIELD_APPLICANT_IDENTITY"], parsed.basis_refs)
+        self.assertEqual(["BASIS_FIELD_APPLICANT_IDENTITY"], parsed.issues[0].basis_refs)
+        self.assertEqual(["BASIS_FIELD_APPLICANT_IDENTITY"], parsed.risk_hints[0].basis_refs)
+
+    def test_parse_canonicalizes_basis_ref_title_aliases(self) -> None:
+        adapter = ReviewReasoningAdapter()
+        payload = {
+            "summary": "完成",
+            "issues": [
+                {
+                    "code": "MISSING_FIELD",
+                    "severity": "WARNING",
+                    "message": "申请书字段需要补充。",
+                    "basis_refs": ["申请书: 申请人基本情况 | 联系人 | 联系人手机号码"],
+                }
+            ],
+            "risk_hints": [],
+            "draft_opinion": "建议人工复核。",
+            "material_completeness": {
+                "received": ["APPLICATION_FORM", "BUSINESS_LICENSE", "ID_CARD"],
+                "missing": [],
+                "unrecognized": [],
+            },
+            "basis_refs": ["取水许可申请书.docx: 申请人基本情况 | 法定代表人"],
+            "manual_review_notice": "AI审核结果为辅助建议。",
+        }
+
+        parsed, failure = adapter._parse_and_validate(
+            json.dumps(payload, ensure_ascii=False),
+            task_id="task-title-alias-basis",
+            allowed_basis_refs={"申请书.docx_4_0", "取水许可申请书.docx_53_0"},
+            basis_ref_aliases={
+                "申请书": "申请书.docx_4_0",
+                "申请书.docx": "申请书.docx_4_0",
+                "取水许可申请书": "取水许可申请书.docx_53_0",
+                "取水许可申请书.docx": "取水许可申请书.docx_53_0",
+            },
+        )
+
+        self.assertIsNone(failure)
+        self.assertIsNotNone(parsed)
+        assert parsed is not None
+        self.assertEqual(["取水许可申请书.docx_53_0"], parsed.basis_refs)
+        self.assertEqual(["申请书.docx_4_0"], parsed.issues[0].basis_refs)
+
     def test_parse_accepts_fenced_json_and_camel_case_keys(self) -> None:
         adapter = ReviewReasoningAdapter()
         payload = {

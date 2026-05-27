@@ -20,6 +20,7 @@ public interface ReviewTaskService {
     TaskListResponse getTaskList(int page, int size, UserProfileResponse currentUser);
     void updateStatus(String taskId, String status);
     void writeResult(String taskId, ResultWriteRequest request);
+    MaterialPreviewResource previewMaterial(String taskId, String materialType, UserProfileResponse currentUser);
     InputStream downloadMaterial(String storageKey);
     String getMaterialContentType(String storageKey);
 }

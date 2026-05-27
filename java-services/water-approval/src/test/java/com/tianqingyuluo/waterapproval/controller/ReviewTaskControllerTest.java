@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tianqingyuluo.waterapproval.common.BusinessException;
 import com.tianqingyuluo.waterapproval.dto.ApplicantResultResponse;
 import com.tianqingyuluo.waterapproval.dto.LoginRequest;
+import com.tianqingyuluo.waterapproval.dto.MaterialPreviewResource;
 import com.tianqingyuluo.waterapproval.dto.PendingTaskResponse;
 import com.tianqingyuluo.waterapproval.dto.ResultWriteRequest;
 import com.tianqingyuluo.waterapproval.dto.ReviewerActionResponse;
@@ -24,6 +25,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.io.ByteArrayInputStream;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -31,6 +33,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -187,6 +191,49 @@ class ReviewTaskControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.manualReviewNotice").value("请人工复核证照一致性"));
+    }
+
+    @Test
+    void previewMaterialWithoutLoginShouldBeRejected() throws Exception {
+        mockMvc.perform(get("/task/task-1/material/BUSINESS_LICENSE/preview"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().string("未登录或登录已过期"));
+    }
+
+    @Test
+    void previewMaterialWithLoginShouldStreamInlineBinary() throws Exception {
+        byte[] bytes = "image-bytes".getBytes();
+        MaterialPreviewResource preview = new MaterialPreviewResource(
+                new ByteArrayInputStream(bytes),
+                "image/png",
+                "营业执照.png",
+                (long) bytes.length,
+                "png"
+        );
+        when(reviewTaskService.previewMaterial(eq("task-1"), eq("BUSINESS_LICENSE"), any()))
+                .thenReturn(preview);
+        String token = loginAs("reviewer", "reviewer123");
+
+        mockMvc.perform(get("/task/task-1/material/BUSINESS_LICENSE/preview")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(content().bytes(bytes))
+                .andExpect(header().string("Content-Type", "image/png"))
+                .andExpect(header().string("X-Content-Type-Options", "nosniff"))
+                .andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("inline")));
+    }
+
+    @Test
+    void previewMaterialBusinessErrorShouldUseHttpStatus() throws Exception {
+        doThrow(new BusinessException(415, "当前材料格式暂不支持浏览器预览"))
+                .when(reviewTaskService).previewMaterial(eq("task-1"), eq("APPLICATION_FORM"), any());
+        String token = loginAs("reviewer", "reviewer123");
+
+        mockMvc.perform(get("/task/task-1/material/APPLICATION_FORM/preview")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(content().string("当前材料格式暂不支持浏览器预览"));
     }
 
     @Test

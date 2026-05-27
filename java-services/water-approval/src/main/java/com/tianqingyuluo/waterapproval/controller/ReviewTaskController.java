@@ -6,9 +6,16 @@ import com.tianqingyuluo.waterapproval.service.AuthService;
 import com.tianqingyuluo.waterapproval.service.ReviewTaskService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.CacheControl;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @Slf4j
@@ -87,6 +94,29 @@ public class ReviewTaskController {
         log.info("查询审批人员结果: taskId={}", taskId);
         ReviewerResultResponse response = reviewTaskService.getReviewerResult(taskId, sessionId, authService.currentUser());
         return R.ok(response);
+    }
+
+    @GetMapping("/{taskId}/material/{materialType}/preview")
+    public ResponseEntity<InputStreamResource> previewMaterial(
+            @PathVariable String taskId,
+            @PathVariable String materialType) {
+        log.info("预览任务材料: taskId={}, materialType={}", taskId, materialType);
+        MaterialPreviewResource preview =
+                reviewTaskService.previewMaterial(taskId, materialType, authService.currentUser());
+
+        ContentDisposition disposition = ContentDisposition.inline()
+                .filename(preview.getOriginalFileName(), StandardCharsets.UTF_8)
+                .build();
+
+        ResponseEntity.BodyBuilder builder = ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(preview.getContentType()))
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .header("X-Content-Type-Options", "nosniff")
+                .cacheControl(CacheControl.noStore());
+        if (preview.getFileSize() != null && preview.getFileSize() >= 0) {
+            builder.contentLength(preview.getFileSize());
+        }
+        return builder.body(new InputStreamResource(preview.getInputStream()));
     }
 
     @PostMapping("/{taskId}/reviewer-action")

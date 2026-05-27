@@ -49,6 +49,12 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
     private static final List<String> MATERIAL_TYPES = Arrays.asList("APPLICATION_FORM", "BUSINESS_LICENSE", "ID_CARD");
     private static final Set<String> REVIEWER_VISIBLE_STATUSES = Set.of("PARTIAL_SUCCESS", "COMPLETED", "FAILED");
     private static final Set<String> REVIEWER_ACTION_ALLOWED_TASK_STATUSES = Set.of("PARTIAL_SUCCESS", "COMPLETED");
+    private static final Map<String, String> PREVIEW_CONTENT_TYPES = Map.of(
+            "pdf", "application/pdf",
+            "jpg", "image/jpeg",
+            "jpeg", "image/jpeg",
+            "png", "image/png"
+    );
 
     @Override
     @Transactional
@@ -233,6 +239,9 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
 
         info.setUploaded(true);
         info.setOriginalFileName(originalFileName);
+        info.setFileSize(slot.getFileSize());
+        info.setFileExtension(slot.getFileExtension());
+        info.setUploadedAt(slot.getUploadedAt());
 
         return info;
     }
@@ -264,8 +273,7 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
                     .findFirst();
 
             if (slot.isPresent()) {
-                status.setUploaded(true);
-                status.setOriginalFileName(slot.get().getOriginalFileName());
+                applyMaterialStatus(status, slot.get());
             } else {
                 status.setUploaded(false);
                 status.setOriginalFileName(null);
@@ -699,8 +707,7 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
                         .findFirst();
 
                 if (slot.isPresent()) {
-                    status.setUploaded(true);
-                    status.setOriginalFileName(slot.get().getOriginalFileName());
+                    applyTaskListMaterialStatus(status, slot.get());
                 } else {
                     status.setUploaded(false);
                     status.setOriginalFileName(null);
@@ -865,6 +872,49 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
     }
 
     @Override
+    public MaterialPreviewResource previewMaterial(
+            String taskId,
+            String materialType,
+            UserProfileResponse currentUser) {
+        getTaskWithAccessCheck(taskId, null, currentUser);
+
+        if (!MATERIAL_TYPES.contains(materialType)) {
+            throw new BusinessException(400, "无效的材料类型: " + materialType);
+        }
+
+        MaterialSlot slot = materialSlotMapper.selectOne(
+                new LambdaQueryWrapper<MaterialSlot>()
+                        .eq(MaterialSlot::getTaskId, taskId)
+                        .eq(MaterialSlot::getMaterialType, materialType)
+        );
+        if (slot == null || slot.getStorageKey() == null || slot.getStorageKey().isBlank()) {
+            throw new BusinessException(404, "材料未上传或不存在");
+        }
+
+        String extension = Optional.ofNullable(slot.getFileExtension())
+                .map(value -> value.toLowerCase(Locale.ROOT))
+                .orElse("");
+        String previewContentType = PREVIEW_CONTENT_TYPES.get(extension);
+        if (previewContentType == null) {
+            throw new BusinessException(415, "当前材料格式暂不支持浏览器预览");
+        }
+
+        try {
+            InputStream inputStream = storageService.download(slot.getStorageKey());
+            return new MaterialPreviewResource(
+                    inputStream,
+                    previewContentType,
+                    safePreviewFileName(slot),
+                    slot.getFileSize(),
+                    extension
+            );
+        } catch (Exception e) {
+            log.error("Failed to preview material: taskId={}, materialType={}", taskId, materialType, e);
+            throw new BusinessException(404, "材料文件不存在或无法访问");
+        }
+    }
+
+    @Override
     public InputStream downloadMaterial(String storageKey) {
         try {
             return storageService.download(storageKey);
@@ -884,6 +934,31 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
 
     private boolean canSubmit(UserProfileResponse currentUser) {
         return isApplicant(currentUser) || isAdmin(currentUser);
+    }
+
+    private void applyMaterialStatus(TaskStatusResponse.MaterialStatus status, MaterialSlot slot) {
+        status.setUploaded(true);
+        status.setOriginalFileName(slot.getOriginalFileName());
+        status.setFileSize(slot.getFileSize());
+        status.setFileExtension(slot.getFileExtension());
+        status.setUploadedAt(slot.getUploadedAt());
+    }
+
+    private void applyTaskListMaterialStatus(TaskListResponse.MaterialStatus status, MaterialSlot slot) {
+        status.setUploaded(true);
+        status.setOriginalFileName(slot.getOriginalFileName());
+        status.setFileSize(slot.getFileSize());
+        status.setFileExtension(slot.getFileExtension());
+        status.setUploadedAt(slot.getUploadedAt());
+    }
+
+    private String safePreviewFileName(MaterialSlot slot) {
+        String originalFileName = trimToNull(slot.getOriginalFileName());
+        if (originalFileName != null) {
+            return originalFileName.replace("\r", "").replace("\n", "");
+        }
+        String extension = trimToNull(slot.getFileExtension());
+        return extension == null ? slot.getMaterialType() : slot.getMaterialType() + "." + extension;
     }
 
     private boolean isApplicant(UserProfileResponse currentUser) {

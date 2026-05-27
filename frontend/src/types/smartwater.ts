@@ -87,6 +87,19 @@ export interface MaterialSlot {
   uploadedAt?: string | null
 }
 
+export type MaterialPreviewKind = 'IMAGE' | 'PDF' | 'UNSUPPORTED'
+
+export interface MaterialPreviewState {
+  materialType: MaterialType
+  label: string
+  fileName: string
+  fileExtension: string
+  kind: MaterialPreviewKind
+  objectUrl: string | null
+  loading: boolean
+  error: string
+}
+
 export interface Finding {
   findingType: string
   severity: Severity

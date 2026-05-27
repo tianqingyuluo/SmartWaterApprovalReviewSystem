@@ -61,6 +61,16 @@ export function submitReviewerAction(taskId: string, payload: ReviewerActionSubm
   return request.post<R<ReviewerActionResponse>>(`/task/${taskId}/reviewer-action`, payload)
 }
 
+export function getMaterialPreviewUrl(taskId: string, materialType: string): string {
+  return `/task/${encodeURIComponent(taskId)}/material/${encodeURIComponent(materialType)}/preview`
+}
+
+export function fetchMaterialPreview(taskId: string, materialType: string) {
+  return request.get<Blob>(getMaterialPreviewUrl(taskId, materialType), {
+    responseType: 'blob',
+  })
+}
+
 // ── Adapters: backend DTO → page view model ──
 
 export function toApplicantResultView(dto: ApplicantResultResponse): ApplicantResultView {

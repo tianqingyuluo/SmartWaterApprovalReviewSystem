@@ -6,6 +6,7 @@ import com.tianqingyuluo.waterapproval.ai.AiServiceClient;
 import com.tianqingyuluo.waterapproval.dto.AiReviewTaskRequest;
 import com.tianqingyuluo.waterapproval.dto.AiReviewTaskResponse;
 import com.tianqingyuluo.waterapproval.common.BusinessException;
+import com.tianqingyuluo.waterapproval.dto.MaterialPreviewResource;
 import com.tianqingyuluo.waterapproval.dto.PendingTaskResponse;
 import com.tianqingyuluo.waterapproval.dto.ResultWriteRequest;
 import com.tianqingyuluo.waterapproval.dto.ReviewerActionResponse;
@@ -631,6 +632,120 @@ class ReviewTaskServiceImplTest {
 
         ReviewerResultResponse response = reviewTaskService.getReviewerResult(taskId, null, reviewerUser());
         assertEquals(taskId, response.getTaskId());
+    }
+
+    @Test
+    void applicantCanPreviewOwnUploadedImageMaterialWithoutStorageKeyInApi() throws Exception {
+        UserProfileResponse applicant = applicantUser(5101L);
+        SubmitRequest request = new SubmitRequest();
+        request.setBusinessLicense(new MockMultipartFile(
+                "businessLicense",
+                "license.png",
+                "image/png",
+                "营业执照图片".getBytes(StandardCharsets.UTF_8)
+        ));
+
+        SubmitResponse response = reviewTaskService.submit(request, applicant);
+
+        MaterialPreviewResource preview = reviewTaskService.previewMaterial(
+                response.getTaskId(),
+                "BUSINESS_LICENSE",
+                applicant
+        );
+
+        assertEquals("image/png", preview.getContentType());
+        assertEquals("license.png", preview.getOriginalFileName());
+        assertEquals("png", preview.getFileExtension());
+        assertEquals("营业执照图片", new String(preview.getInputStream().readAllBytes(), StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void applicantCannotPreviewOtherApplicantMaterial() {
+        UserProfileResponse owner = applicantUser(5102L);
+        SubmitRequest request = new SubmitRequest();
+        request.setBusinessLicense(new MockMultipartFile(
+                "businessLicense",
+                "license.png",
+                "image/png",
+                "营业执照图片".getBytes(StandardCharsets.UTF_8)
+        ));
+        SubmitResponse response = reviewTaskService.submit(request, owner);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> reviewTaskService.previewMaterial(response.getTaskId(), "BUSINESS_LICENSE", applicantUser(5103L)));
+
+        assertEquals(403, ex.getCode());
+    }
+
+    @Test
+    void reviewerCanPreviewCompletedTaskMaterial() throws Exception {
+        UserProfileResponse applicant = applicantUser(5104L);
+        SubmitRequest request = new SubmitRequest();
+        request.setIdCard(new MockMultipartFile(
+                "idCard",
+                "id-card.jpg",
+                "image/jpeg",
+                "身份证图片".getBytes(StandardCharsets.UTF_8)
+        ));
+        SubmitResponse response = reviewTaskService.submit(request, applicant);
+        ReviewTask task = taskMapper.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ReviewTask>()
+                        .eq(ReviewTask::getTaskId, response.getTaskId())
+        );
+        task.setStatus("COMPLETED");
+        taskMapper.updateById(task);
+
+        MaterialPreviewResource preview = reviewTaskService.previewMaterial(
+                response.getTaskId(),
+                "ID_CARD",
+                reviewerUser()
+        );
+
+        assertEquals("image/jpeg", preview.getContentType());
+        assertEquals("身份证图片", new String(preview.getInputStream().readAllBytes(), StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void reviewerCannotPreviewSubmittedTaskMaterial() {
+        UserProfileResponse applicant = applicantUser(5105L);
+        SubmitRequest request = new SubmitRequest();
+        request.setIdCard(new MockMultipartFile(
+                "idCard",
+                "id-card.jpg",
+                "image/jpeg",
+                "身份证图片".getBytes(StandardCharsets.UTF_8)
+        ));
+        SubmitResponse response = reviewTaskService.submit(request, applicant);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> reviewTaskService.previewMaterial(response.getTaskId(), "ID_CARD", reviewerUser()));
+
+        assertEquals(403, ex.getCode());
+    }
+
+    @Test
+    void previewShouldRejectMissingInvalidOrUnsupportedMaterial() {
+        UserProfileResponse applicant = applicantUser(5106L);
+        SubmitRequest request = new SubmitRequest();
+        request.setApplicationForm(new MockMultipartFile(
+                "applicationForm",
+                "application.docx",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "docx content".getBytes(StandardCharsets.UTF_8)
+        ));
+        SubmitResponse response = reviewTaskService.submit(request, applicant);
+
+        BusinessException invalidType = assertThrows(BusinessException.class,
+                () -> reviewTaskService.previewMaterial(response.getTaskId(), "UNKNOWN", applicant));
+        assertEquals(400, invalidType.getCode());
+
+        BusinessException missing = assertThrows(BusinessException.class,
+                () -> reviewTaskService.previewMaterial(response.getTaskId(), "BUSINESS_LICENSE", applicant));
+        assertEquals(404, missing.getCode());
+
+        BusinessException unsupported = assertThrows(BusinessException.class,
+                () -> reviewTaskService.previewMaterial(response.getTaskId(), "APPLICATION_FORM", applicant));
+        assertEquals(415, unsupported.getCode());
     }
 
     @Test

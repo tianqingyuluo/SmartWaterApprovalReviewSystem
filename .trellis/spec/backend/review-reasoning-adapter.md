@@ -319,8 +319,20 @@ GET /api/task/{taskId}/result/reviewer?sessionId=<sessionId>
 | Trace redaction | Trace input/output summaries must be short summaries, not full material text, tokens, storage keys, or signed URLs. |
 | Model metadata | Real AI review success must include provider, model, request ID, finish reason, and token usage where available. |
 | Output normalization | The adapter may normalize fenced JSON, wrapper keys, camelCase keys, and known Chinese key aliases to the canonical snake_case schema. |
-| Basis validation | Every normalized `basis_refs` value must still be in the supplied knowledge fragment ID set. |
+| Basis validation | Every normalized `basis_refs` value must still be in the supplied knowledge fragment ID set, or be a safe alias that maps back to one supplied ID. |
 | Failure semantics | MCP/OCR/download/LLM technical failure maps to `FAILED`; missing materials alone may produce `PARTIAL_SUCCESS`. |
+
+Basis reference alias normalization:
+
+- Accept brackets around IDs, for example `[BASIS_FIELD_APPLICANT_IDENTITY]`
+  and `【BASIS_FIELD_APPLICANT_IDENTITY】`.
+- Accept `sourceTitle` aliases from the supplied knowledge fragments, including
+  file-extension-stripped titles.
+- Accept prefix aliases before `:` / `：` when the prefix maps to exactly one
+  supplied fragment alias, for example `申请书: 申请人基本情况`.
+- Accept strings that contain one of the supplied source IDs.
+- Reject any value that cannot be canonicalized to the request's
+  `knowledgeFragments[].sourceId`.
 
 ### 4. Validation & Error Matrix
 
@@ -330,6 +342,7 @@ GET /api/task/{taskId}/result/reviewer?sessionId=<sessionId>
 | MCP tool returns `isError=true`, empty content, non-JSON content, or an unexpected shape | Record an error trace and fail the intelligent review path. |
 | LLM returns fenced JSON or a wrapper object | Extract and parse the JSON object before schema validation. |
 | LLM returns Qwen Chinese keys observed in real runs | Normalize keys and issue/risk fields, then validate against canonical schema. |
+| LLM returns bracketed or title-based `basis_refs` that map to supplied fragments | Canonicalize to the supplied `sourceId`, then validate. |
 | LLM invents a `basisRef` outside the request fragments | Reject as `SCHEMA_MISMATCH`; do not write a polished result. |
 | LLM/API/auth/schema failure remains after repair/retry | Persist failed/diagnostic result and mark task `FAILED`, not successful AI review. |
 | Java reviewer result has no `toolCallTraces` | Treat as incomplete CP3.5 evidence even if unit tests pass. |
@@ -342,6 +355,9 @@ GET /api/task/{taskId}/result/reviewer?sessionId=<sessionId>
   `extractedFields`.
 - Good: Qwen returns `材料完整性` / `字段问题` / `一致性风险`; the adapter
   normalizes them and still rejects invented basis IDs.
+- Good: Qwen returns `[BASIS_FIELD_APPLICANT_IDENTITY]` or
+  `申请书: 申请人基本情况`; the adapter maps the value back to the supplied
+  `sourceId` before allow-list validation.
 - Base: missing `ID_CARD` creates business issue and `PARTIAL_SUCCESS` while
   OCR/MCP/LLM still succeed.
 - Bad: pass tests by injecting `SmartWaterKnowledgeTools` into the orchestrator
@@ -354,7 +370,8 @@ GET /api/task/{taskId}/result/reviewer?sessionId=<sessionId>
 - Python `test_mcp_client.py`: start the local MCP stdio server, discover tools,
   call `knowledge_search`, call `check_completeness`, and assert traces exist.
 - Python `test_review_adapter.py`: assert fenced JSON, wrapper objects,
-  camelCase keys, Chinese Qwen keys, and invented basis refs.
+  camelCase keys, Chinese Qwen keys, bracket/title basis aliases, and invented
+  basis refs.
 - Python orchestrator tests: assert MCP traces are attached to reviewer result
   and Agent/OCR technical failure maps to `FAILED`.
 - Java service tests: assert `toolCallTraces` round-trip through stored reviewer
