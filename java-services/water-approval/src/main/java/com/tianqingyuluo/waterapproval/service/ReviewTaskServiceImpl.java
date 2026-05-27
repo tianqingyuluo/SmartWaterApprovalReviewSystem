@@ -45,7 +45,7 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
     private final ObjectMapper objectMapper;
     private final AiServiceClient aiServiceClient;
 
-    private static final List<String> ACCEPTED_FILE_TYPES = Arrays.asList("jpg", "jpeg", "png", "pdf");
+    private static final List<String> ACCEPTED_FILE_TYPES = Arrays.asList("jpg", "jpeg", "png", "pdf", "docx");
     private static final List<String> MATERIAL_TYPES = Arrays.asList("APPLICATION_FORM", "BUSINESS_LICENSE", "ID_CARD");
     private static final Set<String> REVIEWER_VISIBLE_STATUSES = Set.of("PARTIAL_SUCCESS", "COMPLETED", "FAILED");
     private static final Set<String> REVIEWER_ACTION_ALLOWED_TASK_STATUSES = Set.of("PARTIAL_SUCCESS", "COMPLETED");
@@ -205,7 +205,7 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
         String extension = getFileExtension(originalFileName);
 
         if (!ACCEPTED_FILE_TYPES.contains(extension.toLowerCase())) {
-            throw new BusinessException(400, "不支持的文件格式: " + extension + ", 只允许: jpg, jpeg, png, pdf");
+            throw new BusinessException(400, "不支持的文件格式: " + extension + ", 只允许: jpg, jpeg, png, pdf, docx");
         }
 
         String storageKey = taskId + "/" + materialType + "/" + UUID.randomUUID() + "." + extension;

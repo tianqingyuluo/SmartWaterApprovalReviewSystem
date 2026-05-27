@@ -56,10 +56,10 @@ Rules:
 
 ### AcceptedFileType
 
-MVP accepted values:
+Current CP3.5 accepted values:
 
 ```json
-["jpg", "jpeg", "png", "pdf"]
+["jpg", "jpeg", "png", "pdf", "docx"]
 ```
 
 Full-version required values include Word formats:
@@ -72,7 +72,8 @@ Rules:
 
 - Frontend and backend both validate extensions.
 - Backend remains authoritative for accepted content type and file count validation.
-- MVP may reject `doc` and `docx` while OCR/Word parsing is not implemented.
+- CP3.5 allows `docx` because the Python document OCR pipeline parses Word documents and Java must pass DOCX materials through to that pipeline.
+- Legacy `.doc` remains a full-version format and may be rejected until a conversion path is implemented.
 - Full version must support Word/Docx upload and parsing, so object storage metadata and material APIs must not assume every document is an image or PDF.
 
 ### ProcessingStatus
