@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import logging
 import re
-from io import BytesIO
+from contextlib import redirect_stderr, redirect_stdout
+from io import BytesIO, StringIO
 from pathlib import Path
 from typing import Any
 
@@ -241,6 +242,7 @@ class DocumentOcrPipeline:
                     )
                 )
                 block_index += 1
+                block_index = _extract_pdf_tables(result, page, page_index + 1, block_index)
 
             if total_text >= _PDF_MIN_TEXT_LENGTH_BEFORE_OCR:
                 return result
@@ -337,6 +339,66 @@ def _extract_key_value_fields(rows: list[list[str]], material_type: str) -> list
             )
         )
     return fields
+
+
+def _extract_pdf_tables(
+    result: MaterialDocumentParseResult,
+    page: fitz.Page,
+    page_number: int,
+    block_index: int,
+) -> int:
+    try:
+        with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
+            table_finder = page.find_tables()
+    except Exception as exc:
+        logger.warning("Failed to extract PDF tables from %s page %d: %s", result.source_file_name, page_number, exc)
+        return block_index
+
+    for table_index, table in enumerate(table_finder.tables):
+        rows = _normalize_table_rows(table.extract())
+        if not rows:
+            continue
+
+        result.tables.append(
+            DocumentTable(
+                rows=rows,
+                pageNumber=page_number,
+                tableIndex=table_index,
+            )
+        )
+        result.content_blocks.append(
+            DocumentContentBlock(
+                text=_table_to_text(rows),
+                blockType="pdf_table",
+                pageNumber=page_number,
+                blockIndex=block_index,
+            )
+        )
+        block_index += 1
+        result.extracted_fields.extend(_extract_key_value_fields(rows, result.material_type))
+
+    return block_index
+
+
+def _normalize_table_rows(rows: Any) -> list[list[str]]:
+    if not isinstance(rows, list):
+        return []
+
+    normalized: list[list[str]] = []
+    for row in rows:
+        if not isinstance(row, list):
+            continue
+        cells = [_normalize_table_cell(cell) for cell in row]
+        if any(cells):
+            normalized.append(cells)
+    return normalized
+
+
+def _normalize_table_cell(value: Any) -> str:
+    text = str(value or "")
+    text = re.sub(r"\s+", " ", text).strip()
+    text = text.replace(" _", "_").replace("_ ", "_")
+    return text
 
 
 def _normalize_field_key(value: str) -> str:

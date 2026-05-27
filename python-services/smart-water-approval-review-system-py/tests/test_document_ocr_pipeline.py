@@ -107,6 +107,34 @@ def _text_pdf_bytes() -> bytes:
     return data
 
 
+def _table_pdf_bytes() -> bytes:
+    doc = fitz.open()
+    page = doc.new_page()
+    x0, y0 = 72, 72
+    cell_w, cell_h = 120, 28
+    rows, cols = 2, 2
+
+    for row in range(rows + 1):
+        y = y0 + row * cell_h
+        page.draw_line((x0, y), (x0 + cols * cell_w, y))
+    for col in range(cols + 1):
+        x = x0 + col * cell_w
+        page.draw_line((x, y0), (x, y0 + rows * cell_h))
+
+    texts = [["field", "value"], ["amount", "1000"]]
+    for row_index, row in enumerate(texts):
+        for col_index, text in enumerate(row):
+            page.insert_text(
+                (x0 + col_index * cell_w + 6, y0 + row_index * cell_h + 18),
+                text,
+                fontsize=10,
+            )
+
+    data = doc.tobytes()
+    doc.close()
+    return data
+
+
 def _blank_pdf_bytes() -> bytes:
     doc = fitz.open()
     doc.new_page()
@@ -185,6 +213,26 @@ class DocumentOcrPipelineContractTests(unittest.TestCase):
         self.assertEqual([], data["errors"])
         self.assertIn("Water permit application", block_text)
         self.assertIn("Applicant: Acme Water Co", block_text)
+        self.assertEqual([], ocr_adapter.calls)
+
+    def test_pdf_parser_extracts_tables_and_key_fields_without_ocr(self) -> None:
+        ocr_adapter = _StubOcrAdapter([])
+        result = _parse_material(
+            self._pipeline(ocr_adapter),
+            material_type="APPLICATION_FORM",
+            source_file_name="table.pdf",
+            file_bytes=_table_pdf_bytes(),
+        )
+
+        data = _contract_dict(result)
+        field_values = {
+            _field_dict(field).get("fieldKey"): _field_dict(field).get("fieldValue")
+            for field in data["extractedFields"]
+        }
+
+        self.assertEqual([], data["errors"])
+        self.assertEqual([["field", "value"], ["amount", "1000"]], data["tables"][0]["rows"])
+        self.assertEqual("1000", field_values.get("amount"))
         self.assertEqual([], ocr_adapter.calls)
 
     def test_parse_failure_records_explicit_error_instead_of_empty_success(self) -> None:
