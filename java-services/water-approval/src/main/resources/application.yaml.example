@@ -54,6 +54,9 @@ water-approval:
     timeout: ${AI_SERVICE_TIMEOUT:3s}
     mcp-transport: ${AI_SERVICE_MCP_TRANSPORT:streamable-http}
     mcp-path: ${AI_SERVICE_MCP_PATH:/mcp}
+    mcp-tools:
+      knowledge-search-path: ${AI_SERVICE_MCP_KNOWLEDGE_SEARCH_PATH:/api/mcp/tools/knowledge_search}
+      check-completeness-path: ${AI_SERVICE_MCP_CHECK_COMPLETENESS_PATH:/api/mcp/tools/check_completeness}
     review-task:
       enabled: ${AI_REVIEW_TASK_DISPATCH_ENABLED:true}
       path: ${AI_REVIEW_TASK_PATH:/api/review/tasks}

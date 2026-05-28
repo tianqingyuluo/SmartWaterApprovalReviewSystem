@@ -1,9 +1,15 @@
 package com.tianqingyuluo.waterapproval.service;
 
+import com.tianqingyuluo.waterapproval.ai.AiMcpToolCallException;
 import com.tianqingyuluo.waterapproval.ai.AiServiceClient;
 import com.tianqingyuluo.waterapproval.ai.AiServiceProperties;
+import com.tianqingyuluo.waterapproval.common.BusinessException;
 import com.tianqingyuluo.waterapproval.dto.AiHealthResponse;
 import com.tianqingyuluo.waterapproval.dto.AiIngestOperationResponse;
+import com.tianqingyuluo.waterapproval.dto.AiMcpCompletenessRequest;
+import com.tianqingyuluo.waterapproval.dto.AiMcpCompletenessResponse;
+import com.tianqingyuluo.waterapproval.dto.AiMcpKnowledgeSearchRequest;
+import com.tianqingyuluo.waterapproval.dto.AiMcpKnowledgeSearchResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -51,5 +57,21 @@ public class AiOpsService {
         response.setVerificationCommand("uv run python -m src.mcp_server.demo --run-samples");
         response.setNote("Python 当前提供 ingest CLI 和 MCP 原生 transport；Java 侧输出可复现运维命令，不伪造 REST ingest。");
         return response;
+    }
+
+    public AiMcpKnowledgeSearchResponse callKnowledgeSearch(AiMcpKnowledgeSearchRequest request) {
+        try {
+            return aiServiceClient.callKnowledgeSearch(request);
+        } catch (AiMcpToolCallException e) {
+            throw new BusinessException(502, e.getMessage());
+        }
+    }
+
+    public AiMcpCompletenessResponse callCheckCompleteness(AiMcpCompletenessRequest request) {
+        try {
+            return aiServiceClient.callCheckCompleteness(request);
+        } catch (AiMcpToolCallException e) {
+            throw new BusinessException(502, e.getMessage());
+        }
     }
 }

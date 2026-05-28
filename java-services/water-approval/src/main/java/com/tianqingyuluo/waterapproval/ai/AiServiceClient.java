@@ -1,6 +1,10 @@
 package com.tianqingyuluo.waterapproval.ai;
 
 import com.tianqingyuluo.waterapproval.dto.AiHealthResponse;
+import com.tianqingyuluo.waterapproval.dto.AiMcpCompletenessRequest;
+import com.tianqingyuluo.waterapproval.dto.AiMcpCompletenessResponse;
+import com.tianqingyuluo.waterapproval.dto.AiMcpKnowledgeSearchRequest;
+import com.tianqingyuluo.waterapproval.dto.AiMcpKnowledgeSearchResponse;
 import com.tianqingyuluo.waterapproval.dto.AiReviewTaskRequest;
 import com.tianqingyuluo.waterapproval.dto.AiReviewTaskResponse;
 import lombok.RequiredArgsConstructor;
@@ -145,6 +149,65 @@ public class AiServiceClient {
         throw lastFailure;
     }
 
+    public AiMcpKnowledgeSearchResponse callKnowledgeSearch(AiMcpKnowledgeSearchRequest request) {
+        if (properties.normalizedBaseUrl().isBlank() || properties.normalizedKnowledgeSearchPath().isBlank()) {
+            throw new AiMcpToolCallException("AI MCP knowledge_search path is not configured", null, null);
+        }
+        try {
+            AiMcpKnowledgeSearchResponse response = buildRestClient().post()
+                    .uri(properties.normalizedKnowledgeSearchPath())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .body(request)
+                    .retrieve()
+                    .body(AiMcpKnowledgeSearchResponse.class);
+            if (response == null || response.getResults() == null) {
+                throw new AiMcpToolCallException("AI MCP knowledge_search returned an empty response", null, null);
+            }
+            log.info("AI MCP knowledge_search called: query={}, topK={}, total={}",
+                    request.getQuery(), request.getTopK(), response.getTotal());
+            return response;
+        } catch (RestClientResponseException e) {
+            throw mapMcpToolFailure("knowledge_search", e);
+        } catch (RestClientException e) {
+            throw new AiMcpToolCallException(
+                    "AI MCP knowledge_search failed: " + e.getClass().getSimpleName(),
+                    null,
+                    e
+            );
+        }
+    }
+
+    public AiMcpCompletenessResponse callCheckCompleteness(AiMcpCompletenessRequest request) {
+        if (properties.normalizedBaseUrl().isBlank() || properties.normalizedCheckCompletenessPath().isBlank()) {
+            throw new AiMcpToolCallException("AI MCP check_completeness path is not configured", null, null);
+        }
+        try {
+            AiMcpCompletenessResponse response = buildRestClient().post()
+                    .uri(properties.normalizedCheckCompletenessPath())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .body(request)
+                    .retrieve()
+                    .body(AiMcpCompletenessResponse.class);
+            if (response == null || response.getRequired() == null || response.getMissing() == null) {
+                throw new AiMcpToolCallException("AI MCP check_completeness returned an empty response", null, null);
+            }
+            log.info("AI MCP check_completeness called: submitted={}, missing={}",
+                    response.getSubmitted() == null ? 0 : response.getSubmitted().size(),
+                    response.getMissing().size());
+            return response;
+        } catch (RestClientResponseException e) {
+            throw mapMcpToolFailure("check_completeness", e);
+        } catch (RestClientException e) {
+            throw new AiMcpToolCallException(
+                    "AI MCP check_completeness failed: " + e.getClass().getSimpleName(),
+                    null,
+                    e
+            );
+        }
+    }
+
     private RestClient buildRestClient() {
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(properties.getTimeout());
@@ -179,6 +242,18 @@ public class AiServiceClient {
                         + limitBody(e.getResponseBodyAsString()),
                 category,
                 retryable,
+                statusCode,
+                e
+        );
+    }
+
+    private AiMcpToolCallException mapMcpToolFailure(String toolName, RestClientResponseException e) {
+        int statusCode = e.getStatusCode().value();
+        return new AiMcpToolCallException(
+                "AI MCP " + toolName + " returned HTTP "
+                        + statusCode
+                        + ": "
+                        + limitBody(e.getResponseBodyAsString()),
                 statusCode,
                 e
         );

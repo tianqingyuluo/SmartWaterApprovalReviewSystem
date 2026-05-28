@@ -144,13 +144,23 @@ Java 侧（用于展示 CP2 配置和运维触发命令）：
 ```bash
 curl http://localhost:8080/api/ai/health
 curl -X POST http://localhost:8080/api/ai/ingest
+curl -X POST http://localhost:8080/api/ai/mcp/knowledge-search \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"营业执照","topK":3}'
+curl -X POST http://localhost:8080/api/ai/mcp/check-completeness \
+  -H 'Content-Type: application/json' \
+  -d '{"materials":["APPLICATION_FORM","BUSINESS_LICENSE"]}'
 ```
 
 前端演示台：
 
 - 路由：`/knowledge-mcp`
 - 页面标题：`AI 知识库与 MCP 演示台`
-- 当前模式：演示数据（页面会标注“演示模式，非正式审批结论”）
+- 当前模式：
+  - MCP 健康检查通过前端 `/api/ai/health` 真实请求 Java 后端，由 Java 探活 Python FastAPI 并展示 `mcpUrl`、`mcpTransport`、`checkedAt` 和健康响应。
+  - 文档解析入库演示通过前端 `/api/ai/ingest` 真实请求 Java 后端，展示 Python ingest CLI、资料目录、chunk 参数和 MCP demo 验证命令。
+  - `knowledge_search` / `check_completeness` 正常按钮真实请求 Java `/api/ai/mcp/*`，Java 再请求 Python FastAPI `/api/mcp/tools/*`，Python 通过已注册 MCP server 执行 `call_tool`。
+  - “本地失败演示”按钮只用于错误态展示，不作为工具成功路径。
 
 ---
 

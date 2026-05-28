@@ -5,12 +5,14 @@ from fastapi import BackgroundTasks, HTTPException
 
 from src.api.app import (
     _check_internal_token,
+    call_check_completeness_tool,
+    call_knowledge_search_tool,
     create_review_task,
     get_review_task_status,
     health,
     runtime,
 )
-from src.api.models import CreateReviewTaskRequest
+from src.api.models import CompletenessToolRequest, CreateReviewTaskRequest, KnowledgeSearchToolRequest
 from src.config import config
 
 
@@ -92,6 +94,36 @@ class FastapiAppTests(unittest.TestCase):
         with self.assertRaises(HTTPException) as exc:
             get_review_task_status("missing-task", _auth=None)
         self.assertEqual(404, exc.exception.status_code)
+
+
+class FastapiMcpToolProxyTests(unittest.IsolatedAsyncioTestCase):
+    async def test_knowledge_search_tool_proxy_calls_registered_mcp_tool(self) -> None:
+        request = KnowledgeSearchToolRequest(query="营业执照", topK=2)
+
+        payload = await call_knowledge_search_tool(request, _auth=None)
+
+        self.assertEqual("营业执照", payload["query"])
+        self.assertEqual(2, payload["topK"])
+        self.assertIn("results", payload)
+        self.assertTrue(payload["knowledgePackVersion"])
+
+    async def test_check_completeness_tool_proxy_calls_registered_mcp_tool(self) -> None:
+        request = CompletenessToolRequest(materials=["APPLICATION_FORM", "BUSINESS_LICENSE"])
+
+        payload = await call_check_completeness_tool(request, _auth=None)
+
+        self.assertEqual(["APPLICATION_FORM", "BUSINESS_LICENSE"], payload["submitted"])
+        self.assertEqual(["ID_CARD"], payload["missing"])
+        self.assertFalse(payload["complete"])
+
+    async def test_check_completeness_tool_proxy_accepts_empty_materials(self) -> None:
+        request = CompletenessToolRequest(materials=[])
+
+        payload = await call_check_completeness_tool(request, _auth=None)
+
+        self.assertEqual([], payload["submitted"])
+        self.assertEqual(["APPLICATION_FORM", "BUSINESS_LICENSE", "ID_CARD"], payload["missing"])
+        self.assertFalse(payload["complete"])
 
 
 if __name__ == "__main__":

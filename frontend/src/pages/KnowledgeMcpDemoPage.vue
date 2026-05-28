@@ -4,12 +4,17 @@
       <div>
         <h1 class="sw-page-title">AI 知识库与 MCP 演示台</h1>
         <p class="mb-[22px] mt-[-12px] leading-[1.7] text-sw-muted">
-          演示模式，非正式审批结论。页面用于 CP2 验收展示知识库检索与材料完整性检查。
+          真实请求 Java 后端完成 MCP 测活、入库演示和工具调用；页面结果仅作辅助演示，非正式审批结论。
         </p>
       </div>
-      <button type="button" class="sw-btn sw-btn-ghost" :disabled="statusLoading" @click="loadStatus">
-        {{ statusLoading ? '刷新中...' : '刷新状态' }}
-      </button>
+      <div class="flex flex-wrap justify-end gap-3 max-md:mt-3">
+        <button type="button" class="sw-btn sw-btn-primary" :disabled="statusLoading" @click="loadStatus">
+          {{ statusLoading ? '检查中...' : '检查 MCP 健康' }}
+        </button>
+        <button type="button" class="sw-btn sw-btn-ghost" :disabled="ingestLoading" @click="loadIngestOperation">
+          {{ ingestLoading ? '刷新中...' : '刷新入库演示' }}
+        </button>
+      </div>
     </div>
 
     <div class="mb-4 grid gap-4 [grid-template-columns:repeat(4,minmax(0,1fr))] max-[1180px]:grid-cols-2 max-md:grid-cols-1">
@@ -38,6 +43,44 @@
       </PageCard>
     </div>
 
+    <div v-if="statusError" class="sw-alert sw-alert-danger mb-4">
+      {{ statusError }}
+      <button type="button" class="ml-3 font-bold text-sw-danger underline" @click="loadStatus">重试测活</button>
+    </div>
+
+    <PageCard title="MCP 健康检查" subtitle="通过 Java /api/ai/health 真实请求 Python FastAPI 与 MCP 配置。" compact class="mb-5">
+      <div v-if="health" class="grid gap-3 [grid-template-columns:repeat(3,minmax(0,1fr))] max-[1180px]:grid-cols-1">
+        <div class="rounded-[10px] bg-[#f6f9fd] p-4">
+          <p class="text-xs font-bold text-sw-muted">AI 服务地址</p>
+          <code class="mt-2 block [overflow-wrap:anywhere] text-[#12213a]">{{ health.baseUrl }}</code>
+        </div>
+        <div class="rounded-[10px] bg-[#f6f9fd] p-4">
+          <p class="text-xs font-bold text-sw-muted">健康检查地址</p>
+          <code class="mt-2 block [overflow-wrap:anywhere] text-[#12213a]">{{ health.healthUrl }}</code>
+        </div>
+        <div class="rounded-[10px] bg-[#f6f9fd] p-4">
+          <p class="text-xs font-bold text-sw-muted">MCP 地址</p>
+          <code class="mt-2 block [overflow-wrap:anywhere] text-[#12213a]">{{ health.mcpUrl || '未配置' }}</code>
+        </div>
+        <div class="rounded-[10px] bg-[#f6f9fd] p-4">
+          <p class="text-xs font-bold text-sw-muted">Transport</p>
+          <strong class="mt-2 block text-[#12213a]">{{ health.mcpTransport || '未配置' }}</strong>
+        </div>
+        <div class="rounded-[10px] bg-[#f6f9fd] p-4">
+          <p class="text-xs font-bold text-sw-muted">HTTP 状态</p>
+          <strong class="mt-2 block text-[#12213a]">{{ health.statusCode ?? '无响应' }}</strong>
+        </div>
+        <div class="rounded-[10px] bg-[#f6f9fd] p-4">
+          <p class="text-xs font-bold text-sw-muted">检查时间</p>
+          <strong class="mt-2 block text-[#12213a]">{{ formatDateTime(health.checkedAt) }}</strong>
+        </div>
+      </div>
+      <div v-else class="sw-alert sw-alert-info">
+        点击“检查 MCP 健康”后，这里会展示 Java 后端返回的真实健康检查结果。
+      </div>
+      <pre v-if="health?.responseBody" class="mt-4 overflow-auto rounded-[10px] bg-[#111827] p-4 text-xs leading-[1.7] text-[#dbeafe]">{{ health.responseBody }}</pre>
+    </PageCard>
+
     <div class="grid items-start gap-5 [grid-template-columns:minmax(420px,1fr)_minmax(420px,1fr)] max-[1180px]:grid-cols-1">
       <PageCard title="knowledge_search" subtitle="输入查询词，展示知识库命中结果和依据片段。" compact>
         <div class="grid gap-3 [grid-template-columns:minmax(0,1fr)_120px_auto] max-md:grid-cols-1">
@@ -50,10 +93,10 @@
 
         <div class="mt-3 flex flex-wrap gap-3 text-sm">
           <button type="button" class="font-bold text-sw-primary underline" :disabled="searchLoading" @click="runEmptyKnowledgeSearch">
-            演示空结果
+            后端空结果
           </button>
           <button type="button" class="font-bold text-sw-danger underline" :disabled="searchLoading" @click="runFailedKnowledgeSearch">
-            演示失败
+            本地失败演示
           </button>
         </div>
 
@@ -117,10 +160,10 @@
 
         <div class="mt-3 flex flex-wrap gap-3 text-sm">
           <button type="button" class="font-bold text-sw-primary underline" :disabled="completenessLoading" @click="runEmptyCompletenessCheck">
-            演示空结果
+            后端完整材料
           </button>
           <button type="button" class="font-bold text-sw-danger underline" :disabled="completenessLoading" @click="runFailedCompletenessCheck">
-            演示失败
+            本地失败演示
           </button>
         </div>
 
@@ -177,6 +220,59 @@
       </PageCard>
     </div>
 
+    <PageCard title="文档解析入库演示" subtitle="通过 Java /api/ai/ingest 获取可复现的 Python ingest 命令，不在页面里伪造远程执行。" compact class="mt-5">
+      <div v-if="ingestError" class="sw-alert sw-alert-danger mb-4">
+        {{ ingestError }}
+        <button type="button" class="ml-3 font-bold text-sw-danger underline" @click="loadIngestOperation">重试</button>
+      </div>
+
+      <div v-if="ingestOperation" class="grid gap-4">
+        <div class="grid gap-3 [grid-template-columns:repeat(4,minmax(0,1fr))] max-[1180px]:grid-cols-2 max-md:grid-cols-1">
+          <div class="rounded-[10px] bg-[#f6f9fd] p-4">
+            <p class="text-xs font-bold text-sw-muted">模式</p>
+            <strong class="mt-2 block text-[#12213a]">{{ ingestOperation.mode }}</strong>
+          </div>
+          <div class="rounded-[10px] bg-[#f6f9fd] p-4">
+            <p class="text-xs font-bold text-sw-muted">Chunk</p>
+            <strong class="mt-2 block text-[#12213a]">{{ ingestOperation.chunkSize }} / {{ ingestOperation.chunkOverlap }}</strong>
+          </div>
+          <div class="rounded-[10px] bg-[#f6f9fd] p-4">
+            <p class="text-xs font-bold text-sw-muted">重建</p>
+            <strong class="mt-2 block text-[#12213a]">{{ ingestOperation.rebuild ? '是' : '否' }}</strong>
+          </div>
+          <div class="rounded-[10px] bg-[#f6f9fd] p-4">
+            <p class="text-xs font-bold text-sw-muted">演示来源</p>
+            <strong class="mt-2 block text-[#12213a]">真实 Java 接口</strong>
+          </div>
+        </div>
+
+        <div class="grid gap-4 [grid-template-columns:repeat(2,minmax(0,1fr))] max-[1180px]:grid-cols-1">
+          <div class="min-w-0 rounded-[10px] border border-sw-line bg-white p-4">
+            <p class="text-xs font-bold text-sw-muted">工作目录</p>
+            <code class="mt-2 block [overflow-wrap:anywhere] text-[#12213a]">{{ ingestOperation.workdir }}</code>
+          </div>
+          <div class="min-w-0 rounded-[10px] border border-sw-line bg-white p-4">
+            <p class="text-xs font-bold text-sw-muted">资料目录</p>
+            <code class="mt-2 block [overflow-wrap:anywhere] text-[#12213a]">{{ ingestOperation.sourceDir }}</code>
+          </div>
+        </div>
+
+        <div class="min-w-0">
+          <h3 class="mb-3 text-base font-black text-[#16233b]">解析入库命令</h3>
+          <pre class="overflow-auto rounded-[10px] bg-[#111827] p-4 text-xs leading-[1.7] text-[#dbeafe]">{{ formatCommand(ingestOperation.command) }}</pre>
+        </div>
+        <div class="min-w-0">
+          <h3 class="mb-3 text-base font-black text-[#16233b]">MCP 工具验证命令</h3>
+          <pre class="overflow-auto rounded-[10px] bg-[#111827] p-4 text-xs leading-[1.7] text-[#dbeafe]">{{ ingestOperation.verificationCommand }}</pre>
+        </div>
+        <div class="sw-alert sw-alert-info">{{ ingestOperation.note }}</div>
+      </div>
+
+      <div v-else class="sw-alert sw-alert-info">
+        点击“刷新入库演示”后，这里会展示后端返回的文档解析、chunk、向量入库和 MCP 验证命令。
+      </div>
+    </PageCard>
+
     <PageCard title="接口契约样例" subtitle="供 CP2 验收材料直接引用，请求字段按 Python MCP 工具保持 snake_case 入参。" compact class="mt-5">
       <div class="grid gap-4 [grid-template-columns:repeat(2,minmax(0,1fr))] max-[1180px]:grid-cols-1">
         <div class="min-w-0">
@@ -194,14 +290,36 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { buildDemoCompleteness, buildDemoKnowledgeSearch, buildDemoStatus } from '@/api/knowledge'
-import type { CompletenessResponse, KnowledgeSearchResponse, KnowledgeStatusView, MaterialType, McpToolName } from '@/types'
+import {
+  buildDemoCompleteness,
+  buildDemoKnowledgeSearch,
+  buildDemoStatus,
+  callCheckCompletenessTool,
+  callKnowledgeSearchTool,
+  getAiHealth,
+  getAiIngestOperation,
+  toKnowledgeStatusFromAiHealth,
+} from '@/api/knowledge'
+import type {
+  AiHealthResponse,
+  AiIngestOperationResponse,
+  CompletenessResponse,
+  KnowledgeSearchResponse,
+  KnowledgeStatusView,
+  MaterialType,
+  McpToolName,
+} from '@/types'
 import { MATERIAL_LABELS, MATERIAL_SLOTS } from '@/types'
 import PageCard from '@/components/common/PageCard.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 
 const status = ref<KnowledgeStatusView>(buildDemoStatus())
 const statusLoading = ref(false)
+const statusError = ref('')
+const health = ref<AiHealthResponse | null>(null)
+const ingestOperation = ref<AiIngestOperationResponse | null>(null)
+const ingestLoading = ref(false)
+const ingestError = ref('')
 
 const searchQuery = ref('取水许可 材料')
 const searchTopK = ref(5)
@@ -259,17 +377,37 @@ const completenessContractJson = computed(() => JSON.stringify({
 }, null, 2))
 
 onMounted(() => {
-  status.value = buildDemoStatus()
+  loadStatus()
+  loadIngestOperation()
   runKnowledgeSearch()
   runCompletenessCheck()
 })
 
-function loadStatus() {
+async function loadStatus() {
   statusLoading.value = true
-  status.value = buildDemoStatus(status.value.lastToolName, '演示台状态已刷新为本地数据。')
-  window.setTimeout(() => {
+  statusError.value = ''
+  try {
+    const response = await getAiHealth()
+    health.value = response
+    status.value = toKnowledgeStatusFromAiHealth(response, status.value.lastToolName)
+  } catch (error) {
+    statusError.value = error instanceof Error ? error.message : 'MCP 健康检查失败，请重试。'
+    status.value = buildDemoStatus(status.value.lastToolName, '真实健康检查失败；工具按钮仍会走 Java 后端 MCP 代理。')
+  } finally {
     statusLoading.value = false
-  }, 250)
+  }
+}
+
+async function loadIngestOperation() {
+  ingestLoading.value = true
+  ingestError.value = ''
+  try {
+    ingestOperation.value = await getAiIngestOperation()
+  } catch (error) {
+    ingestError.value = error instanceof Error ? error.message : '文档解析入库演示信息加载失败，请重试。'
+  } finally {
+    ingestLoading.value = false
+  }
 }
 
 async function runKnowledgeSearch() {
@@ -277,10 +415,9 @@ async function runKnowledgeSearch() {
   searchError.value = ''
   searchResult.value = null
   try {
-    await demoDelay()
     const params = buildKnowledgeSearchParams()
-    searchResult.value = buildDemoKnowledgeSearch(params)
-    markToolCall('knowledge_search', '当前使用演示数据，等待后端 MCP HTTP 代理接入。', 'demo')
+    searchResult.value = await callKnowledgeSearchTool(params)
+    markToolCall('knowledge_search', '已通过 Java 后端调用 Python MCP knowledge_search。', 'api')
   } catch (error) {
     searchError.value = error instanceof Error ? error.message : 'knowledge_search 调用失败，请重试。'
   } finally {
@@ -293,12 +430,8 @@ async function runCompletenessCheck() {
   completenessError.value = ''
   completenessResult.value = null
   try {
-    await demoDelay()
-    if (selectedMaterials.value.length === 0) {
-      throw new Error('check_completeness 模拟失败：至少选择一项材料后重试。')
-    }
-    completenessResult.value = buildDemoCompleteness(selectedMaterials.value)
-    markToolCall('check_completeness', '当前使用演示数据，等待后端 MCP HTTP 代理接入。', 'demo')
+    completenessResult.value = await callCheckCompletenessTool(selectedMaterials.value)
+    markToolCall('check_completeness', '已通过 Java 后端调用 Python MCP check_completeness。', 'api')
   } catch (error) {
     completenessError.value = error instanceof Error ? error.message : 'check_completeness 调用失败，请重试。'
   } finally {
@@ -312,8 +445,14 @@ function runEmptyKnowledgeSearch() {
 }
 
 function runFailedKnowledgeSearch() {
-  searchQuery.value = 'simulate-error'
-  runKnowledgeSearch()
+  searchLoading.value = true
+  searchError.value = ''
+  searchResult.value = null
+  window.setTimeout(() => {
+    searchResult.value = buildDemoKnowledgeSearch({ query: 'simulate-error', topK: 1 })
+    searchError.value = '本地失败演示：真实 knowledge_search 请使用“检索”按钮。'
+    searchLoading.value = false
+  }, 250)
 }
 
 function runEmptyCompletenessCheck() {
@@ -322,22 +461,21 @@ function runEmptyCompletenessCheck() {
 }
 
 function runFailedCompletenessCheck() {
-  selectedMaterials.value = []
-  runCompletenessCheck()
+  completenessLoading.value = true
+  completenessError.value = ''
+  completenessResult.value = null
+  window.setTimeout(() => {
+    completenessResult.value = buildDemoCompleteness([])
+    completenessError.value = '本地失败演示：真实 check_completeness 请使用“检查完整性”按钮。'
+    completenessLoading.value = false
+  }, 250)
 }
 
 function buildKnowledgeSearchParams() {
   if (!Number.isFinite(searchTopK.value) || searchTopK.value < 1 || searchTopK.value > 50) {
     throw new Error('topK 需要在 1-50 之间，请修改后重试。')
   }
-  if (searchQuery.value.trim().toLowerCase() === 'simulate-error') {
-    throw new Error('knowledge_search 模拟失败，请点击重试。')
-  }
   return { query: searchQuery.value, topK: searchTopK.value }
-}
-
-function demoDelay() {
-  return new Promise((resolve) => window.setTimeout(resolve, 350))
 }
 
 function markToolCall(toolName: McpToolName, message: string, source: 'api' | 'demo') {
@@ -345,7 +483,7 @@ function markToolCall(toolName: McpToolName, message: string, source: 'api' | 'd
     ...status.value,
     lastToolName: toolName,
     lastCalledAt: new Date().toISOString(),
-    source,
+    source: health.value ? 'api' : source,
     message,
   }
 }
@@ -364,5 +502,14 @@ function formatDateTime(value: string | null): string {
   }
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+function formatCommand(command: string[]): string {
+  return command.map((part) => {
+    if (/^[A-Za-z0-9_./:=@-]+$/.test(part)) {
+      return part
+    }
+    return `'${part.replaceAll("'", "'\\''")}'`
+  }).join(' ')
 }
 </script>

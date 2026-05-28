@@ -14,6 +14,31 @@ export interface KnowledgeStatusView {
   message: string
 }
 
+export interface AiHealthResponse {
+  baseUrl: string
+  healthUrl: string
+  reachable: boolean
+  statusCode: number | null
+  message: string
+  responseBody: string
+  mcpTransport: string
+  mcpUrl: string
+  internalTokenConfigured: boolean
+  checkedAt: string | null
+}
+
+export interface AiIngestOperationResponse {
+  mode: string
+  workdir: string
+  sourceDir: string
+  chunkSize: number
+  chunkOverlap: number
+  rebuild: boolean
+  command: string[]
+  verificationCommand: string
+  note: string
+}
+
 export interface KnowledgeSearchRequest {
   query: string
   topK: number

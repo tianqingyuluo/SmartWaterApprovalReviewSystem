@@ -124,16 +124,19 @@ npm run dev
 
 演示顺序：
 
-1. 查看状态面板（知识库状态、MCP 状态、最近调用工具）。
-2. `knowledge_search` 成功检索。
-3. 点击“演示空结果”。
-4. 点击“演示失败”，观察错误提示与重试按钮。
-5. `check_completeness` 勾选/取消材料，观察 `complete` 与 `missing` 变化。
+1. 点击“检查 MCP 健康”，确认页面通过 `/api/ai/health` 请求 Java 后端，并展示 Python FastAPI 健康响应、`mcpUrl` 和 `mcpTransport`。
+2. 点击“刷新入库演示”，确认页面通过 `/api/ai/ingest` 展示 Python 文档解析入库命令、资料目录、chunk 参数和 MCP 验证命令。
+3. 查看状态面板（知识库状态、MCP 状态、最近调用工具）。
+4. 点击 `knowledge_search` 的“检索”，确认浏览器请求 `/api/ai/mcp/knowledge-search`，并展示后端返回的真实 MCP 工具结果。
+5. 点击“演示空结果”。
+6. 点击“本地失败演示”，观察错误提示与重试按钮。
+7. `check_completeness` 勾选/取消材料，确认浏览器请求 `/api/ai/mcp/check-completeness`，并观察 `complete` 与 `missing` 变化；取消全部材料时也应请求后端并返回全部缺失项。
 
 讲解要点：
 
-- 页面明确标注“演示模式，非正式审批结论”。
-- 当前前端使用演示数据结构，字段对齐 Python MCP 工具返回格式。
+- 页面已真实请求 Java 运维接口，解决“展示页不打后端”的问题。
+- 页面不在浏览器中伪造远程执行 ingest；入库演示展示的是后端返回的可复现 CLI 命令。
+- 正常工具按钮已走 `前端 -> Java -> Python FastAPI -> MCP call_tool`，本地数据只保留给明确标注的失败态演示。
 
 ---
 

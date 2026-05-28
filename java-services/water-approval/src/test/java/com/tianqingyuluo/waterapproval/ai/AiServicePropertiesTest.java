@@ -14,12 +14,16 @@ class AiServicePropertiesTest {
         properties.setBaseUrl("http://localhost:8000/");
         properties.setHealthPath("health");
         properties.setMcpPath("mcp");
+        properties.getMcpTools().setKnowledgeSearchPath("api/mcp/tools/knowledge_search");
+        properties.getMcpTools().setCheckCompletenessPath("api/mcp/tools/check_completeness");
         properties.getReviewTask().setPath("api/review/tasks");
 
         assertEquals("http://localhost:8000", properties.normalizedBaseUrl());
         assertEquals("/health", properties.normalizedHealthPath());
         assertEquals("http://localhost:8000/health", properties.healthUrl());
         assertEquals("http://localhost:8000/mcp", properties.mcpUrl());
+        assertEquals("/api/mcp/tools/knowledge_search", properties.normalizedKnowledgeSearchPath());
+        assertEquals("/api/mcp/tools/check_completeness", properties.normalizedCheckCompletenessPath());
         assertEquals("/api/review/tasks", properties.normalizedReviewTaskPath());
         assertEquals("http://localhost:8000/api/review/tasks", properties.reviewTaskUrl());
         assertEquals(3, properties.getReviewTask().safeMaxAttempts());

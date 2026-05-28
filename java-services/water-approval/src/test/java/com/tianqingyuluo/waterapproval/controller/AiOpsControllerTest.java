@@ -4,6 +4,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.JsonPath;
 import com.tianqingyuluo.waterapproval.dto.AiHealthResponse;
 import com.tianqingyuluo.waterapproval.dto.AiIngestOperationResponse;
+import com.tianqingyuluo.waterapproval.dto.AiMcpCompletenessFinding;
+import com.tianqingyuluo.waterapproval.dto.AiMcpCompletenessRequest;
+import com.tianqingyuluo.waterapproval.dto.AiMcpCompletenessResponse;
+import com.tianqingyuluo.waterapproval.dto.AiMcpKnowledgeSearchRequest;
+import com.tianqingyuluo.waterapproval.dto.AiMcpKnowledgeSearchResponse;
+import com.tianqingyuluo.waterapproval.dto.AiMcpKnowledgeSearchResultItem;
 import com.tianqingyuluo.waterapproval.dto.LoginRequest;
 import com.tianqingyuluo.waterapproval.service.AiOpsService;
 import org.junit.jupiter.api.Test;
@@ -93,6 +99,82 @@ class AiOpsControllerTest {
                 .andExpect(jsonPath("$.data.command[3]").value("-m"))
                 .andExpect(jsonPath("$.data.command[4]").value("src.ingest.cli"))
                 .andExpect(jsonPath("$.data.verificationCommand").value("uv run python -m src.mcp_server.demo --run-samples"));
+    }
+
+    @Test
+    void postMcpKnowledgeSearchShouldProxyToolResult() throws Exception {
+        AiMcpKnowledgeSearchRequest request = new AiMcpKnowledgeSearchRequest();
+        request.setQuery("营业执照");
+        request.setTopK(3);
+
+        AiMcpKnowledgeSearchResultItem item = new AiMcpKnowledgeSearchResultItem();
+        item.setRank(1);
+        item.setSection("materialChecklist");
+        item.setId("MAT_BUSINESS_LICENSE");
+        item.setTitle("营业执照");
+        item.setMaterialType("BUSINESS_LICENSE");
+        item.setExcerpt("营业执照用于校验申请主体。");
+        item.setScore(1.0);
+        item.setSourceIds(List.of("SRC_SAMPLE_BUSINESS_LICENSE"));
+        item.setSourceRefs(List.of("SRC_PROCESS_DOC"));
+        item.setBasisRefs(List.of("BASIS_MATERIAL_INITIAL_LIST"));
+
+        AiMcpKnowledgeSearchResponse response = new AiMcpKnowledgeSearchResponse();
+        response.setQuery("营业执照");
+        response.setRequestedTopK(3);
+        response.setTopK(3);
+        response.setTotal(1);
+        response.setResults(List.of(item));
+        response.setKnowledgePackVersion("water-permit-mvp-2026-04-27");
+        when(aiOpsService.callKnowledgeSearch(request)).thenReturn(response);
+
+        String token = loginAs("admin", "admin123");
+        mockMvc.perform(post("/ai/mcp/knowledge-search")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.query").value("营业执照"))
+                .andExpect(jsonPath("$.data.results[0].id").value("MAT_BUSINESS_LICENSE"))
+                .andExpect(jsonPath("$.data.results[0].sourceIds[0]").value("SRC_SAMPLE_BUSINESS_LICENSE"));
+    }
+
+    @Test
+    void postMcpCheckCompletenessShouldProxyToolResult() throws Exception {
+        AiMcpCompletenessRequest request = new AiMcpCompletenessRequest();
+        request.setMaterials(List.of("APPLICATION_FORM", "BUSINESS_LICENSE"));
+
+        AiMcpCompletenessFinding finding = new AiMcpCompletenessFinding();
+        finding.setCode("MISSING_MATERIAL");
+        finding.setSeverity("WARNING");
+        finding.setMaterialType("ID_CARD");
+        finding.setMaterialId("MAT_ID_CARD");
+        finding.setMaterialDisplayName("法定代表人身份证");
+        finding.setMessage("缺少法定代表人身份证。");
+        finding.setApplicantMessage("请补充身份证。");
+        finding.setBasisRefs(List.of("BASIS_MATERIAL_INITIAL_LIST"));
+        finding.setSourceRefs(List.of("SRC_SAMPLE_ID_CARD"));
+
+        AiMcpCompletenessResponse response = new AiMcpCompletenessResponse();
+        response.setSubmitted(List.of("APPLICATION_FORM", "BUSINESS_LICENSE"));
+        response.setRequired(List.of("APPLICATION_FORM", "BUSINESS_LICENSE", "ID_CARD"));
+        response.setMissing(List.of("ID_CARD"));
+        response.setComplete(false);
+        response.setFindings(List.of(finding));
+        response.setKnowledgePackVersion("water-permit-mvp-2026-04-27");
+        when(aiOpsService.callCheckCompleteness(request)).thenReturn(response);
+
+        String token = loginAs("admin", "admin123");
+        mockMvc.perform(post("/ai/mcp/check-completeness")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.complete").value(false))
+                .andExpect(jsonPath("$.data.missing[0]").value("ID_CARD"))
+                .andExpect(jsonPath("$.data.findings[0].code").value("MISSING_MATERIAL"));
     }
 
     @Test

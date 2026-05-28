@@ -2,7 +2,7 @@
 
 > 对应任务：`v1-cp2-docs-tests-demo`  
 > 记录日期：`2026-05-20`
-> 最近复验：`2026-05-25`
+> 最近复验：`2026-05-28`
 
 ---
 
@@ -29,9 +29,10 @@
 | 真实 Embedding 空库重建 | `CHROMA_PERSIST_DIR=/tmp/smartwater-cp2-chroma-verify-fixed uv run python -m src.ingest.cli --source-dir /tmp/smartwater-cp2-source-verify --chunk-size 512 --chunk-overlap 64 --rebuild` | 通过：`7` 个文档、`375` 个文本块、`665` 个 chunk、`665` 个向量；Embedding API 返回 `200 OK` |
 | MCP 工具注册 | `cd python-services/smart-water-approval-review-system-py && UV_CACHE_DIR=/tmp/uv-cache uv run python -m src.mcp_server.demo --list-tools` | 通过（包含 `knowledge_search`、`check_completeness`） |
 | MCP 样例调用 | `cd python-services/smart-water-approval-review-system-py && UV_CACHE_DIR=/tmp/uv-cache uv run python -m src.mcp_server.demo --run-samples --query "营业执照" --top-k 3 --materials-json '["APPLICATION_FORM","BUSINESS_LICENSE"]'` | 通过（返回 `knowledge_search` 结果和 `missing=["ID_CARD"]`） |
+| Java MCP 工具代理 | `POST /api/ai/mcp/knowledge-search`、`POST /api/ai/mcp/check-completeness` | 通过真实 Java -> Python FastAPI -> MCP `call_tool` 链路返回工具结果 |
 | CP2 证据脚本真实检索 | `KNOWLEDGE_SOURCE_DIR=/tmp/smartwater-cp2-source-verify CHROMA_PERSIST_DIR=/tmp/smartwater-cp2-chroma-verify-fixed uv run python -m src.cp2_evidence --no-rebuild` | 通过：向量总数 `665`，可检索“取水许可”“营业执照”“填报说明”“行业分类”，并演示两个 MCP 工具 |
 | CP2 证据脚本参数检查 | `cd python-services/smart-water-approval-review-system-py && UV_CACHE_DIR=/tmp/uv-cache uv run python -m src.cp2_evidence --help` | 通过（包含 `--no-rebuild`） |
-| 前端单测 | `cd frontend && npm run test` | 通过（`2 files / 8 tests`） |
+| 前端单测 | `cd frontend && npm run test` | 通过（覆盖 `/api/ai/mcp/*` 代理调用和空材料选择） |
 | 前端构建 | `cd frontend && npm run build` | 通过 |
 
 ---
@@ -73,4 +74,4 @@
 - 真实外部 Embedding 空库重建已通过，当前 Router OpenAI-compatible 端点与 `Qwen/Qwen3-Embedding-4B` 模型可用。
 - 剩余风险：
   - 真实 ingest 仍依赖本地 `.env` 中有效 `EMBEDDING_API_KEY` 与外网可达性；密钥不进入 Git。
-  - 前端演示台当前仍为演示数据模式，等待后续 MCP HTTP 代理接入后可切换真实后端链路。
+  - 前端演示台正常工具按钮已接入真实 MCP 代理；仅“本地失败演示”按钮保留本地错误态数据。

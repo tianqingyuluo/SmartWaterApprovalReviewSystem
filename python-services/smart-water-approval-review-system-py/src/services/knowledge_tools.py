@@ -185,6 +185,7 @@ class SmartWaterKnowledgeTools:
         knowledge_pack: dict[str, Any] | None = None,
         chroma_store: Any | None = None,
         embedding_client: Any | None = None,
+        precompute_json_embeddings: bool = True,
     ) -> None:
         self._pack = knowledge_pack if knowledge_pack is not None else load_knowledge_pack()
         self._version = str(self._pack.get("version") or "")
@@ -195,7 +196,7 @@ class SmartWaterKnowledgeTools:
         self._embedding_client = embedding_client
         self._json_item_embeddings: list[tuple[list[float], dict[str, Any], str]] = []
 
-        if self._embedding_client is not None:
+        if self._embedding_client is not None and precompute_json_embeddings:
             self._precompute_json_embeddings()
 
     @property

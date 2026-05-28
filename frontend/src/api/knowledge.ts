@@ -1,15 +1,19 @@
 import type {
+  AiHealthResponse,
+  AiIngestOperationResponse,
   CompletenessResponse,
   KnowledgeSearchRequest,
   KnowledgeSearchResponse,
   KnowledgeStatusView,
   MaterialType,
   McpToolName,
+  R,
 } from '@/types'
+import request from '@/utils/request'
 
 const DEMO_KNOWLEDGE_PACK_VERSION = 'water-permit-mvp-2026-05'
 
-export function buildDemoStatus(toolName: McpToolName | null = null, message = '当前后端未暴露 MCP HTTP 代理，页面使用与 Python 工具同结构的演示数据。'): KnowledgeStatusView {
+export function buildDemoStatus(toolName: McpToolName | null = null, message = '等待 Java 后端返回 AI/MCP 健康检查结果。'): KnowledgeStatusView {
   return {
     knowledgeAvailable: true,
     mcpAvailable: true,
@@ -18,6 +22,46 @@ export function buildDemoStatus(toolName: McpToolName | null = null, message = '
     lastCalledAt: toolName ? new Date().toISOString() : null,
     source: 'demo',
     message,
+  }
+}
+
+export async function getAiHealth(): Promise<AiHealthResponse> {
+  const response = await request.get<R<AiHealthResponse>>('/ai/health')
+  return response.data.data
+}
+
+export async function getAiIngestOperation(): Promise<AiIngestOperationResponse> {
+  const response = await request.post<R<AiIngestOperationResponse>>('/ai/ingest')
+  return response.data.data
+}
+
+export async function callKnowledgeSearchTool(params: KnowledgeSearchRequest): Promise<KnowledgeSearchResponse> {
+  const response = await request.post<R<KnowledgeSearchResponse>>('/ai/mcp/knowledge-search', {
+    query: params.query,
+    topK: params.topK,
+  })
+  return response.data.data
+}
+
+export async function callCheckCompletenessTool(materials: MaterialType[]): Promise<CompletenessResponse> {
+  const response = await request.post<R<CompletenessResponse>>('/ai/mcp/check-completeness', {
+    materials,
+  })
+  return response.data.data
+}
+
+export function toKnowledgeStatusFromAiHealth(
+  health: AiHealthResponse,
+  lastToolName: McpToolName | null = null,
+): KnowledgeStatusView {
+  return {
+    knowledgeAvailable: health.reachable,
+    mcpAvailable: health.reachable && health.mcpUrl.trim() !== '',
+    knowledgePackVersion: extractKnowledgePackVersion(health.responseBody),
+    lastToolName,
+    lastCalledAt: health.checkedAt,
+    source: 'api',
+    message: health.message || (health.reachable ? 'Java 后端已完成 AI/MCP 健康检查。' : 'Java 后端无法连通 AI/MCP 服务。'),
   }
 }
 
@@ -112,4 +156,18 @@ function materialDisplayName(materialType: MaterialType): string {
   if (materialType === 'APPLICATION_FORM') return '取水许可申请书'
   if (materialType === 'BUSINESS_LICENSE') return '营业执照'
   return '身份证'
+}
+
+function extractKnowledgePackVersion(responseBody: string): string {
+  if (!responseBody) {
+    return 'unknown'
+  }
+  try {
+    const parsed = JSON.parse(responseBody) as { knowledgePackVersion?: unknown }
+    return typeof parsed.knowledgePackVersion === 'string' && parsed.knowledgePackVersion
+      ? parsed.knowledgePackVersion
+      : 'unknown'
+  } catch {
+    return 'unknown'
+  }
 }

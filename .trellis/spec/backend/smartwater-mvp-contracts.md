@@ -461,6 +461,13 @@ knowledge_search(query: str, top_k: int = 5) -> dict
 check_completeness(materials: list | dict | str | None = None) -> dict
 ```
 
+- FastAPI tool proxy:
+
+```http
+POST /api/mcp/tools/knowledge_search
+POST /api/mcp/tools/check_completeness
+```
+
 ### 3. Contracts
 
 `knowledge_search` response fields:
@@ -509,6 +516,18 @@ check_completeness(materials: list | dict | str | None = None) -> dict
 | `findings[].sourceRefs` | Source refs for the checklist item. |
 | `findings[].basisRefs` | Basis refs for the checklist item. |
 
+FastAPI proxy rules:
+
+- Java-facing FastAPI tool proxy endpoints must call the registered FastMCP
+  tool via `server.call_tool(...)`; they must not duplicate tool logic or
+  return handcrafted demo payloads.
+- FastAPI proxy construction must stay responsive for health/tool demos:
+  `build_mcp_server()` must not precompute JSON embeddings during tool
+  registration, and the FastAPI proxy may disable vector search to avoid
+  blocking `/health` or `check_completeness` on external embedding services.
+- Empty `materials: []` is a valid backend request and must return all required
+  MVP materials as missing.
+
 ### 4. Validation & Error Matrix
 
 | Condition | Expected behavior |
@@ -519,15 +538,22 @@ check_completeness(materials: list | dict | str | None = None) -> dict
 | `top_k < 1` | Clamp effective `topK` to `1`. |
 | `top_k > 50` | Clamp effective `topK` to `50`. |
 | `materials` is `None` | Treat as no submitted materials and report all missing required items. |
+| `materials` is `[]` | Treat as no submitted materials and report all missing required items. |
 | `materials` includes unknown values | Ignore unknown values and do not mark required materials as present. |
+| FastAPI proxy cannot call a registered MCP tool | Return an explicit backend error; do not replace it with a local success payload. |
 | Demo `--materials-json` is invalid JSON | CLI may fail fast with JSON parse error; tests should cover valid examples. |
 
 ### 5. Good/Base/Bad Cases
 
 - Good: MCP tool handlers are thin wrappers around `SmartWaterKnowledgeTools`, so tests call core logic without starting a server.
+- Good: Java UI proxy endpoints call Python FastAPI, and FastAPI invokes
+  FastMCP `call_tool` for the selected tool.
 - Good: `knowledge_search("营业执照", 3)` returns ranked matches with `sourceIds`, `sourceRefs`, `basisRefs`, and `knowledgePackVersion`.
 - Base: `check_completeness(["APPLICATION_FORM", "BUSINESS_LICENSE"])` returns `missing=["ID_CARD"]` and one `MISSING_MATERIAL` finding.
 - Bad: Tool handlers duplicate checklist logic inside `mcp_server/server.py`, making CLI and future API behavior drift.
+- Bad: FastAPI `/api/mcp/tools/check_completeness` initializes ChromaDB or
+  embedding clients even though completeness checking only needs the static
+  material checklist.
 - Bad: MCP tools call OCR, LLM, Java backend, object storage, or network services during local knowledge lookup.
 
 ### 6. Tests Required
@@ -535,6 +561,7 @@ check_completeness(materials: list | dict | str | None = None) -> dict
 - Unit tests for `knowledge_search` response shape, rank/score behavior, `top_k` clamping, and `sourceIds` derivation.
 - Unit tests for `check_completeness` list/dict/string inputs, unknown materials, duplicate materials, and missing finding payloads.
 - Registration test that `build_mcp_server().list_tools()` exposes `knowledge_search` and `check_completeness`.
+- FastAPI proxy tests for both tool endpoints, including empty `materials: []`.
 - Demo test or command evidence for `--list-tools` and `--run-samples`.
 - Verification commands for Python MCP changes:
 

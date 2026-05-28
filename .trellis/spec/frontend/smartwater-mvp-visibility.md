@@ -218,6 +218,95 @@ export type UserRole = 'APPLICANT' | 'REVIEWER' | 'ADMIN'
 | Reviewer result link | May call `/task/{taskId}/result/reviewer` only for reviewer/admin roles. |
 | Reviewer action submit | Reviewer/admin may call `POST /task/{taskId}/reviewer-action` with one of `APPROVE_INITIAL_REVIEW`, `RETURN_FOR_CORRECTION`, or `TRANSFER_MANUAL_REVIEW`. |
 
+## CP2 MCP Demo Operations Boundary
+
+The CP2 knowledge/MCP demo page is an operations visibility surface. It may show
+real Java-backed health and ingest command data, but it must not imply the
+browser directly executes Python ingest or real MCP tool calls unless a real
+HTTP proxy exists.
+
+### 1. Scope / Trigger
+
+- Trigger: `/knowledge-mcp`, AI/MCP health status display, ingest demo display,
+  or frontend CP2 demo copy.
+
+### 2. Signatures
+
+Frontend API calls:
+
+```http
+GET /api/ai/health
+POST /api/ai/ingest
+POST /api/ai/mcp/knowledge-search
+POST /api/ai/mcp/check-completeness
+```
+
+Page route:
+
+```text
+/knowledge-mcp
+```
+
+### 3. Contracts
+
+| Item | Contract |
+|---|---|
+| Health source | Page calls Java `/api/ai/health`; Java probes Python FastAPI and returns `reachable`, `healthUrl`, `mcpUrl`, `mcpTransport`, `checkedAt`, and `responseBody`. |
+| Ingest demo source | Page calls Java `/api/ai/ingest`; Java returns reproducible Python CLI command, source directory, chunk parameters, rebuild flag, and verification command. |
+| Tool source | Normal `knowledge_search` and `check_completeness` buttons call Java `/api/ai/mcp/*`; Java calls Python FastAPI `/api/mcp/tools/*`; Python invokes the registered MCP tool via `FastMCP.call_tool`. |
+| Local-only demos | Local demo data is allowed only for explicitly labeled failure-demo buttons. It must never be the default success path for `knowledge_search` or `check_completeness`. |
+| Auth | Route is admin-visible; Java remains the authority through normal bearer-token auth. |
+| No fake execution | Browser must not claim ingest was executed when only the command was returned. |
+
+### 4. Validation & Error Matrix
+
+| Condition | Expected behavior |
+|---|---|
+| Java `/api/ai/health` succeeds and Python is reachable | Show real-interface status, MCP URL, transport, HTTP code, checked time, and response body. |
+| Java `/api/ai/health` fails or returns business error | Show page-level retry/error; normal tool buttons still attempt the Java MCP proxy and surface real failures. |
+| Java `/api/ai/ingest` succeeds | Show command, workdir, sourceDir, chunkSize/chunkOverlap, rebuild, verification command, and note. |
+| Java `/api/ai/ingest` fails | Show retry/error; do not invent fallback command. |
+| Java `/api/ai/mcp/knowledge-search` succeeds | Render the returned `results[]`, `topK`, `total`, and `knowledgePackVersion`; mark the last tool call as real API source. |
+| Java `/api/ai/mcp/check-completeness` succeeds | Render returned `submitted/required/missing/complete/findings`; an empty material selection must still be sent to backend as `materials: []`. |
+| Java MCP proxy fails | Show the backend error and retry action; do not replace it with local success data. |
+
+### 5. Good/Base/Bad Cases
+
+- Good: `/knowledge-mcp` button clicks produce `/api/ai/health`,
+  `/api/ai/ingest`, `/api/ai/mcp/knowledge-search`, and
+  `/api/ai/mcp/check-completeness` network requests.
+- Good: empty `check_completeness` selection calls backend MCP and returns all
+  required materials as missing.
+- Bad: Page only displays hard-coded health/ingest values.
+- Bad: Page says ingest completed after merely receiving an ops command.
+- Bad: normal tool buttons build local `buildDemoKnowledgeSearch` or
+  `buildDemoCompleteness` results instead of requesting Java.
+
+### 6. Tests Required
+
+- API adapter test maps Java AI health response into page status, including
+  `source: "api"` and knowledge pack version parsing from response body.
+- API adapter tests assert `knowledge_search` and `check_completeness` use the
+  Java MCP proxy endpoints, including empty material selection.
+- Frontend build must pass after page/template changes.
+- Manual or E2E evidence should verify the page route and same-origin
+  `/api/ai/health`, `/api/ai/ingest`, and `/api/ai/mcp/*` requests.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```ts
+status.value = buildDemoStatus(null, 'MCP 服务真实可用')
+```
+
+#### Correct
+
+```ts
+const health = await getAiHealth()
+status.value = toKnowledgeStatusFromAiHealth(health)
+```
+
 ### 4. Validation & Error Matrix
 
 | Condition | Expected behavior |

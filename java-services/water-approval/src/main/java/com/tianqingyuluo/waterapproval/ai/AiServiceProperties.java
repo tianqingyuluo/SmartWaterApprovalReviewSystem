@@ -17,6 +17,7 @@ public class AiServiceProperties {
     private Duration timeout = Duration.ofSeconds(3);
     private String mcpTransport = "streamable-http";
     private String mcpPath = "/mcp";
+    private McpTools mcpTools = new McpTools();
     private Ingest ingest = new Ingest();
     private ReviewTask reviewTask = new ReviewTask();
 
@@ -46,6 +47,14 @@ public class AiServiceProperties {
 
     public String reviewTaskUrl() {
         return normalizedBaseUrl() + normalizedReviewTaskPath();
+    }
+
+    public String normalizedKnowledgeSearchPath() {
+        return normalizePath(mcpTools.getKnowledgeSearchPath());
+    }
+
+    public String normalizedCheckCompletenessPath() {
+        return normalizePath(mcpTools.getCheckCompletenessPath());
     }
 
     public boolean hasInternalToken() {
@@ -78,6 +87,12 @@ public class AiServiceProperties {
         private int chunkSize = 512;
         private int chunkOverlap = 64;
         private boolean rebuild = false;
+    }
+
+    @Data
+    public static class McpTools {
+        private String knowledgeSearchPath = "/api/mcp/tools/knowledge_search";
+        private String checkCompletenessPath = "/api/mcp/tools/check_completeness";
     }
 
     @Data

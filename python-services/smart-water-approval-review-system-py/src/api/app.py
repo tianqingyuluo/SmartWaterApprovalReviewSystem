@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import os
 from datetime import UTC, datetime
@@ -8,8 +9,16 @@ from typing import Any
 from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, status
 
 from knowledge_pack import KnowledgePackError, load_knowledge_pack, normalize_knowledge_fragments
-from src.api.models import CreateReviewTaskRequest, CreateReviewTaskResponse, HealthResponse, TaskStatusResponse
+from src.api.models import (
+    CompletenessToolRequest,
+    CreateReviewTaskRequest,
+    CreateReviewTaskResponse,
+    HealthResponse,
+    KnowledgeSearchToolRequest,
+    TaskStatusResponse,
+)
 from src.config import config
+from src.mcp_server.server import build_mcp_server
 from src.services.fastapi_task_store import InMemoryTaskStore
 from src.services.mcp_client import SmartWaterMcpClient
 from src.services.result_writer import ResultWriter, _result_to_dict
@@ -120,6 +129,26 @@ def _check_internal_token(x_internal_token: str | None = Header(default=None)) -
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid internal token")
 
 
+def _mcp_call_result_to_dict(result: Any) -> dict[str, Any]:
+    content = getattr(result, "content", result)
+    if isinstance(content, list):
+        for item in content:
+            text = getattr(item, "text", None)
+            if text:
+                parsed = json.loads(text)
+                return parsed if isinstance(parsed, dict) else {"result": parsed}
+    return result if isinstance(result, dict) else {"result": result}
+
+
+async def _call_mcp_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+    server = build_mcp_server(
+        enable_vector_search=False,
+        precompute_json_embeddings=False,
+    )
+    result = await server.call_tool(name, arguments)
+    return _mcp_call_result_to_dict(result)
+
+
 app = FastAPI(
     title="SmartWater Review FastAPI",
     version="0.1.0",
@@ -143,6 +172,33 @@ def health() -> HealthResponse:
             service="smart-water-review-fastapi",
             knowledgePackVersion=runtime.knowledge_pack_version,
         )
+
+
+@app.post("/api/mcp/tools/knowledge_search", tags=["mcp-tools"])
+async def call_knowledge_search_tool(
+    request: KnowledgeSearchToolRequest,
+    _auth: None = Depends(_check_internal_token),
+) -> dict[str, Any]:
+    return await _call_mcp_tool(
+        "knowledge_search",
+        {
+            "query": request.query,
+            "top_k": request.top_k,
+        },
+    )
+
+
+@app.post("/api/mcp/tools/check_completeness", tags=["mcp-tools"])
+async def call_check_completeness_tool(
+    request: CompletenessToolRequest,
+    _auth: None = Depends(_check_internal_token),
+) -> dict[str, Any]:
+    return await _call_mcp_tool(
+        "check_completeness",
+        {
+            "materials": request.materials,
+        },
+    )
 
 
 @app.post(

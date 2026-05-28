@@ -50,3 +50,16 @@ class HealthResponse(BaseModel):
     status: str
     service: str
     knowledge_pack_version: str | None = Field(default=None, alias="knowledgePackVersion")
+
+
+class KnowledgeSearchToolRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    query: str = Field(min_length=1)
+    top_k: int = Field(default=5, alias="topK", ge=1, le=50)
+
+
+class CompletenessToolRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    materials: list[str] | dict[str, Any] | str | None = None
