@@ -91,15 +91,6 @@
           </button>
         </div>
 
-        <div class="mt-3 flex flex-wrap gap-3 text-sm">
-          <button type="button" class="font-bold text-sw-primary underline" :disabled="searchLoading" @click="runEmptyKnowledgeSearch">
-            后端空结果
-          </button>
-          <button type="button" class="font-bold text-sw-danger underline" :disabled="searchLoading" @click="runFailedKnowledgeSearch">
-            本地失败演示
-          </button>
-        </div>
-
         <div v-if="searchError" class="sw-alert sw-alert-danger mt-4">
           {{ searchError }}
           <button type="button" class="ml-3 font-bold text-sw-danger underline" @click="runKnowledgeSearch">重试</button>
@@ -155,15 +146,6 @@
           </label>
           <button type="button" class="sw-btn sw-btn-primary" :disabled="completenessLoading" @click="runCompletenessCheck">
             {{ completenessLoading ? '检查中...' : '检查完整性' }}
-          </button>
-        </div>
-
-        <div class="mt-3 flex flex-wrap gap-3 text-sm">
-          <button type="button" class="font-bold text-sw-primary underline" :disabled="completenessLoading" @click="runEmptyCompletenessCheck">
-            后端完整材料
-          </button>
-          <button type="button" class="font-bold text-sw-danger underline" :disabled="completenessLoading" @click="runFailedCompletenessCheck">
-            本地失败演示
           </button>
         </div>
 

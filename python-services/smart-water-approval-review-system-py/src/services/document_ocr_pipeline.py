@@ -318,16 +318,131 @@ def _table_to_text(rows: list[list[str]]) -> str:
     return "\n".join(" | ".join(cell for cell in row if cell) for row in rows).strip()
 
 
+# 选项引导标记：空白框为"未选中"，其余符号一律视为"选中"
+# 设计依据：OCR 对手写勾的识别极不稳定（可能是 ✓ √ X 乃至乱码），
+# 唯一可靠的"未选中"信号是干净的空白框 □/☐。
+_CHECKBOX_UNCHECKED_MARKS = "□☐"
+_CHECKBOX_CHECKED_MARKS = "☑✓✔√☒■✗xX×"
+_CHECKBOX_ALL_MARKS = _CHECKBOX_UNCHECKED_MARKS + _CHECKBOX_CHECKED_MARKS
+
+
+def _parse_checkbox_field(text: str) -> str:
+    """
+    解析勾选框字段，只返回被选中的选项
+
+    判断规则：以 □/☐（空白框）为唯一的"未选中"标记，任何其他引导标记
+    （☑ ✓ ✔ √ ☒ ■ ✗ x X × 等）都视为"选中"。每个选项由一个标记符号引导，
+    例如 "□新建 ☑改建、扩建 □其他"。
+
+    Args:
+        text: 包含勾选框的文本，例如 "□新建 ☑改建、扩建 □其他"
+
+    Returns:
+        选中的选项，多个用逗号分隔，如 "改建、扩建"
+        如果没有选中任何选项，返回 "-"
+    """
+    if not text:
+        return "-"
+
+    checked_options: list[str] = []
+    current_label: list[str] = []
+    current_is_checked = False
+    seen_mark = False
+
+    def flush() -> None:
+        if seen_mark and current_is_checked:
+            label = "".join(current_label).strip()
+            if label:
+                checked_options.append(label)
+
+    for char in text:
+        if char in _CHECKBOX_ALL_MARKS:
+            # 遇到新标记，先保存上一个选项
+            flush()
+            current_label = []
+            # 只有空白框是"未选中"，其余一律视为"选中"
+            current_is_checked = char not in _CHECKBOX_UNCHECKED_MARKS
+            seen_mark = True
+        elif char in ("\n", "\t"):
+            # 换行/制表符作为选项分隔
+            flush()
+            current_label = []
+            seen_mark = False
+        else:
+            if seen_mark and current_is_checked:
+                current_label.append(char)
+
+    # 保存最后一个选项
+    flush()
+
+    if checked_options:
+        return ", ".join(checked_options)
+    return "-"
+
+
 def _extract_key_value_fields(rows: list[list[str]], material_type: str) -> list[ExtractedField]:
+    """
+    从表格行中提取键值对字段
+
+    处理两种表格格式：
+    1. 简单键值对：[字段名, 值]
+    2. 申请表格式：[分类, 字段名, 字段名重复, 值1, 值2, ...]
+    """
     fields: list[ExtractedField] = []
+
     for row in rows:
         if len(row) < 2:
             continue
 
-        key = row[0].strip()
-        value = row[1].strip()
-        if not key or not value:
+        # 检测是否是申请表格式（列2和列3重复）
+        if len(row) >= 3 and row[1].strip() and row[1].strip() == row[2].strip():
+            # 申请表格式：列2是字段名，列3之后是值
+            key = row[1].strip()
+            # 合并所有非空值列（从列3开始）
+            values = [cell.strip() for cell in row[2:] if cell.strip()]
+
+            # 检查是否是表头行：
+            # 如果有任何值重复出现3次或以上，说明是表头（字段名重复）
+            # 例如：["申请人基本情况", "字段1", "字段1", "字段2", "字段2", "字段2"]
+            if len(values) > 1:
+                # 统计每个值的出现次数
+                value_counts = {}
+                for v in values:
+                    value_counts[v] = value_counts.get(v, 0) + 1
+
+                # 如果有任何值重复3次或以上，说明是表头
+                if any(count >= 3 for count in value_counts.values()):
+                    # 这是表头行，跳过
+                    continue
+
+            # 如果只有字段名重复，没有实际值，使用占位符
+            if len(values) == 1 and values[0] == key:
+                value = "-"
+            elif len(values) > 1:
+                # 过滤掉与字段名相同的值（字段名重复）
+                actual_values = [v for v in values if v != key]
+                if actual_values:
+                    value = ", ".join(actual_values)
+                else:
+                    value = "-"
+            else:
+                value = "-"
+        else:
+            # 简单键值对格式
+            key = row[0].strip()
+            value = row[1].strip()
+
+        # 跳过空键
+        if not key:
             continue
+
+        # 跳过值与键完全相同的情况（表头重复）
+        if value == key:
+            continue
+
+        # 空值使用占位符
+        if not value:
+            value = "-"
 
         fields.append(
             ExtractedField(
@@ -338,6 +453,7 @@ def _extract_key_value_fields(rows: list[list[str]], material_type: str) -> list
                 evidence="Extracted from document table",
             )
         )
+
     return fields
 
 

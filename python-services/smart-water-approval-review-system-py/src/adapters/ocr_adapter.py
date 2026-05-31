@@ -90,6 +90,41 @@ def _summarize_exception(exc: Exception) -> str:
     return sanitized or exc.__class__.__name__
 
 
+def clean_ocr_markdown(text: str | None) -> str:
+    """
+    清洗 OCR 返回的 Markdown 格式文本，移除：
+    1. HTML 标签（<div>, <center> 等）
+    2. Markdown 图片标记（![](...)）
+    3. bbox 坐标信息
+    4. 多余的空白行
+
+    Args:
+        text: OCR 返回的原始 Markdown 文本
+
+    Returns:
+        清洗后的纯文本
+    """
+    if not text:
+        return ""
+
+    # 移除 Markdown 图片标记和 bbox 坐标
+    # 例如: ![](page=0,bbox=[79, 111, 183, 224])
+    cleaned = re.sub(r'!\[\]\(page=\d+,bbox=\[[^\]]+\]\)', '', text)
+
+    # 移除 HTML 标签
+    # 例如: <div align="center">, </div>, <center>, </center>
+    cleaned = re.sub(r'<[^>]+>', '', cleaned)
+
+    # 移除多余的空白行（保留单个换行）
+    cleaned = re.sub(r'\n\s*\n\s*\n+', '\n\n', cleaned)
+
+    # 移除行首行尾空白
+    lines = [line.strip() for line in cleaned.split('\n')]
+    cleaned = '\n'.join(line for line in lines if line)
+
+    return cleaned.strip()
+
+
 def _coerce_markdown_results(md_results: Any) -> str:
     if isinstance(md_results, str):
         return md_results.strip()
@@ -151,10 +186,12 @@ def _layout_details_to_fields(layout_details: Any) -> list[ExtractedField]:
 def _parse_ocr_response(data: dict[str, Any]) -> list[ExtractedField]:
     markdown = _coerce_markdown_results(data.get("md_results"))
     if markdown:
+        # 清洗 OCR 返回的 Markdown，移除 HTML 标签和图片标记
+        cleaned_markdown = clean_ocr_markdown(markdown)
         return [
             ExtractedField(
                 field_key=_OCR_MARKDOWN_FIELD_KEY,
-                field_value=markdown,
+                field_value=cleaned_markdown,
                 confidence=_DEFAULT_OCR_CONFIDENCE,
             )
         ]
