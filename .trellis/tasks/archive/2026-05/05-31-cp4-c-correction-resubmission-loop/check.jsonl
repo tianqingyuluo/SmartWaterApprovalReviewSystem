@@ -1,0 +1,6 @@
+{"file":".trellis/spec/backend/smartwater-mvp-contracts.md","reason":"Verify correction loop remains consistent with status, material, role, and CP4 boundary contracts."}
+{"file":".trellis/spec/backend/database-guidelines.md","reason":"Verify persistence changes do not drift schema/entity/test contracts."}
+{"file":".trellis/spec/backend/error-handling.md","reason":"Verify failures and forbidden states return project-standard business errors."}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Verify Java tests and storage/real integration boundaries."}
+{"file":".trellis/spec/frontend/smartwater-mvp-visibility.md","reason":"Verify applicant-only correction upload visibility and no reviewer-only leaks."}
+{"file":".trellis/spec/frontend/type-safety.md","reason":"Verify DTO/view-model/types are updated consistently."}

@@ -1,0 +1,8 @@
+{"file":".trellis/spec/backend/smartwater-mvp-contracts.md","reason":"Task status, material, role visibility, reviewer action, and CP4 correction boundary contracts."}
+{"file":".trellis/spec/backend/database-guidelines.md","reason":"Persistence rules for review_task, material_slot, review_result, action logs, and schema synchronization."}
+{"file":".trellis/spec/backend/error-handling.md","reason":"Business error, status transition, worker/API response, and failure semantics contracts."}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Backend testing and storage/real integration boundaries."}
+{"file":".trellis/spec/frontend/smartwater-mvp-visibility.md","reason":"Applicant/reviewer visibility and role routing contracts."}
+{"file":".trellis/spec/frontend/type-safety.md","reason":"DTO/view-model separation and reviewer action handling types."}
+{"file":".trellis/spec/frontend/component-guidelines.md","reason":"Frontend page/component API boundary guidance."}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"Feature spans frontend, Java API/service/database/storage, and Python dispatch."}
