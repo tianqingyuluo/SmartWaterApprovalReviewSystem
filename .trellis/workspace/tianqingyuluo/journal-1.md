@@ -368,3 +368,36 @@ Switched Worker OCR from glm-4v chat completions to the official GLM OCR layout_
 ### Next Steps
 
 - None - task complete
+
+
+## Session 11: Correction material resubmission loop
+
+**Date**: 2026-05-31
+**Task**: Correction material resubmission loop
+**Branch**: `v1`
+
+### Summary
+
+Implemented applicant correction material resubmission across Java, Python, and frontend; archived the completed follow-up task and locked the remaining checkpoint queue.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `dde4c3f` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
