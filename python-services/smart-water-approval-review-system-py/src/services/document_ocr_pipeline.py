@@ -324,6 +324,7 @@ def _table_to_text(rows: list[list[str]]) -> str:
 _CHECKBOX_UNCHECKED_MARKS = "□☐"
 _CHECKBOX_CHECKED_MARKS = "☑✓✔√☒■✗xX×"
 _CHECKBOX_ALL_MARKS = _CHECKBOX_UNCHECKED_MARKS + _CHECKBOX_CHECKED_MARKS
+_CHECKBOX_STRUCTURAL_MARKS = _CHECKBOX_UNCHECKED_MARKS + _CHECKBOX_CHECKED_MARKS.replace("x", "").replace("X", "")
 
 
 def _parse_checkbox_field(text: str) -> str:
@@ -378,6 +379,10 @@ def _parse_checkbox_field(text: str) -> str:
     if checked_options:
         return ", ".join(checked_options)
     return "-"
+
+
+def _looks_like_checkbox_value(text: str) -> bool:
+    return any(mark in text for mark in _CHECKBOX_STRUCTURAL_MARKS)
 
 
 def _extract_key_value_fields(rows: list[list[str]], material_type: str) -> list[ExtractedField]:
@@ -443,6 +448,8 @@ def _extract_key_value_fields(rows: list[list[str]], material_type: str) -> list
         # 空值使用占位符
         if not value:
             value = "-"
+        elif _looks_like_checkbox_value(value):
+            value = _parse_checkbox_field(value)
 
         fields.append(
             ExtractedField(

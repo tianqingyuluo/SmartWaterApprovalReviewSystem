@@ -273,8 +273,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import {
-  buildDemoCompleteness,
-  buildDemoKnowledgeSearch,
   buildDemoStatus,
   callCheckCompletenessTool,
   callKnowledgeSearchTool,
@@ -419,38 +417,6 @@ async function runCompletenessCheck() {
   } finally {
     completenessLoading.value = false
   }
-}
-
-function runEmptyKnowledgeSearch() {
-  searchQuery.value = '无匹配演示查询'
-  runKnowledgeSearch()
-}
-
-function runFailedKnowledgeSearch() {
-  searchLoading.value = true
-  searchError.value = ''
-  searchResult.value = null
-  window.setTimeout(() => {
-    searchResult.value = buildDemoKnowledgeSearch({ query: 'simulate-error', topK: 1 })
-    searchError.value = '本地失败演示：真实 knowledge_search 请使用“检索”按钮。'
-    searchLoading.value = false
-  }, 250)
-}
-
-function runEmptyCompletenessCheck() {
-  selectedMaterials.value = [...MATERIAL_SLOTS]
-  runCompletenessCheck()
-}
-
-function runFailedCompletenessCheck() {
-  completenessLoading.value = true
-  completenessError.value = ''
-  completenessResult.value = null
-  window.setTimeout(() => {
-    completenessResult.value = buildDemoCompleteness([])
-    completenessError.value = '本地失败演示：真实 check_completeness 请使用“检查完整性”按钮。'
-    completenessLoading.value = false
-  }, 250)
 }
 
 function buildKnowledgeSearchParams() {
