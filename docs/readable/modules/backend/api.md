@@ -22,6 +22,7 @@ CP3 增加了真实流程所需的最小 RBAC，不包含完整后台用户管�
 普通业务接口现在要求登录：
 
 - `POST /api/task/submit`
+- `POST /api/task/{taskId}/correction-materials`
 - `GET /api/task/list`
 - `GET /api/task/{taskId}/status`
 - `GET /api/task/{taskId}/result/applicant`
@@ -35,6 +36,31 @@ CP3 增加了真实流程所需的最小 RBAC，不包含完整后台用户管�
 - 审批人员只看到 `PARTIAL_SUCCESS`、`COMPLETED`、`FAILED` 这些 AI 初评后可处理的任务。
 - `GET /api/task/{taskId}/result/reviewer` 只允许 `REVIEWER` 和 `ADMIN` 调用。
 - 管理员可查看全部任务列表，用于演示和排障。
+
+## 补正材料补传接口
+
+CP4-C 后，退回补正不再只是展示备注。申请人在自己的任务进入 `CORRECTION_REQUIRED` 后，可以在同一个 `taskId` 上补传一个或多个固定槽位材料：
+
+- `POST /api/task/{taskId}/correction-materials`
+- `Content-Type: multipart/form-data`
+
+字段名与首次提交保持一致：
+
+| multipart 字段 | 材料类型 |
+|---|---|
+| `applicationForm` | `APPLICATION_FORM` |
+| `businessLicense` | `BUSINESS_LICENSE` |
+| `idCard` | `ID_CARD` |
+
+关键规则：
+
+- 只有任务 owner 的 `APPLICANT` 可以补传；审批人员和管理员不能通过该申请人入口补传。
+- 任务当前 `handling_status` 必须是 `CORRECTION_REQUIRED`。
+- 至少上传一个文件，允许只替换其中一个材料槽位。
+- 后端继续按首次提交规则校验扩展名：`jpg`、`jpeg`、`png`、`pdf`、`docx`。
+- 新文件会覆盖 `material_slot (task_id, material_type)` 的当前输入；旧对象可以留在 RustFS/S3，但不再作为当前审查输入。
+- 补传后清空当前初审处理快照、`knowledgePackVersion` 和旧结果占位，任务重新进入 Java -> Python FastAPI 审查链路。
+- 如果 Python 调度失败，复用现有失败语义：任务进入 `FAILED`，并写入申请人/审批人员失败结果。
 
 ## 初审动作接口
 
@@ -56,7 +82,7 @@ CP3-F 增加审批人员初审动作接口：
 | 动作码 | 处理状态 | 含义 |
 |---|---|---|
 | `APPROVE_INITIAL_REVIEW` | `INITIAL_REVIEW_PASSED` | 通过初审。 |
-| `RETURN_FOR_CORRECTION` | `CORRECTION_REQUIRED` | 退回补正，只产生补正要求，不在 CP3 内完成重传。 |
+| `RETURN_FOR_CORRECTION` | `CORRECTION_REQUIRED` | 退回补正；CP4-C 起申请人可通过补传接口提交补正材料。 |
 | `TRANSFER_MANUAL_REVIEW` | `MANUAL_REVIEW_REQUIRED` | 转人工复核。 |
 
 关键规则：

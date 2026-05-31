@@ -54,18 +54,20 @@ class FastapiReviewRuntime:
 
     def create_task(self, request: CreateReviewTaskRequest) -> dict[str, Any]:
         task_id = request.task_id
-        existing = self.store.get(task_id)
+        ai_task_id = request.idempotency_key or task_id
+        existing = self.store.get(ai_task_id)
         if existing:
             return existing
         payload = request.model_dump(by_alias=True)
-        return self.store.create(task_id, payload)
+        return self.store.create(ai_task_id, payload)
 
     def process_task(self, payload: dict[str, Any]) -> None:
         task_id = str(payload.get("taskId") or "").strip()
+        ai_task_id = str(payload.get("idempotencyKey") or task_id).strip()
         if not task_id:
             return
 
-        self.store.mark_processing(task_id)
+        self.store.mark_processing(ai_task_id)
         status_ok = self.writer.update_status(task_id, "PROCESSING")
         if not status_ok:
             logger.warning("Failed to sync PROCESSING status to Java backend for task %s", task_id)
@@ -80,18 +82,18 @@ class FastapiReviewRuntime:
             result = orchestrator.process_task(payload)
         except Exception as exc:
             logger.error("FastAPI background processing failed for task %s: %s", task_id, exc)
-            self.store.mark_failed(task_id, f"processing failed: {exc}")
+            self.store.mark_failed(ai_task_id, f"processing failed: {exc}")
             self.writer.update_status(task_id, "FAILED")
             return
 
         if not self.writer.write_results(task_id, result):
             message = "result callback failed after retries"
-            self.store.mark_failed(task_id, message)
+            self.store.mark_failed(ai_task_id, message)
             self.writer.update_status(task_id, "FAILED")
             return
 
         self.store.mark_result(
-            task_id,
+            ai_task_id,
             {
                 "status": result.status,
                 "resultSummary": result.result_summary,
@@ -212,9 +214,11 @@ def create_review_task(
     background_tasks: BackgroundTasks,
     _auth: None = Depends(_check_internal_token),
 ) -> CreateReviewTaskResponse:
+    ai_task_id = request.idempotency_key or request.task_id
+    already_exists = runtime.store.get(ai_task_id) is not None
     record = runtime.create_task(request)
     ai_task_id = str(record.get("aiTaskId") or request.task_id)
-    if str(record.get("status")) == "QUEUED":
+    if not already_exists and str(record.get("status")) == "QUEUED":
         background_tasks.add_task(runtime.process_task, request.model_dump(by_alias=True))
     return CreateReviewTaskResponse(
         aiTaskId=ai_task_id,

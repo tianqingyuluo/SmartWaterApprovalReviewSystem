@@ -8,6 +8,7 @@ import type {
   TaskListResponse,
   ReviewerActionSubmitRequest,
   ReviewerActionResponse,
+  MaterialType,
   ApplicantResultView,
   ReviewerResultView,
   TaskResultView,
@@ -23,7 +24,7 @@ import type {
   Finding,
   ResultSummary,
 } from '@/types'
-import { REVIEWER_ACTION_LABELS } from '@/types'
+import { MATERIAL_FORM_FIELDS, REVIEWER_ACTION_LABELS } from '@/types'
 
 // ── API functions ──
 
@@ -31,6 +32,25 @@ export function submitTask(formData: FormData) {
   return request.post<R<SubmitResponse>>('/task/submit', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
+}
+
+export function resubmitCorrectionMaterials(taskId: string, formData: FormData) {
+  return request.post<R<SubmitResponse>>(`/task/${taskId}/correction-materials`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+}
+
+export function appendMaterialFiles(
+  formData: FormData,
+  files: Partial<Record<MaterialType, File | null | undefined>>,
+): FormData {
+  for (const type of Object.keys(MATERIAL_FORM_FIELDS) as MaterialType[]) {
+    const file = files[type]
+    if (file) {
+      formData.append(MATERIAL_FORM_FIELDS[type], file)
+    }
+  }
+  return formData
 }
 
 export function getTaskStatus(taskId: string, sessionId?: string | null) {

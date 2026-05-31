@@ -78,11 +78,11 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
 
         List<SubmitResponse.MaterialInfo> materialInfos = new ArrayList<>();
 
-        materialInfos.add(processMaterial(taskId, "APPLICATION_FORM", request.getApplicationForm()));
-        materialInfos.add(processMaterial(taskId, "BUSINESS_LICENSE", request.getBusinessLicense()));
-        materialInfos.add(processMaterial(taskId, "ID_CARD", request.getIdCard()));
+        materialInfos.add(processSubmittedMaterial(taskId, "APPLICATION_FORM", request.getApplicationForm()));
+        materialInfos.add(processSubmittedMaterial(taskId, "BUSINESS_LICENSE", request.getBusinessLicense()));
+        materialInfos.add(processSubmittedMaterial(taskId, "ID_CARD", request.getIdCard()));
 
-        String submissionStatus = dispatchSubmittedTask(task);
+        String submissionStatus = dispatchSubmittedTask(task, task.getTaskId());
 
         SubmitResponse response = new SubmitResponse();
         response.setTaskId(taskId);
@@ -95,12 +95,59 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
         return response;
     }
 
-    private String dispatchSubmittedTask(ReviewTask task) {
+    @Override
+    @Transactional
+    public SubmitResponse resubmitCorrectionMaterials(
+            String taskId,
+            SubmitRequest request,
+            UserProfileResponse currentUser) {
+        ReviewTask task = taskMapper.selectOne(
+                new LambdaQueryWrapper<ReviewTask>().eq(ReviewTask::getTaskId, taskId)
+        );
+        if (task == null) {
+            throw new BusinessException(404, "任务不存在");
+        }
+        if (!isApplicant(currentUser)) {
+            throw new BusinessException(403, "当前角色不允许补传材料");
+        }
+        if (currentUser.getUserId() == null || task.getOwnerUserId() == null
+                || !Objects.equals(task.getOwnerUserId(), currentUser.getUserId())) {
+            throw new BusinessException(403, "无权补传该任务材料");
+        }
+        if (!"CORRECTION_REQUIRED".equals(task.getHandlingStatus())) {
+            throw new BusinessException(409, "当前任务不处于退回补正状态，不能补传材料");
+        }
+        if (!hasUploadedMaterial(request)) {
+            throw new BusinessException(400, "请至少选择一个补正材料文件");
+        }
+
+        upsertCorrectionMaterial(taskId, "APPLICATION_FORM", request.getApplicationForm());
+        upsertCorrectionMaterial(taskId, "BUSINESS_LICENSE", request.getBusinessLicense());
+        upsertCorrectionMaterial(taskId, "ID_CARD", request.getIdCard());
+
+        resetTaskForCorrectionResubmission(task);
+        replaceResultsWithProcessingPlaceholders(taskId);
+
+        String idempotencyKey = taskId + "-correction-" + UUID.randomUUID();
+        String submissionStatus = dispatchSubmittedTask(task, idempotencyKey);
+
+        SubmitResponse response = new SubmitResponse();
+        response.setTaskId(taskId);
+        response.setSessionId(task.getSessionId());
+        response.setStatus(submissionStatus);
+        response.setSubmittedAt(task.getSubmittedAt());
+        response.setMaterials(loadMaterialInfos(taskId));
+
+        log.info("Correction materials resubmitted: taskId={}, ownerUserId={}", taskId, currentUser.getUserId());
+        return response;
+    }
+
+    private String dispatchSubmittedTask(ReviewTask task, String idempotencyKey) {
         if (!aiServiceClient.isReviewTaskDispatchEnabled()) {
             return "SUBMITTED";
         }
 
-        AiReviewTaskRequest request = buildAiReviewTaskRequest(task);
+        AiReviewTaskRequest request = buildAiReviewTaskRequest(task, idempotencyKey);
         try {
             aiServiceClient.dispatchReviewTask(request);
             transitionTask(task, "PROCESSING");
@@ -119,7 +166,7 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
         }
     }
 
-    private AiReviewTaskRequest buildAiReviewTaskRequest(ReviewTask task) {
+    private AiReviewTaskRequest buildAiReviewTaskRequest(ReviewTask task, String idempotencyKey) {
         List<MaterialSlot> slots = materialSlotMapper.selectList(
                 new LambdaQueryWrapper<MaterialSlot>().eq(MaterialSlot::getTaskId, task.getTaskId())
         );
@@ -127,7 +174,7 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
         AiReviewTaskRequest request = new AiReviewTaskRequest();
         request.setTaskId(task.getTaskId());
         request.setSessionId(task.getSessionId());
-        request.setIdempotencyKey(task.getTaskId());
+        request.setIdempotencyKey(idempotencyKey);
 
         List<AiReviewTaskRequest.Material> materials = new ArrayList<>();
         for (String type : MATERIAL_TYPES) {
@@ -197,7 +244,7 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
         saveResult(task.getTaskId(), "REVIEWER", reviewerResult);
     }
 
-    private SubmitResponse.MaterialInfo processMaterial(String taskId, String materialType, MultipartFile file) {
+    private SubmitResponse.MaterialInfo processSubmittedMaterial(String taskId, String materialType, MultipartFile file) {
         SubmitResponse.MaterialInfo info = new SubmitResponse.MaterialInfo();
         info.setMaterialType(materialType);
 
@@ -207,6 +254,19 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
             return info;
         }
 
+        MaterialSlot slot = uploadMaterialToCurrentSlot(taskId, materialType, file);
+        applyMaterialInfo(info, slot);
+        return info;
+    }
+
+    private void upsertCorrectionMaterial(String taskId, String materialType, MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            return;
+        }
+        uploadMaterialToCurrentSlot(taskId, materialType, file);
+    }
+
+    private MaterialSlot uploadMaterialToCurrentSlot(String taskId, String materialType, MultipartFile file) {
         String originalFileName = file.getOriginalFilename();
         String extension = getFileExtension(originalFileName);
 
@@ -223,8 +283,19 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
             throw new BusinessException(500, "文件上传失败");
         }
 
-        MaterialSlot slot = new MaterialSlot();
-        slot.setMaterialId("MAT" + UUID.randomUUID().toString().replace("-", "").substring(0, 16).toUpperCase());
+        MaterialSlot slot = materialSlotMapper.selectOne(
+                new LambdaQueryWrapper<MaterialSlot>()
+                        .eq(MaterialSlot::getTaskId, taskId)
+                        .eq(MaterialSlot::getMaterialType, materialType)
+        );
+        boolean existing = slot != null;
+        if (!existing) {
+            slot = new MaterialSlot();
+            slot.setTaskId(taskId);
+            slot.setMaterialType(materialType);
+            slot.setCreatedAt(LocalDateTime.now());
+        }
+        slot.setMaterialId(generateMaterialId());
         slot.setTaskId(taskId);
         slot.setMaterialType(materialType);
         slot.setOriginalFileName(originalFileName);
@@ -233,17 +304,112 @@ public class ReviewTaskServiceImpl implements ReviewTaskService {
         slot.setFileSize(file.getSize());
         slot.setStorageKey(storageKey);
         slot.setUploadedAt(LocalDateTime.now());
-        slot.setCreatedAt(LocalDateTime.now());
         slot.setUpdatedAt(LocalDateTime.now());
-        materialSlotMapper.insert(slot);
+        if (existing) {
+            materialSlotMapper.updateById(slot);
+        } else {
+            materialSlotMapper.insert(slot);
+        }
 
+        return slot;
+    }
+
+    private void resetTaskForCorrectionResubmission(ReviewTask task) {
+        LocalDateTime now = LocalDateTime.now();
+        int updated = taskMapper.update(null,
+                new LambdaUpdateWrapper<ReviewTask>()
+                        .set(ReviewTask::getStatus, "SUBMITTED")
+                        .set(ReviewTask::getHandlingStatus, null)
+                        .set(ReviewTask::getHandlingStatusLabel, null)
+                        .set(ReviewTask::getReviewerActionCode, null)
+                        .set(ReviewTask::getReviewerRemark, null)
+                        .set(ReviewTask::getReviewerUserId, null)
+                        .set(ReviewTask::getReviewerDisplayName, null)
+                        .set(ReviewTask::getReviewerActionAt, null)
+                        .set(ReviewTask::getKnowledgePackVersion, null)
+                        .set(ReviewTask::getUpdatedAt, now)
+                        .eq(ReviewTask::getTaskId, task.getTaskId())
+                        .eq(ReviewTask::getOwnerUserId, task.getOwnerUserId())
+                        .eq(ReviewTask::getHandlingStatus, "CORRECTION_REQUIRED")
+        );
+        if (updated == 0) {
+            throw new BusinessException(409, "任务状态已变化，请刷新后重试");
+        }
+
+        task.setStatus("SUBMITTED");
+        task.setHandlingStatus(null);
+        task.setHandlingStatusLabel(null);
+        task.setReviewerActionCode(null);
+        task.setReviewerRemark(null);
+        task.setReviewerUserId(null);
+        task.setReviewerDisplayName(null);
+        task.setReviewerActionAt(null);
+        task.setKnowledgePackVersion(null);
+        task.setUpdatedAt(now);
+    }
+
+    private void replaceResultsWithProcessingPlaceholders(String taskId) {
+        Map<String, Object> applicantResult = new LinkedHashMap<>();
+        applicantResult.put("summary", "补正材料已提交，AI审核结果重新生成中，请稍后查询。");
+        applicantResult.put("issues", List.of());
+        applicantResult.put("materialCompleteness", Map.of("missing", List.of()));
+
+        Map<String, Object> reviewerResult = new LinkedHashMap<>();
+        reviewerResult.put("summary", "补正材料已提交，AI审核结果重新生成中，请稍后查询。");
+        reviewerResult.put("issues", List.of());
+        reviewerResult.put("riskHints", List.of());
+        reviewerResult.put("draftOpinion", "");
+        reviewerResult.put("manualReviewNotice", "");
+        reviewerResult.put("materialCompleteness", Map.of("missing", List.of()));
+        reviewerResult.put("extractedFields", List.of());
+        reviewerResult.put("toolCallTraces", List.of());
+
+        saveResult(taskId, "APPLICANT", applicantResult);
+        saveResult(taskId, "REVIEWER", reviewerResult);
+    }
+
+    private boolean hasUploadedMaterial(SubmitRequest request) {
+        return hasFile(request.getApplicationForm())
+                || hasFile(request.getBusinessLicense())
+                || hasFile(request.getIdCard());
+    }
+
+    private boolean hasFile(MultipartFile file) {
+        return file != null && !file.isEmpty();
+    }
+
+    private List<SubmitResponse.MaterialInfo> loadMaterialInfos(String taskId) {
+        List<MaterialSlot> slots = materialSlotMapper.selectList(
+                new LambdaQueryWrapper<MaterialSlot>().eq(MaterialSlot::getTaskId, taskId)
+        );
+        List<SubmitResponse.MaterialInfo> infos = new ArrayList<>();
+        for (String type : MATERIAL_TYPES) {
+            SubmitResponse.MaterialInfo info = new SubmitResponse.MaterialInfo();
+            info.setMaterialType(type);
+            Optional<MaterialSlot> slot = slots.stream()
+                    .filter(item -> item.getMaterialType().equals(type))
+                    .findFirst();
+            if (slot.isPresent()) {
+                applyMaterialInfo(info, slot.get());
+            } else {
+                info.setUploaded(false);
+                info.setOriginalFileName(null);
+            }
+            infos.add(info);
+        }
+        return infos;
+    }
+
+    private void applyMaterialInfo(SubmitResponse.MaterialInfo info, MaterialSlot slot) {
         info.setUploaded(true);
-        info.setOriginalFileName(originalFileName);
+        info.setOriginalFileName(slot.getOriginalFileName());
         info.setFileSize(slot.getFileSize());
         info.setFileExtension(slot.getFileExtension());
         info.setUploadedAt(slot.getUploadedAt());
+    }
 
-        return info;
+    private String generateMaterialId() {
+        return "MAT" + UUID.randomUUID().toString().replace("-", "").substring(0, 16).toUpperCase();
     }
 
     @Override

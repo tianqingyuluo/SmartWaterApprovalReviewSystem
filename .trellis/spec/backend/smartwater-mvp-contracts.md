@@ -1217,7 +1217,8 @@ X-Internal-Token: <INTERNAL_API_TOKEN, if configured>
 | `INTERNAL_API_TOKEN` | Optional internal token for FastAPI review-task APIs; when empty, only local/dev unauthenticated calls are allowed. |
 | `X-Internal-Token` | Required only when `INTERNAL_API_TOKEN` is non-empty. |
 | JSON casing | FastAPI wire contract uses camelCase; Python internals may use snake_case with Pydantic aliases. |
-| `aiTaskId` | CP3 uses Java `taskId` as the FastAPI task ID for traceability. |
+| `aiTaskId` | Initial submissions use Java `taskId`; correction resubmissions use the request `idempotencyKey` so the same Java task can be re-queued without colliding with the previous FastAPI record. |
+| `idempotencyKey` | Java must send a stable key per intended dispatch attempt. Reusing the same key must not enqueue duplicate background work; correction resubmission must generate a fresh key. |
 | Task store | In-memory only for CP3; Java persistence remains authoritative. |
 | Background work | `POST /api/review/tasks` returns `202` after queuing processing. |
 | Status sync | Background processing first tries Java `/task/{taskId}/status` -> `PROCESSING`. |
@@ -1230,6 +1231,7 @@ X-Internal-Token: <INTERNAL_API_TOKEN, if configured>
 | Condition | Expected behavior |
 |---|---|
 | Wrong `X-Internal-Token` when configured | FastAPI returns HTTP `403`; do not start background processing. |
+| Duplicate `idempotencyKey` | Return the existing FastAPI task record and do not enqueue a second background task. |
 | Unknown `aiTaskId` on query | FastAPI returns HTTP `404`. |
 | Knowledge pack missing on `/health` | Return `status=degraded`; do not crash the service process. |
 | Java status sync fails | Continue processing but log a warning; final callback may still succeed. |
@@ -1251,7 +1253,7 @@ X-Internal-Token: <INTERNAL_API_TOKEN, if configured>
 ### 6. Tests Required
 
 - FastAPI tests for health, task creation, status query, camelCase aliases,
-  `403` token rejection, and `404` unknown task.
+  `403` token rejection, `404` unknown task, and idempotency-key reuse.
 - Orchestrator tests for rule issue merge, Agent failure fallback, applicant vs
   reviewer result separation, MCP `toolCallTraces`, CP3.5 failure semantics,
   and `knowledgePackVersion` propagation.
@@ -1286,6 +1288,112 @@ class CreateReviewTaskRequest(BaseModel):
 ```
 
 so the wire contract remains camelCase.
+
+## Scenario: CP4 Correction Material Resubmission
+
+### 1. Scope / Trigger
+
+- Trigger: reviewer submits `RETURN_FOR_CORRECTION`, applicant uploads corrected materials, Java re-dispatches Python FastAPI, or frontend shows correction upload controls.
+- Goal: make correction a real resubmission loop on the same Java task without exposing object storage keys or stale AI results.
+
+### 2. Signatures
+
+Applicant correction API:
+
+```http
+POST /api/task/{taskId}/correction-materials
+Authorization: Bearer <sa-token>
+Content-Type: multipart/form-data
+```
+
+Multipart fields are the same fixed material slots used by first submission:
+
+```text
+applicationForm?: File
+businessLicense?: File
+idCard?: File
+```
+
+Success response reuses `SubmitResponse`:
+
+```json
+{
+  "taskId": "SW123",
+  "sessionId": "session-token",
+  "status": "PROCESSING",
+  "submittedAt": "2026-05-31T14:00:00",
+  "materials": [
+    {
+      "materialType": "BUSINESS_LICENSE",
+      "originalFileName": "new-license.pdf",
+      "uploaded": true,
+      "fileExtension": "pdf"
+    }
+  ]
+}
+```
+
+### 3. Contracts
+
+| Item | Contract |
+|---|---|
+| Actor | Only `APPLICANT` owner can resubmit correction materials. Admin/reviewer must not use this applicant endpoint. |
+| Required state | `review_task.handling_status` must be `CORRECTION_REQUIRED`. |
+| Upload slots | Accept one or more of `APPLICATION_FORM`, `BUSINESS_LICENSE`, `ID_CARD` through the same multipart field names as first submission. |
+| File validation | Backend remains authoritative; allowed extensions are `jpg`, `jpeg`, `png`, `pdf`, `docx`. |
+| Current material input | Update the current `material_slot (task_id, material_type)` row when it exists; insert if the slot was previously missing. |
+| Old object storage file | May remain in RustFS/S3, but its old `storageKey` must no longer be the current review input after slot update. |
+| Handling snapshot | Clear `handlingStatus`, label, reviewer action code, reviewer remark, reviewer user/display name, reviewer action time, and `knowledgePackVersion`. Existing `review_action_log` rows remain audit history. |
+| Result freshness | Replace stale applicant/reviewer results with processing placeholders before dispatch; never keep old AI conclusions as the current result after correction upload. |
+| Re-dispatch | Reset Java task status to `SUBMITTED`, generate a fresh FastAPI `idempotencyKey`, dispatch Python, then transition to `PROCESSING`. |
+| Dispatch failure | Reuse existing Java dispatch failure semantics: task becomes `FAILED`, applicant/reviewer failure results are written, and no fake AI result is created. |
+
+### 4. Validation & Error Matrix
+
+| Condition | Expected behavior |
+|---|---|
+| Not logged in | Auth layer returns `401`. |
+| Current user is reviewer/admin | Business `403`, no file slot update. |
+| Applicant is not task owner | Business `403`, no file slot update. |
+| Task not found | Business `404`. |
+| Task handling status is not `CORRECTION_REQUIRED` | Business `409`. |
+| No multipart files selected | Business `400`. |
+| Unsupported file extension | Business `400`. |
+| Python FastAPI unavailable | Java marks task `FAILED` and writes failure results. |
+
+### 5. Good/Base/Bad Cases
+
+- Good: applicant replaces only `BUSINESS_LICENSE`; Java keeps existing application form and ID-card slots as current inputs, updates the business-license slot, clears stale results, and dispatches Python with a fresh `idempotencyKey`.
+- Good: reviewer action logs remain visible to reviewers/admins as historical audit records after correction resubmission, while the current handling snapshot is cleared.
+- Base: no historical material-version table exists; current slot overwrite is the CP4 minimal loop.
+- Bad: create a new Java task for correction when the UI and audit trail expect the same `taskId`.
+- Bad: call Python with the old `idempotencyKey=taskId` after correction; FastAPI may return the old queued/completed record and skip new processing.
+- Bad: leave old `review_result` rows showing a previous AI conclusion while the corrected materials are being processed.
+
+### 6. Tests Required
+
+- Java service tests for owner-only access, non-correction rejection, empty-file rejection, material-slot update, handling/result clearing, fresh FastAPI idempotency key, and dispatch failure.
+- Java controller test for multipart `POST /task/{taskId}/correction-materials`.
+- Python FastAPI tests for `idempotencyKey` as `aiTaskId`, same Java `taskId` with a new correction key re-queues, and duplicate key does not re-queue.
+- Frontend API/page tests or build evidence for fixed slot FormData mapping and applicant-only correction visibility.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```java
+request.setIdempotencyKey(task.getTaskId());
+```
+
+for correction resubmission.
+
+#### Correct
+
+```java
+request.setIdempotencyKey(taskId + "-correction-" + UUID.randomUUID());
+```
+
+so Python sees a new intended processing attempt while Java keeps the same business `taskId`.
 
 ---
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  appendMaterialFiles,
   getMaterialPreviewUrl,
   isReviewerActionCompleted,
   toApplicantResultView,
@@ -12,6 +13,19 @@ import type { ApplicantResultResponse, ReviewerResultResponse, TaskStatusRespons
 describe('task API adapters', () => {
   it('keeps frontend upload extensions aligned with CP3.5 docx backend support', () => {
     expect(ACCEPTED_EXTENSIONS).toEqual(['jpg', 'jpeg', 'png', 'pdf', 'docx'])
+  })
+
+  it('maps fixed material slots to backend multipart field names for submission and correction', async () => {
+    const formData = appendMaterialFiles(new FormData(), {
+      APPLICATION_FORM: new File(['application'], 'application.pdf', { type: 'application/pdf' }),
+      BUSINESS_LICENSE: null,
+      ID_CARD: new File(['id-card'], 'id-card.png', { type: 'image/png' }),
+    })
+
+    expect(formData.get('applicationForm')).toBeInstanceOf(File)
+    expect(formData.get('businessLicense')).toBeNull()
+    expect(formData.get('idCard')).toBeInstanceOf(File)
+    expect(await (formData.get('applicationForm') as File).text()).toBe('application')
   })
 
   it('builds browser-safe material preview URL without exposing storage key', () => {

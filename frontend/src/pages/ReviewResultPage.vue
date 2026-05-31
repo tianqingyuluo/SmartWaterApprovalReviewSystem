@@ -120,6 +120,42 @@
             </template>
           </dl>
         </PageCard>
+
+        <PageCard v-if="canShowCorrectionUploadPanel" title="补正材料补传" compact>
+          <div class="mb-4 mt-[-4px] flex flex-wrap gap-3 text-[13px] text-sw-muted">
+            <span class="rounded-full bg-[#f3f8ff] px-2.5 py-1.5">支持格式：jpg / jpeg / png / pdf / docx</span>
+            <span class="rounded-full bg-[#f3f8ff] px-2.5 py-1.5">每类材料最多上传 1 个文件</span>
+          </div>
+
+          <div v-if="correctionErrorMessage" class="sw-alert sw-alert-danger mb-3">
+            {{ correctionErrorMessage }}
+          </div>
+
+          <div class="grid gap-[14px]">
+            <FileUploadSlot
+              v-for="slot in correctionSlots"
+              :key="slot.type"
+              :material-type="slot.type"
+              :label="slot.label"
+              :file="slot.file"
+              :error="slot.error"
+              :accept="acceptAttr"
+              @change="(event) => onCorrectionFileChange(event, slot.type)"
+              @clear="clearCorrectionSlot(slot.type)"
+            />
+          </div>
+
+          <div class="mt-4 flex justify-end">
+            <button
+              type="button"
+              class="sw-btn sw-btn-primary"
+              :disabled="correctionSubmitting"
+              @click="submitCorrectionMaterials"
+            >
+              {{ correctionSubmitting ? '补传中...' : '提交补正材料' }}
+            </button>
+          </div>
+        </PageCard>
       </section>
 
       <section class="grid gap-4">
@@ -316,10 +352,12 @@
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import {
+  appendMaterialFiles,
   fetchMaterialPreview,
   getApplicantResult,
   getReviewerResult,
   getTaskStatus,
+  resubmitCorrectionMaterials,
   submitReviewerAction,
   toApplicantTaskResultView,
   toApplicantResultView,
@@ -334,13 +372,21 @@ import type {
   Severity,
   TaskResultView,
 } from '@/types'
-import { MATERIAL_LABELS } from '@/types'
+import { ACCEPTED_EXTENSIONS, MATERIAL_LABELS, MATERIAL_SLOTS } from '@/types'
 import PageCard from '@/components/common/PageCard.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import StatusTag from '@/components/common/StatusTag.vue'
 import StatusBanner from '@/components/business/StatusBanner.vue'
 import FailureInfo from '@/components/business/FailureInfo.vue'
 import TaskMaterialSummary from '@/components/business/TaskMaterialSummary.vue'
+import FileUploadSlot from '@/components/business/FileUploadSlot.vue'
+
+interface CorrectionSlotState {
+  type: MaterialType
+  label: string
+  file: File | null
+  error: string
+}
 
 const route = useRoute()
 
@@ -354,9 +400,18 @@ const actionErrorMessage = ref('')
 const actionSuccessMessage = ref('')
 const materialPreviews = ref<MaterialPreviewState[]>([])
 const materialPreviewVersion = ref(0)
+const correctionSlots = ref<CorrectionSlotState[]>(
+  MATERIAL_SLOTS.map((type) => ({ type, label: MATERIAL_LABELS[type], file: null, error: '' })),
+)
+const correctionSubmitting = ref(false)
+const correctionErrorMessage = ref('')
+const acceptAttr = ACCEPTED_EXTENSIONS.map((extension) => `.${extension}`).join(',')
 
 const uploadedCount = computed(() => task.value?.materials.filter((slot) => slot.uploaded).length ?? 0)
 const isApplicantView = computed(() => task.value?.viewMode === 'APPLICANT')
+const canShowCorrectionUploadPanel = computed(() =>
+  task.value?.viewMode === 'APPLICANT' && task.value.handlingStatus === 'CORRECTION_REQUIRED',
+)
 const canShowReviewerActionPanel = computed(() => task.value?.viewMode === 'REVIEWER')
 const reviewerActionCompleted = computed(() => task.value ? isReviewerActionCompleted(task.value.handlingStatus) : false)
 const reviewerActionAllowed = computed(() =>
@@ -399,6 +454,7 @@ async function lookup() {
     loadMaterialPreviews(taskId)
     actionErrorMessage.value = ''
     actionSuccessMessage.value = ''
+    correctionErrorMessage.value = ''
     reviewerRemarkInput.value = task.value?.reviewerRemark ?? ''
   } catch (error) {
     lookupError.value = error instanceof Error ? error.message : '查询失败，请确认任务 ID。'
@@ -406,6 +462,69 @@ async function lookup() {
     clearMaterialPreviews()
   } finally {
     loading.value = false
+  }
+}
+
+function onCorrectionFileChange(event: Event, type: MaterialType) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0] ?? null
+  const slot = correctionSlots.value.find((candidate) => candidate.type === type)
+  if (!slot) return
+
+  slot.error = ''
+  if (!file) {
+    slot.file = null
+    return
+  }
+
+  const extension = file.name.split('.').pop()?.toLowerCase() || ''
+  if (!ACCEPTED_EXTENSIONS.includes(extension)) {
+    slot.error = '不支持的文件格式，请上传 jpg、jpeg、png、pdf 或 docx 文件。'
+    slot.file = null
+    input.value = ''
+    return
+  }
+
+  slot.file = file
+}
+
+function clearCorrectionSlot(type: MaterialType) {
+  const slot = correctionSlots.value.find((candidate) => candidate.type === type)
+  if (!slot) return
+
+  slot.file = null
+  slot.error = ''
+  const input = document.getElementById(`file-${type}`) as HTMLInputElement | null
+  if (input) input.value = ''
+}
+
+function clearCorrectionSlots() {
+  correctionSlots.value.forEach((slot) => clearCorrectionSlot(slot.type))
+}
+
+async function submitCorrectionMaterials() {
+  if (!task.value || !canShowCorrectionUploadPanel.value) return
+
+  correctionErrorMessage.value = ''
+  const selectedFiles = Object.fromEntries(
+    correctionSlots.value.map((slot) => [slot.type, slot.file]),
+  ) as Partial<Record<MaterialType, File | null>>
+
+  if (!Object.values(selectedFiles).some((file) => file instanceof File)) {
+    correctionErrorMessage.value = '请至少选择一个补正材料文件。'
+    return
+  }
+
+  correctionSubmitting.value = true
+  try {
+    const formData = appendMaterialFiles(new FormData(), selectedFiles)
+    await resubmitCorrectionMaterials(inputTaskId.value.trim(), formData)
+    clearCorrectionSlots()
+    await lookup()
+  } catch (error) {
+    correctionErrorMessage.value = error instanceof Error ? error.message : '补正材料提交失败，请稍后重试。'
+  } finally {
+    correctionSubmitting.value = false
   }
 }
 

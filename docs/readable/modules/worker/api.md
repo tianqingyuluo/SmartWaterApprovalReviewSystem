@@ -16,7 +16,13 @@ CP3-B 新增 Python FastAPI 服务入口，供 Java 后续通过内部 HTTP 触�
 uv run uvicorn src.api.app:app --host 0.0.0.0 --port 8000
 ```
 
-`POST /api/review/tasks` 使用 Java 的 `taskId` 作为 `aiTaskId`，返回 `202` 和 `QUEUED` 后在后台执行审核。任务状态会先尝试回写 Java 为 `PROCESSING`，最终仍通过 Java `/api/task/{taskId}/result` 写回结构化结果。
+`POST /api/review/tasks` 返回 `202` 和 `QUEUED` 后在后台执行审核。任务状态会先尝试回写 Java 为 `PROCESSING`，最终仍通过 Java `/api/task/{taskId}/result` 写回结构化结果。
+
+FastAPI 任务记录使用以下规则：
+
+- 首次提交通常使用 Java `taskId` 作为 `aiTaskId`。
+- 补正材料补传时，Java 会保留同一个业务 `taskId`，但生成新的 `idempotencyKey`；FastAPI 使用该 `idempotencyKey` 作为新的 `aiTaskId`，从而允许同一个 Java 任务重新排队处理。
+- 同一个 `idempotencyKey` 重复提交时，FastAPI 返回已有记录，不重复加入后台任务，避免网络重试造成重复处理。
 
 如果配置了 `INTERNAL_API_TOKEN`，FastAPI 任务接口必须携带：
 

@@ -138,10 +138,10 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
-import { getApplicantResult, getTaskStatus, submitTask, toApplicantResultView } from '@/api/task'
+import { appendMaterialFiles, getApplicantResult, getTaskStatus, submitTask, toApplicantResultView } from '@/api/task'
 import { usePolling } from '@/composables/usePolling'
 import type { ApplicantResultView, MaterialType, ProcessingStatus, SubmitResponse, TaskStatusResponse } from '@/types'
-import { ACCEPTED_EXTENSIONS, MATERIAL_FORM_FIELDS, MATERIAL_LABELS, MATERIAL_SLOTS } from '@/types'
+import { ACCEPTED_EXTENSIONS, MATERIAL_LABELS, MATERIAL_SLOTS } from '@/types'
 import PageCard from '@/components/common/PageCard.vue'
 import StatusTag from '@/components/common/StatusTag.vue'
 import FileUploadSlot from '@/components/business/FileUploadSlot.vue'
@@ -262,11 +262,8 @@ async function handleSubmit() {
 
   try {
     const formData = new FormData()
-    slots.forEach((slot) => {
-      if (slot.file) {
-        formData.append(MATERIAL_FORM_FIELDS[slot.type], slot.file)
-      }
-    })
+    const selectedFiles = Object.fromEntries(slots.map((slot) => [slot.type, slot.file])) as Partial<Record<MaterialType, File | null>>
+    appendMaterialFiles(formData, selectedFiles)
 
     const res = await submitTask(formData)
     const data = res.data.data

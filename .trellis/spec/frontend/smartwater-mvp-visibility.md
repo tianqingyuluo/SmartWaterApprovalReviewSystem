@@ -317,15 +317,20 @@ status.value = toKnowledgeStatusFromAiHealth(health)
 | Reviewer opens `/apply` | Redirect to application list. |
 | Java returns business `401` with HTTP 200 | Clear auth state and redirect to login. |
 | Reviewer action returns `409` | Treat as already handled or no longer actionable; refresh the task detail before enabling another submit. |
+| Applicant result has `handlingStatus=CORRECTION_REQUIRED` | Show correction material upload controls in applicant view only. |
+| Applicant correction upload succeeds | Refresh task status/result and hide the correction upload controls once handling snapshot is cleared. |
+| Correction upload returns business error | Show the backend error on the correction panel; do not mutate local material state as if upload succeeded. |
 
 ### 5. Good/Base/Bad Cases
 
 - Good: page code chooses applicant vs reviewer result projection based on the
   stored role and still relies on backend errors for authority.
 - Good: adapters normalize unknown `extractedFields` payloads before rendering.
+- Good: applicant correction panel posts fixed-slot `FormData` to Java and never exposes `storageKey`.
 - Base: frontend role menu is minimal; CP4 can add richer workbench navigation.
 - Bad: link applicants to reviewer result pages and hide fields after fetching.
 - Bad: keep stale token after Java returns business `401`.
+- Bad: show correction upload controls in reviewer/admin result projection or when handling status is not `CORRECTION_REQUIRED`.
 
 ### 6. Tests Required
 
@@ -333,6 +338,8 @@ status.value = toKnowledgeStatusFromAiHealth(health)
 - Task adapter test for `extractedFields[]` array normalization.
 - Result page/component test or equivalent regression that applicant flow uses
   applicant projection only.
+- API adapter/FormData test for fixed material field names used by first
+  submission and correction resubmission.
 
 ### 7. Wrong vs Correct
 
@@ -353,6 +360,75 @@ role === 'APPLICANT'
 ```
 
 with reviewer-only panels hidden unless reviewer data was fetched.
+
+### Scenario: Applicant Correction Upload Visibility
+
+#### 1. Scope / Trigger
+
+- Trigger: result page, task adapter, material upload component, or backend correction API changes.
+
+#### 2. Signatures
+
+Frontend API:
+
+```ts
+resubmitCorrectionMaterials(taskId: string, formData: FormData): Promise<R<SubmitResponse>>
+appendMaterialFiles(formData, files: Partial<Record<MaterialType, File | null | undefined>>): FormData
+```
+
+Backend path:
+
+```http
+POST /api/task/{taskId}/correction-materials
+```
+
+#### 3. Contracts
+
+| Item | Contract |
+|---|---|
+| Visibility | Only render correction upload when `TaskResultView.viewMode === "APPLICANT"` and `handlingStatus === "CORRECTION_REQUIRED"`. |
+| Material fields | Use shared `MATERIAL_FORM_FIELDS`, not string literals in page code. |
+| Slot set | Render exactly `MATERIAL_SLOTS`: `APPLICATION_FORM`, `BUSINESS_LICENSE`, `ID_CARD`. |
+| Validation | Frontend pre-checks extensions with `ACCEPTED_EXTENSIONS`; backend remains authoritative. |
+| Success refresh | After upload succeeds, clear selected files and re-run task lookup so status/material/result state comes from Java. |
+| Secret boundary | Do not expose `storageKey`, signed storage URLs, Worker token, or Python FastAPI URL in frontend state. |
+
+#### 4. Validation & Error Matrix
+
+| Condition | Expected behavior |
+|---|---|
+| No file selected | Show local panel error and do not call backend. |
+| Unsupported extension | Mark that slot invalid and clear the selected input. |
+| Backend returns `400/403/409/500` business error | Show error in correction panel and keep current page usable. |
+| Upload succeeds and task returns `PROCESSING` | Refresh result; correction panel disappears because `handlingStatus` is cleared. |
+
+#### 5. Good/Base/Bad Cases
+
+- Good: applicant sees reviewer remark and uploads only the corrected material slot.
+- Good: `appendMaterialFiles` is shared by new application submission and correction upload.
+- Base: file input state stays page-local; no Pinia store is introduced.
+- Bad: duplicate multipart field names in multiple pages.
+- Bad: fetch reviewer result just to decide whether correction upload should show.
+
+#### 6. Tests Required
+
+- `api/task.spec.ts` asserts fixed material field mapping.
+- `npm run build` must pass after result-page changes.
+- If a page/component test harness is added later, cover applicant-visible and reviewer-hidden correction panel branches.
+
+#### 7. Wrong vs Correct
+
+##### Wrong
+
+```ts
+formData.append('business_license', file)
+```
+
+##### Correct
+
+```ts
+appendMaterialFiles(formData, { BUSINESS_LICENSE: file })
+```
 
 ---
 

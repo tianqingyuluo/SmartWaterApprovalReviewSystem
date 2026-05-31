@@ -60,6 +60,61 @@ class FastapiAppTests(unittest.TestCase):
         status_resp = get_review_task_status("java-task-1", _auth=None)
         self.assertEqual("java-task-1", status_resp.ai_task_id)
 
+    @patch("src.api.app.runtime.process_task")
+    def test_create_task_uses_idempotency_key_as_ai_task_id_for_correction_resubmit(self, _process_task) -> None:
+        first = CreateReviewTaskRequest(
+            taskId="java-task-correction",
+            sessionId="session-correction",
+            materials=[],
+            idempotencyKey="java-task-correction",
+        )
+        second = CreateReviewTaskRequest(
+            taskId="java-task-correction",
+            sessionId="session-correction",
+            materials=[
+                {
+                    "materialType": "BUSINESS_LICENSE",
+                    "originalFileName": "new-license.pdf",
+                    "storageKey": "java-task-correction/BUSINESS_LICENSE/new.pdf",
+                    "fileExtension": "pdf",
+                    "uploaded": True,
+                }
+            ],
+            idempotencyKey="java-task-correction-correction-1",
+        )
+        background_tasks = BackgroundTasks()
+
+        first_resp = create_review_task(first, background_tasks, _auth=None)
+        second_resp = create_review_task(second, background_tasks, _auth=None)
+
+        self.assertEqual("java-task-correction", first_resp.ai_task_id)
+        self.assertEqual("java-task-correction-correction-1", second_resp.ai_task_id)
+        self.assertEqual(2, len(background_tasks.tasks))
+        self.assertEqual("java-task-correction", background_tasks.tasks[1].args[0]["taskId"])
+        self.assertEqual("java-task-correction-correction-1", background_tasks.tasks[1].args[0]["idempotencyKey"])
+
+        original_status = get_review_task_status("java-task-correction", _auth=None)
+        correction_status = get_review_task_status("java-task-correction-correction-1", _auth=None)
+        self.assertEqual("java-task-correction", original_status.ai_task_id)
+        self.assertEqual("java-task-correction-correction-1", correction_status.ai_task_id)
+
+    @patch("src.api.app.runtime.process_task")
+    def test_create_task_does_not_requeue_same_idempotency_key(self, _process_task) -> None:
+        req = CreateReviewTaskRequest(
+            taskId="java-task-repeat",
+            sessionId="session-repeat",
+            materials=[],
+            idempotencyKey="java-task-repeat-correction-1",
+        )
+        background_tasks = BackgroundTasks()
+
+        first_resp = create_review_task(req, background_tasks, _auth=None)
+        second_resp = create_review_task(req, background_tasks, _auth=None)
+
+        self.assertEqual("java-task-repeat-correction-1", first_resp.ai_task_id)
+        self.assertEqual("java-task-repeat-correction-1", second_resp.ai_task_id)
+        self.assertEqual(1, len(background_tasks.tasks))
+
     def test_task_api_rejects_invalid_internal_token(self) -> None:
         config.INTERNAL_API_TOKEN = "expected-token"
         with self.assertRaises(HTTPException) as exc:

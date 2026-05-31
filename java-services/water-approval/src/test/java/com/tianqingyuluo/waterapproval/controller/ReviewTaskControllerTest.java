@@ -11,6 +11,7 @@ import com.tianqingyuluo.waterapproval.dto.ReviewerActionResponse;
 import com.tianqingyuluo.waterapproval.dto.ReviewerActionSubmitRequest;
 import com.tianqingyuluo.waterapproval.dto.ReviewerResultResponse;
 import com.tianqingyuluo.waterapproval.dto.StatusUpdateRequest;
+import com.tianqingyuluo.waterapproval.dto.SubmitResponse;
 import com.tianqingyuluo.waterapproval.dto.TaskListResponse;
 import com.tianqingyuluo.waterapproval.dto.TaskStatusResponse;
 import com.tianqingyuluo.waterapproval.service.ReviewTaskService;
@@ -36,6 +37,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -304,6 +306,36 @@ class ReviewTaskControllerTest {
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.page").value(1))
                 .andExpect(jsonPath("$.data.size").value(1));
+    }
+
+    @Test
+    void resubmitCorrectionMaterialsShouldAcceptMultipartFiles() throws Exception {
+        SubmitResponse response = new SubmitResponse();
+        response.setTaskId("task-1");
+        response.setStatus("PROCESSING");
+        when(reviewTaskService.resubmitCorrectionMaterials(eq("task-1"), any(), any())).thenReturn(response);
+        String token = loginAs("applicant", "applicant123");
+
+        mockMvc.perform(multipart("/task/task-1/correction-materials")
+                        .file("businessLicense", "new-license".getBytes())
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.taskId").value("task-1"))
+                .andExpect(jsonPath("$.data.status").value("PROCESSING"));
+    }
+
+    @Test
+    void resubmitCorrectionMaterialsShouldReturnBusinessErrors() throws Exception {
+        doThrow(new BusinessException(409, "当前任务不处于退回补正状态，不能补传材料"))
+                .when(reviewTaskService).resubmitCorrectionMaterials(eq("task-1"), any(), any());
+        String token = loginAs("applicant", "applicant123");
+
+        mockMvc.perform(multipart("/task/task-1/correction-materials")
+                        .file("applicationForm", "application".getBytes())
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(409));
     }
 
     @Test

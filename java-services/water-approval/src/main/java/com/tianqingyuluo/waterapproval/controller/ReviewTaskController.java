@@ -34,6 +34,16 @@ public class ReviewTaskController {
         return R.ok(response);
     }
 
+    @PostMapping("/{taskId}/correction-materials")
+    public R<SubmitResponse> resubmitCorrectionMaterials(
+            @PathVariable String taskId,
+            SubmitRequest request) {
+        log.info("收到补正材料补传请求: taskId={}", taskId);
+        SubmitResponse response =
+                reviewTaskService.resubmitCorrectionMaterials(taskId, request, authService.currentUser());
+        return R.ok(response);
+    }
+
     @GetMapping("/pending")
     @WorkerApi
     public R<List<PendingTaskResponse>> getPendingTasks() {

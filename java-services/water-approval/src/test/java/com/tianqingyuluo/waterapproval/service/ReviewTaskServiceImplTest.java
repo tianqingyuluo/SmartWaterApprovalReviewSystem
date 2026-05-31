@@ -341,6 +341,171 @@ class ReviewTaskServiceImplTest {
     }
 
     @Test
+    void correctionResubmitShouldUpdateCurrentMaterialClearHandlingAndRedispatch() {
+        String taskId = "task-correction-resubmit-" + System.nanoTime();
+        ReviewTask task = newReviewTask(taskId, "session-correction-resubmit", "COMPLETED");
+        task.setOwnerUserId(8201L);
+        task.setHandlingStatus("CORRECTION_REQUIRED");
+        task.setHandlingStatusLabel("退回补正");
+        task.setReviewerActionCode("RETURN_FOR_CORRECTION");
+        task.setReviewerRemark("请补充新版营业执照");
+        task.setReviewerUserId(9001L);
+        task.setReviewerDisplayName("审批员");
+        task.setReviewerActionAt(LocalDateTime.now().minusMinutes(5));
+        task.setKnowledgePackVersion("old-pack");
+        taskMapper.insert(task);
+        insertMaterialSlot(taskId, "BUSINESS_LICENSE", "old-license.pdf", "old/key.pdf");
+        insertApplicantResultRow(taskId, "旧申请人结果");
+        insertReviewerResultRow(taskId, "旧审批结果");
+
+        AiServiceClient mockedAiServiceClient = mock(AiServiceClient.class);
+        when(mockedAiServiceClient.isReviewTaskDispatchEnabled()).thenReturn(true);
+        AiReviewTaskResponse dispatchResponse = new AiReviewTaskResponse();
+        dispatchResponse.setAiTaskId("python-correction-task");
+        dispatchResponse.setStatus("QUEUED");
+        when(mockedAiServiceClient.dispatchReviewTask(ArgumentMatchers.any())).thenReturn(dispatchResponse);
+        ReviewTaskServiceImpl service = newReviewTaskService(mockedAiServiceClient);
+
+        SubmitRequest request = new SubmitRequest();
+        request.setBusinessLicense(new MockMultipartFile(
+                "businessLicense",
+                "new-license.pdf",
+                "application/pdf",
+                "新版营业执照".getBytes(StandardCharsets.UTF_8)
+        ));
+
+        SubmitResponse response = service.resubmitCorrectionMaterials(taskId, request, applicantUser(8201L));
+
+        assertEquals(taskId, response.getTaskId());
+        assertEquals("PROCESSING", response.getStatus());
+        assertEquals(3, response.getMaterials().size());
+
+        ReviewTask updated = taskMapper.selectById(task.getId());
+        assertEquals("PROCESSING", updated.getStatus());
+        assertNull(updated.getHandlingStatus());
+        assertNull(updated.getHandlingStatusLabel());
+        assertNull(updated.getReviewerActionCode());
+        assertNull(updated.getReviewerRemark());
+        assertNull(updated.getReviewerUserId());
+        assertNull(updated.getReviewerDisplayName());
+        assertNull(updated.getReviewerActionAt());
+        assertNull(updated.getKnowledgePackVersion());
+
+        MaterialSlot updatedSlot = materialSlotMapper.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<MaterialSlot>()
+                        .eq(MaterialSlot::getTaskId, taskId)
+                        .eq(MaterialSlot::getMaterialType, "BUSINESS_LICENSE")
+        );
+        assertEquals("new-license.pdf", updatedSlot.getOriginalFileName());
+        assertEquals("pdf", updatedSlot.getFileExtension());
+        assertTrue(updatedSlot.getStorageKey().contains("BUSINESS_LICENSE"));
+        assertFalse("old/key.pdf".equals(updatedSlot.getStorageKey()));
+
+        assertEquals(
+                "补正材料已提交，AI审核结果重新生成中，请稍后查询。",
+                service.getApplicantResult(taskId, "session-correction-resubmit", applicantUser(8201L)).getSummary()
+        );
+        List<ReviewResult> rows = resultMapper.selectList(null).stream()
+                .filter(row -> row.getTaskId().equals(taskId))
+                .toList();
+        assertEquals(2, rows.size());
+
+        ArgumentCaptor<AiReviewTaskRequest> captor = ArgumentCaptor.forClass(AiReviewTaskRequest.class);
+        verify(mockedAiServiceClient).dispatchReviewTask(captor.capture());
+        AiReviewTaskRequest aiRequest = captor.getValue();
+        assertEquals(taskId, aiRequest.getTaskId());
+        assertTrue(aiRequest.getIdempotencyKey().startsWith(taskId + "-correction-"));
+        AiReviewTaskRequest.Material businessLicense = aiRequest.getMaterials().stream()
+                .filter(item -> "BUSINESS_LICENSE".equals(item.getMaterialType()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(Boolean.TRUE, businessLicense.getUploaded());
+        assertEquals("new-license.pdf", businessLicense.getOriginalFileName());
+        assertEquals(updatedSlot.getStorageKey(), businessLicense.getStorageKey());
+    }
+
+    @Test
+    void correctionResubmitShouldRejectWrongOwnerNonCorrectionAndEmptyFiles() {
+        String taskId = "task-correction-reject-" + System.nanoTime();
+        ReviewTask task = newReviewTask(taskId, "session-correction-reject", "COMPLETED");
+        task.setOwnerUserId(8211L);
+        task.setHandlingStatus("CORRECTION_REQUIRED");
+        task.setHandlingStatusLabel("退回补正");
+        taskMapper.insert(task);
+
+        SubmitRequest fileRequest = new SubmitRequest();
+        fileRequest.setApplicationForm(new MockMultipartFile(
+                "applicationForm",
+                "application.pdf",
+                "application/pdf",
+                "补正申请书".getBytes(StandardCharsets.UTF_8)
+        ));
+
+        BusinessException wrongOwner = assertThrows(BusinessException.class,
+                () -> reviewTaskService.resubmitCorrectionMaterials(taskId, fileRequest, applicantUser(8212L)));
+        assertEquals(403, wrongOwner.getCode());
+
+        BusinessException emptyFiles = assertThrows(BusinessException.class,
+                () -> reviewTaskService.resubmitCorrectionMaterials(taskId, new SubmitRequest(), applicantUser(8211L)));
+        assertEquals(400, emptyFiles.getCode());
+
+        String nonCorrectionTaskId = "task-correction-not-ready-" + System.nanoTime();
+        ReviewTask nonCorrection = newReviewTask(nonCorrectionTaskId, "session-not-ready", "COMPLETED");
+        nonCorrection.setOwnerUserId(8211L);
+        taskMapper.insert(nonCorrection);
+
+        BusinessException notCorrection = assertThrows(BusinessException.class,
+                () -> reviewTaskService.resubmitCorrectionMaterials(nonCorrectionTaskId, fileRequest, applicantUser(8211L)));
+        assertEquals(409, notCorrection.getCode());
+    }
+
+    @Test
+    void correctionResubmitShouldPersistFailureWhenPythonDispatchFails() {
+        String taskId = "task-correction-dispatch-fail-" + System.nanoTime();
+        ReviewTask task = newReviewTask(taskId, "session-correction-dispatch-fail", "COMPLETED");
+        task.setOwnerUserId(8221L);
+        task.setHandlingStatus("CORRECTION_REQUIRED");
+        task.setHandlingStatusLabel("退回补正");
+        task.setReviewerActionCode("RETURN_FOR_CORRECTION");
+        taskMapper.insert(task);
+        insertReviewerResultRow(taskId, "旧审批结果");
+
+        AiServiceClient mockedAiServiceClient = mock(AiServiceClient.class);
+        when(mockedAiServiceClient.isReviewTaskDispatchEnabled()).thenReturn(true);
+        when(mockedAiServiceClient.dispatchReviewTask(ArgumentMatchers.any())).thenThrow(
+                new AiReviewTaskDispatchException(
+                        "AI service review task dispatch returned HTTP 503",
+                        "UPSTREAM_5XX",
+                        true,
+                        503,
+                        null
+                )
+        );
+        ReviewTaskServiceImpl service = newReviewTaskService(mockedAiServiceClient);
+
+        SubmitRequest request = new SubmitRequest();
+        request.setIdCard(new MockMultipartFile(
+                "idCard",
+                "id-card.png",
+                "image/png",
+                "补正身份证".getBytes(StandardCharsets.UTF_8)
+        ));
+
+        SubmitResponse response = service.resubmitCorrectionMaterials(taskId, request, applicantUser(8221L));
+
+        assertEquals("FAILED", response.getStatus());
+        ReviewTask updated = taskMapper.selectById(task.getId());
+        assertEquals("FAILED", updated.getStatus());
+        assertNull(updated.getHandlingStatus());
+        assertEquals(
+                "AI审查服务调度失败，未生成智能审查结论。",
+                service.getApplicantResult(taskId, "session-correction-dispatch-fail", applicantUser(8221L)).getSummary()
+        );
+        ReviewerResultResponse reviewerResult = service.getReviewerResult(taskId, null, reviewerUser());
+        assertEquals("UPSTREAM_5XX", reviewerResult.getIssues().get(0).getCode());
+    }
+
+    @Test
     void writeResultShouldPersistKnowledgePackVersion() {
         ReviewTask task = new ReviewTask();
         task.setTaskId("task-kp-version");
@@ -1003,6 +1168,32 @@ class ReviewTaskServiceImplTest {
         reviewResult.setCreatedAt(LocalDateTime.now());
         reviewResult.setUpdatedAt(LocalDateTime.now());
         resultMapper.insert(reviewResult);
+    }
+
+    private void insertApplicantResultRow(String taskId, String summary) {
+        ReviewResult reviewResult = new ReviewResult();
+        reviewResult.setTaskId(taskId);
+        reviewResult.setResultType("APPLICANT");
+        reviewResult.setContent("{\"summary\":\"" + summary + "\",\"issues\":[],\"materialCompleteness\":{\"missing\":[]}}");
+        reviewResult.setCreatedAt(LocalDateTime.now());
+        reviewResult.setUpdatedAt(LocalDateTime.now());
+        resultMapper.insert(reviewResult);
+    }
+
+    private void insertMaterialSlot(String taskId, String materialType, String fileName, String storageKey) {
+        MaterialSlot slot = new MaterialSlot();
+        slot.setMaterialId("mat-" + System.nanoTime());
+        slot.setTaskId(taskId);
+        slot.setMaterialType(materialType);
+        slot.setOriginalFileName(fileName);
+        slot.setContentType("application/pdf");
+        slot.setFileExtension("pdf");
+        slot.setFileSize(10L);
+        slot.setStorageKey(storageKey);
+        slot.setUploadedAt(LocalDateTime.now().minusMinutes(10));
+        slot.setCreatedAt(LocalDateTime.now().minusMinutes(10));
+        slot.setUpdatedAt(LocalDateTime.now().minusMinutes(10));
+        materialSlotMapper.insert(slot);
     }
 
     private PendingTaskResponse.PendingMaterial findPendingMaterial(

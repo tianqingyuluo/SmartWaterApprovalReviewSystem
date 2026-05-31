@@ -7,6 +7,7 @@ import java.util.List;
 
 public interface ReviewTaskService {
     SubmitResponse submit(SubmitRequest request, UserProfileResponse currentUser);
+    SubmitResponse resubmitCorrectionMaterials(String taskId, SubmitRequest request, UserProfileResponse currentUser);
     TaskStatusResponse getStatus(String taskId, String sessionId, UserProfileResponse currentUser);
     ApplicantResultResponse getApplicantResult(String taskId, String sessionId, UserProfileResponse currentUser);
     ReviewerResultResponse getReviewerResult(String taskId, String sessionId, UserProfileResponse currentUser);
