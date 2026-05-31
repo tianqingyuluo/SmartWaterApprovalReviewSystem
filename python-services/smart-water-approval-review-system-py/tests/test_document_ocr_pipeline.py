@@ -98,6 +98,59 @@ def _docx_bytes() -> bytes:
     return buffer.getvalue()
 
 
+def _application_form_template_docx_bytes() -> bytes:
+    doc = Document()
+    table = doc.add_table(rows=3, cols=11)
+    rows = [
+        [
+            "申请人基本情况",
+            "统一社会信用代码（身份证号码）",
+            "统一社会信用代码（身份证号码）",
+            "",
+            "",
+            "法定代表人",
+            "法定代表人",
+            "法定代表人",
+            "",
+            "",
+            "",
+        ],
+        [
+            "申请人基本情况",
+            "生产经营场所地址",
+            "生产经营场所地址",
+            "省（自治区、直辖市）      市（区）      县（区、市）      乡（镇、街道）        村（社区）    号",
+            "省（自治区、直辖市）      市（区）      县（区、市）      乡（镇、街道）        村（社区）    号",
+            "省（自治区、直辖市）      市（区）      县（区、市）      乡（镇、街道）        村（社区）    号",
+            "省（自治区、直辖市）      市（区）      县（区、市）      乡（镇、街道）        村（社区）    号",
+            "省（自治区、直辖市）      市（区）      县（区、市）      乡（镇、街道）        村（社区）    号",
+            "省（自治区、直辖市）      市（区）      县（区、市）      乡（镇、街道）        村（社区）    号",
+            "省（自治区、直辖市）      市（区）      县（区、市）      乡（镇、街道）        村（社区）    号",
+            "省（自治区、直辖市）      市（区）      县（区、市）      乡（镇、街道）        村（社区）    号",
+        ],
+        [
+            "项目基本情况",
+            "项目性质",
+            "项目性质",
+            "□新建    □改建、扩建    □其他",
+            "□新建    □改建、扩建    □其他",
+            "□新建    □改建、扩建    □其他",
+            "□新建    □改建、扩建    □其他",
+            "□新建    □改建、扩建    □其他",
+            "□新建    □改建、扩建    □其他",
+            "□新建    □改建、扩建    □其他",
+            "□新建    □改建、扩建    □其他",
+        ],
+    ]
+    for row_index, values in enumerate(rows):
+        for cell_index, value in enumerate(values):
+            table.cell(row_index, cell_index).text = value
+
+    buffer = BytesIO()
+    doc.save(buffer)
+    return buffer.getvalue()
+
+
 def _text_pdf_bytes() -> bytes:
     doc = fitz.open()
     page = doc.new_page()
@@ -225,6 +278,35 @@ class DocumentOcrPipelineContractTests(unittest.TestCase):
         self.assertGreaterEqual(len(data["tables"]), 1)
         self.assertEqual("1000", field_values.get("water_amount"))
         self.assertEqual([], ocr_adapter.calls)
+
+    def test_docx_application_form_table_blocks_are_row_scoped_and_deduplicated(self) -> None:
+        ocr_adapter = _StubOcrAdapter([])
+        result = _parse_material(
+            self._pipeline(ocr_adapter),
+            material_type="APPLICATION_FORM",
+            source_file_name="application-form.docx",
+            file_bytes=_application_form_template_docx_bytes(),
+        )
+
+        data = _contract_dict(result)
+        table_texts = [
+            _content_text(block)
+            for block in data["contentBlocks"]
+            if isinstance(block, dict) and block.get("blockType") == "table"
+        ]
+        joined = "\n".join(table_texts)
+
+        self.assertEqual([], data["errors"])
+        self.assertIn("申请人基本情况 | 统一社会信用代码（身份证号码） | 法定代表人", table_texts)
+        self.assertIn(
+            "申请人基本情况 | 生产经营场所地址 | "
+            "省（自治区、直辖市） 市（区） 县（区、市） 乡（镇、街道） 村（社区） 号",
+            table_texts,
+        )
+        self.assertIn("项目基本情况 | 项目性质 | □新建 □改建、扩建 □其他", table_texts)
+        self.assertNotIn("统一社会信用代码（身份证号码） | 统一社会信用代码（身份证号码）", joined)
+        self.assertNotIn("□新建 □改建、扩建 □其他 | □新建 □改建、扩建 □其他", joined)
+        self.assertTrue(all("\n" not in text for text in table_texts))
 
     def test_text_pdf_parser_extracts_text_without_ocr(self) -> None:
         ocr_adapter = _StubOcrAdapter([])

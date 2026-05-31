@@ -185,14 +185,15 @@ class DocumentOcrPipeline:
                 continue
 
             result.tables.append(DocumentTable(rows=rows, tableIndex=table_index))
-            result.content_blocks.append(
-                DocumentContentBlock(
-                    text=_table_to_text(rows),
-                    blockType="table",
-                    blockIndex=block_index,
+            for table_text in _table_to_text_blocks(rows):
+                result.content_blocks.append(
+                    DocumentContentBlock(
+                        text=table_text,
+                        blockType="table",
+                        blockIndex=block_index,
+                    )
                 )
-            )
-            block_index += 1
+                block_index += 1
             result.extracted_fields.extend(_extract_key_value_fields(rows, result.material_type))
 
         if not result.content_blocks and not result.tables and not result.extracted_fields:
@@ -315,7 +316,28 @@ def _extension(source_file_name: str) -> str:
 
 
 def _table_to_text(rows: list[list[str]]) -> str:
-    return "\n".join(" | ".join(cell for cell in row if cell) for row in rows).strip()
+    return "\n".join(_table_to_text_blocks(rows)).strip()
+
+
+def _table_to_text_blocks(rows: list[list[str]]) -> list[str]:
+    blocks: list[str] = []
+    for row in rows:
+        text = _table_row_to_text(row)
+        if text and text not in {"...", "…"}:
+            blocks.append(text)
+    return blocks
+
+
+def _table_row_to_text(row: list[str]) -> str:
+    cells: list[str] = []
+    previous = ""
+    for cell in row:
+        normalized = re.sub(r"\s+", " ", str(cell or "")).strip()
+        if not normalized or normalized == previous:
+            continue
+        cells.append(normalized)
+        previous = normalized
+    return " | ".join(cells)
 
 
 # 选项引导标记：空白框为"未选中"，其余符号一律视为"选中"
@@ -489,15 +511,16 @@ def _extract_pdf_tables(
                 tableIndex=table_index,
             )
         )
-        result.content_blocks.append(
-            DocumentContentBlock(
-                text=_table_to_text(rows),
-                blockType="pdf_table",
-                pageNumber=page_number,
-                blockIndex=block_index,
+        for table_text in _table_to_text_blocks(rows):
+            result.content_blocks.append(
+                DocumentContentBlock(
+                    text=table_text,
+                    blockType="pdf_table",
+                    pageNumber=page_number,
+                    blockIndex=block_index,
+                )
             )
-        )
-        block_index += 1
+            block_index += 1
         result.extracted_fields.extend(_extract_key_value_fields(rows, result.material_type))
 
     return block_index
