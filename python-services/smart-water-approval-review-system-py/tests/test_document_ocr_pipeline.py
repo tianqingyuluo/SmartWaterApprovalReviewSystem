@@ -98,9 +98,9 @@ def _docx_bytes() -> bytes:
     return buffer.getvalue()
 
 
-def _application_form_template_docx_bytes() -> bytes:
+def _application_form_template_docx_bytes(*, filled_project_name: str = "") -> bytes:
     doc = Document()
-    table = doc.add_table(rows=3, cols=11)
+    table = doc.add_table(rows=4, cols=11)
     rows = [
         [
             "申请人基本情况",
@@ -127,6 +127,19 @@ def _application_form_template_docx_bytes() -> bytes:
             "省（自治区、直辖市）      市（区）      县（区、市）      乡（镇、街道）        村（社区）    号",
             "省（自治区、直辖市）      市（区）      县（区、市）      乡（镇、街道）        村（社区）    号",
             "省（自治区、直辖市）      市（区）      县（区、市）      乡（镇、街道）        村（社区）    号",
+        ],
+        [
+            "项目基本情况",
+            "项目名称",
+            "项目名称",
+            filled_project_name,
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
         ],
         [
             "项目基本情况",
@@ -279,7 +292,7 @@ class DocumentOcrPipelineContractTests(unittest.TestCase):
         self.assertEqual("1000", field_values.get("water_amount"))
         self.assertEqual([], ocr_adapter.calls)
 
-    def test_docx_application_form_table_blocks_are_row_scoped_and_deduplicated(self) -> None:
+    def test_docx_application_form_template_rows_are_empty_fields_not_content_blocks(self) -> None:
         ocr_adapter = _StubOcrAdapter([])
         result = _parse_material(
             self._pipeline(ocr_adapter),
@@ -295,18 +308,43 @@ class DocumentOcrPipelineContractTests(unittest.TestCase):
             if isinstance(block, dict) and block.get("blockType") == "table"
         ]
         joined = "\n".join(table_texts)
+        field_values = {
+            _field_dict(field).get("fieldKey"): _field_dict(field).get("fieldValue")
+            for field in data["extractedFields"]
+        }
 
         self.assertEqual([], data["errors"])
-        self.assertIn("申请人基本情况 | 统一社会信用代码（身份证号码） | 法定代表人", table_texts)
-        self.assertIn(
-            "申请人基本情况 | 生产经营场所地址 | "
-            "省（自治区、直辖市） 市（区） 县（区、市） 乡（镇、街道） 村（社区） 号",
-            table_texts,
-        )
-        self.assertIn("项目基本情况 | 项目性质 | □新建 □改建、扩建 □其他", table_texts)
+        self.assertEqual([], table_texts)
+        self.assertEqual("-", field_values.get("项目名称"))
+        self.assertEqual("-", field_values.get("项目性质"))
+        self.assertEqual("-", field_values.get("生产经营场所地址"))
         self.assertNotIn("统一社会信用代码（身份证号码） | 统一社会信用代码（身份证号码）", joined)
         self.assertNotIn("□新建 □改建、扩建 □其他 | □新建 □改建、扩建 □其他", joined)
-        self.assertTrue(all("\n" not in text for text in table_texts))
+
+    def test_docx_application_form_filled_rows_become_content_blocks(self) -> None:
+        ocr_adapter = _StubOcrAdapter([])
+        result = _parse_material(
+            self._pipeline(ocr_adapter),
+            material_type="APPLICATION_FORM",
+            source_file_name="application-form.docx",
+            file_bytes=_application_form_template_docx_bytes(filled_project_name="东江取水工程"),
+        )
+
+        data = _contract_dict(result)
+        table_texts = [
+            _content_text(block)
+            for block in data["contentBlocks"]
+            if isinstance(block, dict) and block.get("blockType") == "table"
+        ]
+        field_values = {
+            _field_dict(field).get("fieldKey"): _field_dict(field).get("fieldValue")
+            for field in data["extractedFields"]
+        }
+
+        self.assertEqual([], data["errors"])
+        self.assertEqual(["项目名称 | 东江取水工程"], table_texts)
+        self.assertEqual("东江取水工程", field_values.get("项目名称"))
+        self.assertEqual("-", field_values.get("项目性质"))
 
     def test_text_pdf_parser_extracts_text_without_ocr(self) -> None:
         ocr_adapter = _StubOcrAdapter([])

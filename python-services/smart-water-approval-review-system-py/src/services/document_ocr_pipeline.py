@@ -323,21 +323,26 @@ def _table_to_text_blocks(rows: list[list[str]]) -> list[str]:
     blocks: list[str] = []
     for row in rows:
         text = _table_row_to_text(row)
-        if text and text not in {"...", "…"}:
+        if text:
             blocks.append(text)
     return blocks
 
 
 def _table_row_to_text(row: list[str]) -> str:
-    cells: list[str] = []
-    previous = ""
-    for cell in row:
-        normalized = re.sub(r"\s+", " ", str(cell or "")).strip()
-        if not normalized or normalized == previous:
-            continue
-        cells.append(normalized)
-        previous = normalized
-    return " | ".join(cells)
+    field = _extract_key_value_from_row(row, "")
+    if field is not None:
+        key, value = field
+        if value == "-":
+            return ""
+        return f"{key} | {value}"
+
+    cells = _dedupe_cells(row)
+    if _is_template_row(cells):
+        return ""
+    text = " | ".join(cells)
+    if text in {"...", "…"}:
+        return ""
+    return text
 
 
 # 选项引导标记：空白框为"未选中"，其余符号一律视为"选中"
@@ -407,6 +412,162 @@ def _looks_like_checkbox_value(text: str) -> bool:
     return any(mark in text for mark in _CHECKBOX_STRUCTURAL_MARKS)
 
 
+_TEMPLATE_VALUE_LABELS = {
+    "%",
+    "份额",
+    "法定代表人",
+    "邮 编",
+    "邮编",
+    "用水管理部门",
+    "联系人",
+    "联系人手机号码",
+    "单位名称（个人姓名）",
+    "统一社会信用代码 （身份证号码）",
+    "期限",
+    "（同上）",
+}
+
+
+def _dedupe_cells(row: list[str]) -> list[str]:
+    cells: list[str] = []
+    previous = ""
+    for cell in row:
+        normalized = re.sub(r"\s+", " ", str(cell or "")).strip()
+        if not normalized or normalized == previous:
+            continue
+        cells.append(normalized)
+        previous = normalized
+    return cells
+
+
+def _extract_key_value_from_row(row: list[str], material_type: str) -> tuple[str, str] | None:
+    if len(row) < 2:
+        return None
+
+    if len(row) >= 3 and row[1].strip() and row[1].strip() == row[2].strip():
+        key = re.sub(r"\s+", " ", row[1]).strip()
+        values = [re.sub(r"\s+", " ", cell).strip() for cell in row[2:] if cell.strip()]
+
+        if len(values) > 1:
+            value_counts: dict[str, int] = {}
+            for value in values:
+                value_counts[value] = value_counts.get(value, 0) + 1
+
+            repeated_noise = [
+                value
+                for value, count in value_counts.items()
+                if count >= 3 and not _looks_like_checkbox_value(value)
+            ]
+            if repeated_noise and not all(_is_template_value(value) for value in repeated_noise):
+                return None
+
+        value = _coerce_table_field_value(key, values)
+        if value is None:
+            return None
+    else:
+        key = re.sub(r"\s+", " ", row[0]).strip()
+        value = re.sub(r"\s+", " ", row[1]).strip()
+
+    if not key:
+        return None
+    if value == key:
+        return None
+    if not value:
+        value = "-"
+    elif _looks_like_checkbox_value(value):
+        value = _parse_checkbox_field(value)
+    elif _is_template_value(value):
+        value = "-"
+
+    return _normalize_field_key(key), value
+
+
+def _coerce_table_field_value(key: str, values: list[str]) -> str | None:
+    actual_values = _dedupe_cells([value for value in values if value != key])
+    if not actual_values:
+        return "-"
+    if any(_looks_like_checkbox_value(value) for value in actual_values):
+        return _parse_checkbox_field(" ".join(actual_values))
+    if _looks_like_secondary_field_titles(actual_values):
+        return None
+    if all(_is_template_value(value) for value in actual_values):
+        return "-"
+    return ", ".join(actual_values)
+
+
+def _looks_like_secondary_field_titles(values: list[str]) -> bool:
+    return bool(values) and all(_is_template_value(value) and _looks_like_field_label(value) for value in values)
+
+
+def _is_template_value(value: str) -> bool:
+    normalized = re.sub(r"\s+", " ", value or "").strip()
+    if not normalized or normalized in _TEMPLATE_VALUE_LABELS:
+        return True
+    if normalized in {"...", "…"}:
+        return True
+    if _looks_like_checkbox_value(normalized) and _parse_checkbox_field(normalized) == "-":
+        return True
+    if _looks_like_field_label(normalized):
+        return True
+    if normalized.endswith(("：", ":")):
+        return True
+    if re.fullmatch(r"[从至年月日 ]+", normalized):
+        return True
+    if "省（自治区、直辖市）" in normalized and not re.search(r"\d", normalized):
+        return True
+    if "可不按年取水量填写" in normalized:
+        return True
+    if "我单位（本人）承诺" in normalized:
+        return True
+    return False
+
+
+def _looks_like_field_label(value: str) -> bool:
+    normalized = re.sub(r"\s+", " ", value or "").strip()
+    if not normalized or len(normalized) > 40:
+        return False
+    if normalized in {"住所（住址）", "邮 编", "邮编", "份额"}:
+        return True
+    label = re.sub(r"[（(].*?[）)]", "", normalized).strip()
+    if re.fullmatch(r"(水源\d+|水源n|共同申请人\d+|共同申请人n)", normalized):
+        return True
+    return label.endswith(
+        (
+            "情况",
+            "代码",
+            "号码",
+            "代表人",
+            "地址",
+            "类别",
+            "部门",
+            "联系人",
+            "名称",
+            "姓名",
+            "份额",
+            "概况",
+            "性质",
+            "类型",
+            "地点",
+            "位置",
+            "取水量",
+            "用水量",
+            "方式",
+            "用途",
+            "事由",
+            "时间",
+        )
+    )
+
+
+def _is_template_row(cells: list[str]) -> bool:
+    if not cells:
+        return True
+    if len(cells) == 1:
+        return _is_template_value(cells[0])
+    value_cells = cells[1:]
+    return all(_is_template_value(cell) for cell in value_cells)
+
+
 def _extract_key_value_fields(rows: list[list[str]], material_type: str) -> list[ExtractedField]:
     """
     从表格行中提取键值对字段
@@ -418,64 +579,14 @@ def _extract_key_value_fields(rows: list[list[str]], material_type: str) -> list
     fields: list[ExtractedField] = []
 
     for row in rows:
-        if len(row) < 2:
+        field = _extract_key_value_from_row(row, material_type)
+        if field is None:
             continue
-
-        # 检测是否是申请表格式（列2和列3重复）
-        if len(row) >= 3 and row[1].strip() and row[1].strip() == row[2].strip():
-            # 申请表格式：列2是字段名，列3之后是值
-            key = row[1].strip()
-            # 合并所有非空值列（从列3开始）
-            values = [cell.strip() for cell in row[2:] if cell.strip()]
-
-            # 检查是否是表头行：
-            # 如果有任何值重复出现3次或以上，说明是表头（字段名重复）
-            # 例如：["申请人基本情况", "字段1", "字段1", "字段2", "字段2", "字段2"]
-            if len(values) > 1:
-                # 统计每个值的出现次数
-                value_counts = {}
-                for v in values:
-                    value_counts[v] = value_counts.get(v, 0) + 1
-
-                # 如果有任何值重复3次或以上，说明是表头
-                if any(count >= 3 for count in value_counts.values()):
-                    # 这是表头行，跳过
-                    continue
-
-            # 如果只有字段名重复，没有实际值，使用占位符
-            if len(values) == 1 and values[0] == key:
-                value = "-"
-            elif len(values) > 1:
-                # 过滤掉与字段名相同的值（字段名重复）
-                actual_values = [v for v in values if v != key]
-                if actual_values:
-                    value = ", ".join(actual_values)
-                else:
-                    value = "-"
-            else:
-                value = "-"
-        else:
-            # 简单键值对格式
-            key = row[0].strip()
-            value = row[1].strip()
-
-        # 跳过空键
-        if not key:
-            continue
-
-        # 跳过值与键完全相同的情况（表头重复）
-        if value == key:
-            continue
-
-        # 空值使用占位符
-        if not value:
-            value = "-"
-        elif _looks_like_checkbox_value(value):
-            value = _parse_checkbox_field(value)
+        key, value = field
 
         fields.append(
             ExtractedField(
-                field_key=_normalize_field_key(key),
+                field_key=key,
                 field_value=value,
                 confidence=1.0,
                 source_material=material_type,

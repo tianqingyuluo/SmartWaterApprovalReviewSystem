@@ -8,8 +8,6 @@ Red Test: 申请表单字段提取规范测试
 """
 import unittest
 
-from src.models import ExtractedField
-
 
 class TestApplicationFormFieldExtraction(unittest.TestCase):
     """测试申请表单字段提取规范"""
@@ -100,21 +98,26 @@ class TestApplicationFormFieldExtraction(unittest.TestCase):
 
         self.assertEqual("制水供水, 生活用水", result)
 
-    def test_should_not_extract_meaningless_table_structure(self):
-        """不应该提取无意义的表格结构重复"""
+    def test_should_not_extract_multi_field_title_rows(self):
+        """一行里只有多个字段标题时不应提取为字段值"""
         from src.services.document_ocr_pipeline import _extract_key_value_fields
 
-        # 模拟表格解析错误，产生大量重复列
+        # 模拟合并单元格展开后，一行里只有字段标题，没有真实填写值
         rows = [
-            ["申请人基本情况", "统一社会信用代码（身份证号码）", "统一社会信用代码（身份证号码）", "法定代表人", "法定代表人", "法定代表人"],
+            [
+                "申请人基本情况",
+                "统一社会信用代码（身份证号码）",
+                "统一社会信用代码（身份证号码）",
+                "法定代表人",
+                "法定代表人",
+                "法定代表人",
+            ],
             ["申请人基本情况", "住所（住址）", "住所（住址）", "邮 编", "邮 编", "邮 编"],
         ]
 
         fields = _extract_key_value_fields(rows, "APPLICATION_FORM")
 
-        # 验证：不应该提取这种多列重复的无意义结构
-        # 这种情况应该被识别为表头，而不是数据行
-        self.assertEqual(0, len(fields), "不应该提取表头结构")
+        self.assertEqual(0, len(fields), "不应该把多个字段标题提取成字段值")
 
     def test_should_extract_structured_address_fields(self):
         """结构化地址字段应该合理提取"""
@@ -130,7 +133,10 @@ class TestApplicationFormFieldExtraction(unittest.TestCase):
         # 验证：如果值是字段模板，应该识别为空
         self.assertEqual(1, len(fields))
         # 值应该是占位符，而不是字段模板
-        self.assertIn(fields[0].field_value, ["-", "(空)", "省（自治区、直辖市） 市（区） 县（区、市） 乡（镇、街道） 村（社区） 号"])
+        self.assertIn(
+            fields[0].field_value,
+            ["-", "(空)", "省（自治区、直辖市） 市（区） 县（区、市） 乡（镇、街道） 村（社区） 号"],
+        )
 
     def test_should_extract_filled_form_correctly(self):
         """已填写的表单应该正确提取"""
