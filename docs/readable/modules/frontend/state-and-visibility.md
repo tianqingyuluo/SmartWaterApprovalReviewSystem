@@ -57,6 +57,25 @@ CP3-F 后端已在申请人结果、审批人员结果、任务状态和任务�
 | `CORRECTION_REQUIRED` | 需要补正材料，可补传 | 已退回补正 |
 | `MANUAL_REVIEW_REQUIRED` | 已转人工复核 | 已转人工复核 |
 
+## 申请人办理提醒栏
+
+CP4 之后，申请人列表页和申请人结果页都增加了办理提醒栏，用于把初审处理动作更直观地展示给申请人。
+
+提醒栏只使用申请人可见字段：
+
+- `handlingStatus`
+- `handlingStatusLabel`
+- `reviewerRemark`
+- `reviewerActionAt`
+
+展示规则：
+
+- `CORRECTION_REQUIRED`：显示退回补正提示，并在结果页提供“补传材料”跳转。
+- `INITIAL_REVIEW_PASSED`：显示通过初审提示，提醒申请人继续关注后续办理通知。
+- `MANUAL_REVIEW_REQUIRED`：显示已转人工复核提示，说明申请单仍在处理链路中。
+
+列表页显示汇总提醒和若干条最近办理记录，结果页在任务信息上方显示单条醒目提醒。
+
 CP4-C 后，申请人结果页在 `handlingStatus=CORRECTION_REQUIRED` 时显示“补正材料补传”面板：
 
 - 面板只在申请人投影展示，审批人员/管理员结果投影不展示补传入口。

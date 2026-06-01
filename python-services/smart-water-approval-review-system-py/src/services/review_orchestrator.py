@@ -257,7 +257,7 @@ class ReviewTaskOrchestrator:
                 missing_materials=missing_materials,
                 knowledge_fragments=knowledge_fragments,
             )
-        except Exception as exc:  # pragma: no cover - defensive, adapter already maps most failures.
+        except Exception as exc:  # 防御性兜底：适配器已覆盖大多数失败场景。
             logger.error("Agent review failed for task %s: %s", task_id, exc)
             return self._build_fallback_result(rule_issues, material_types, missing_materials, str(exc)), True
 

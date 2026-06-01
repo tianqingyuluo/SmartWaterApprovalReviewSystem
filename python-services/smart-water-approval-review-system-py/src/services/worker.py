@@ -77,7 +77,7 @@ class SmartWaterWorker:
             logger.error("Failed to write results for task %s, marking as FAILED", task_id)
             self.writer.update_status(task_id, "FAILED")
 
-    # Kept for backward-compatible unit tests that verify reviewer/applicant projection semantics.
+    # 保留给兼容性单测使用，用于验证申请人/审批人投影语义。
     def _build_processing_result(
         self,
         task_id: str,

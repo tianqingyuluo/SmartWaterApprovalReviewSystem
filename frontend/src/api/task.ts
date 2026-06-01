@@ -26,7 +26,7 @@ import type {
 } from '@/types'
 import { MATERIAL_FORM_FIELDS, REVIEWER_ACTION_LABELS } from '@/types'
 
-// ── API functions ──
+// API 接口
 
 export function submitTask(formData: FormData) {
   return request.post<R<SubmitResponse>>('/task/submit', formData, {
@@ -91,7 +91,7 @@ export function fetchMaterialPreview(taskId: string, materialType: string) {
   })
 }
 
-// ── Adapters: backend DTO → page view model ──
+// 适配器：后端 DTO 转页面视图模型
 
 export function toApplicantResultView(dto: ApplicantResultResponse): ApplicantResultView {
   return {

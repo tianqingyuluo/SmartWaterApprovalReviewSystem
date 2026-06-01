@@ -59,7 +59,7 @@ export const FAILURE_CATEGORY_LABELS: Record<string, string> = {
   CONTENT_FILTERED: '内容被过滤',
 }
 
-/** Status tag colors for list/table display */
+/** 任务状态标签颜色，用于列表和表格展示 */
 export const STATUS_TAG_COLORS: Record<ProcessingStatus, { bg: string; text: string; border: string }> = {
   SUBMITTED: { bg: '#f5f5f5', text: '#999', border: '#d9d9d9' },
   QUEUED: { bg: '#f5f5f5', text: '#999', border: '#d9d9d9' },
@@ -69,14 +69,14 @@ export const STATUS_TAG_COLORS: Record<ProcessingStatus, { bg: string; text: str
   FAILED: { bg: '#fff2f0', text: '#ff4d4f', border: '#ffccc7' },
 }
 
-/** MaterialType → multipart form field name expected by Java backend */
+/** MaterialType 到 Java 后端 multipart 字段名的映射 */
 export const MATERIAL_FORM_FIELDS: Record<MaterialType, string> = {
   APPLICATION_FORM: 'applicationForm',
   BUSINESS_LICENSE: 'businessLicense',
   ID_CARD: 'idCard',
 }
 
-// ── Shared sub-DTOs ──
+// 共享子 DTO
 
 export interface MaterialSlot {
   materialType: MaterialType
@@ -166,7 +166,7 @@ export interface ReviewActionLogDto {
   operatedAt?: string | null
 }
 
-// ── Submit ──
+// 提交相关
 
 export interface SubmitResponse {
   taskId: string
@@ -188,7 +188,7 @@ export interface LoginResponse {
   user: UserProfile
 }
 
-// ── Backend DTOs (match actual endpoint response shapes) ──
+// 后端 DTO（与接口响应结构保持一致）
 
 /** GET /task/{taskId}/status */
 export interface TaskStatusResponse {
@@ -239,7 +239,7 @@ export interface ReviewerResultResponse {
   toolCallTraces?: ToolCallTraceDto[] | null
 }
 
-// ── Task List ──
+// 任务列表
 
 export interface TaskListItem {
   taskId: string
@@ -263,7 +263,7 @@ export interface TaskListResponse {
   size: number
 }
 
-// ── View models (transformed from backend DTOs for page consumption) ──
+// 页面使用的视图模型（由后端 DTO 转换而来）
 
 export interface ApplicantResultView {
   status: ProcessingStatus
@@ -333,7 +333,7 @@ export interface ReviewerActionResponse {
   operatedAt?: string | null
 }
 
-// ── Status labels ──
+// 状态标签
 
 export const STATUS_LABELS_APPLICANT: Record<ProcessingStatus, string> = {
   SUBMITTED: '已提交',

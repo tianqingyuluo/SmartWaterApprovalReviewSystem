@@ -341,9 +341,8 @@ def _table_row_to_text(row: list[str]) -> str:
     return text
 
 
-# 选项引导标记：空白框为"未选中"，其余符号一律视为"选中"
-# 设计依据：OCR 对手写勾的识别极不稳定（可能是 ✓ √ X 乃至乱码），
-# 唯一可靠的"未选中"信号是干净的空白框 □/☐。
+# 选项识别规则：空白框视为“未选中”，其余符号统一视为“选中”。
+# 原因是 OCR 对手写勾选的识别非常不稳定，只有干净的空白框 □/☐ 可以稳定表示未选中。
 _CHECKBOX_UNCHECKED_MARKS = "□☐"
 _CHECKBOX_CHECKED_MARKS = "☑✓✔√☒■✗xX×"
 _CHECKBOX_ALL_MARKS = _CHECKBOX_UNCHECKED_MARKS + _CHECKBOX_CHECKED_MARKS
@@ -381,14 +380,14 @@ def _parse_checkbox_field(text: str) -> str:
 
     for char in text:
         if char in _CHECKBOX_ALL_MARKS:
-            # 遇到新标记，先保存上一个选项
+            # 遇到新标记时，先保存上一个选项
             flush()
             current_label = []
-            # 只有空白框是"未选中"，其余一律视为"选中"
+            # 只有空白框算“未选中”，其余一律算“选中”
             current_is_checked = char not in _CHECKBOX_UNCHECKED_MARKS
             seen_mark = True
         elif char in ("\n", "\t"):
-            # 换行/制表符作为选项分隔
+            # 换行和制表符都作为选项分隔符
             flush()
             current_label = []
             seen_mark = False
