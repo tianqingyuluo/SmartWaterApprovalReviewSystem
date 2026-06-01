@@ -329,12 +329,8 @@ def _table_to_text_blocks(rows: list[list[str]]) -> list[str]:
 
 
 def _table_row_to_text(row: list[str]) -> str:
-    field = _extract_key_value_from_row(row, "")
-    if field is not None:
-        key, value = field
-        if value == "-":
-            return ""
-        return f"{key} | {value}"
+    if _extract_key_value_pairs_from_row(row, ""):
+        return ""
 
     cells = _dedupe_cells(row)
     if _is_template_row(cells):
@@ -440,46 +436,130 @@ def _dedupe_cells(row: list[str]) -> list[str]:
     return cells
 
 
+_BROAD_SECTION_LABELS = {"申请人基本情况", "项目基本情况"}
+_CONTEXT_LABEL_RE = re.compile(r"(水源\d+|水源n|共同申请人\d+|共同申请人n)")
+_PREFIX_CONTEXT_RE = re.compile(r"共同申请人\d+|共同申请人n")
+
+
 def _extract_key_value_from_row(row: list[str], material_type: str) -> tuple[str, str] | None:
-    if len(row) < 2:
-        return None
+    fields = _extract_key_value_pairs_from_row(row, material_type)
+    return fields[0] if fields else None
 
-    if len(row) >= 3 and row[1].strip() and row[1].strip() == row[2].strip():
-        key = re.sub(r"\s+", " ", row[1]).strip()
-        values = [re.sub(r"\s+", " ", cell).strip() for cell in row[2:] if cell.strip()]
 
-        if len(values) > 1:
-            value_counts: dict[str, int] = {}
-            for value in values:
-                value_counts[value] = value_counts.get(value, 0) + 1
+def _extract_key_value_pairs_from_row(row: list[str], material_type: str) -> list[tuple[str, str]]:
+    raw_cells = _expand_inline_label_values(_dedupe_cells(row))
+    if _looks_like_title_only_row(raw_cells):
+        return []
+    cells = _strip_table_context(raw_cells)
+    if not cells:
+        return []
+    if len(raw_cells) == 2 and not _is_template_value(raw_cells[0]):
+        return [(_normalize_field_key(raw_cells[0]), _normalize_extracted_value(raw_cells[0], raw_cells[1]))]
 
-            repeated_noise = [
-                value
-                for value, count in value_counts.items()
-                if count >= 3 and not _looks_like_checkbox_value(value)
-            ]
-            if repeated_noise and not all(_is_template_value(value) for value in repeated_noise):
-                return None
+    fields: list[tuple[str, str]] = []
+    index = 0
+    while index < len(cells):
+        key = cells[index]
+        if key.endswith("__context__"):
+            index += 1
+            continue
+        if not _looks_like_field_label(key):
+            index += 1
+            continue
 
-        value = _coerce_table_field_value(key, values)
+        value_cells: list[str] = []
+        index += 1
+        while index < len(cells) and not _looks_like_field_label(cells[index]):
+            value_cells.append(cells[index])
+            index += 1
+
+        if not value_cells and index < len(cells):
+            continue
+
+        value = _coerce_table_field_value(key, value_cells)
         if value is None:
-            return None
-    else:
-        key = re.sub(r"\s+", " ", row[0]).strip()
-        value = re.sub(r"\s+", " ", row[1]).strip()
+            continue
 
-    if not key:
+        normalized = _normalize_extracted_value(key, value)
+        fields.append((_normalize_field_key(_contextual_field_key(key, cells)), normalized))
+
+    return fields
+
+
+def _looks_like_title_only_row(cells: list[str]) -> bool:
+    if any(_looks_like_checkbox_value(cell) for cell in cells):
+        return False
+    scoped = list(cells)
+    if scoped and scoped[0] in _BROAD_SECTION_LABELS:
+        scoped = scoped[1:]
+    if scoped and _CONTEXT_LABEL_RE.fullmatch(scoped[0]):
+        scoped = scoped[1:]
+    return len(scoped) > 1 and all(_looks_like_field_label(cell) for cell in scoped)
+
+
+def _strip_table_context(cells: list[str]) -> list[str]:
+    if not cells:
+        return []
+
+    rest = list(cells)
+    context_prefix = ""
+    if rest and rest[0] in _BROAD_SECTION_LABELS:
+        rest = rest[1:]
+
+    if rest and _CONTEXT_LABEL_RE.fullmatch(rest[0]) and len(rest) > 1 and _looks_like_field_label(rest[1]):
+        if _PREFIX_CONTEXT_RE.fullmatch(rest[0]):
+            context_prefix = rest[0]
+        rest = rest[1:]
+
+    if context_prefix:
+        return [f"{context_prefix}__context__"] + rest
+    return rest
+
+
+def _contextual_field_key(key: str, cells: list[str]) -> str:
+    if cells and cells[0].endswith("__context__"):
+        return f"{cells[0].removesuffix('__context__')}_{key}"
+    return key
+
+
+def _expand_inline_label_values(cells: list[str]) -> list[str]:
+    expanded: list[str] = []
+    for cell in cells:
+        inline = _split_inline_label_value(cell)
+        if inline is None:
+            expanded.append(cell)
+            continue
+        key, value = inline
+        expanded.extend([key, value])
+    return expanded
+
+
+def _split_inline_label_value(cell: str) -> tuple[str, str] | None:
+    if _looks_like_checkbox_value(cell):
         return None
-    if value == key:
+    label, separator, value = cell.partition("：")
+    if not separator:
+        label, separator, value = cell.partition(":")
+    if not separator:
         return None
+
+    label = re.sub(r"\s+", " ", label).strip()
+    value = re.sub(r"\s+", " ", value).strip()
+    if not label or not value:
+        return None
+    if not _looks_like_field_label(label):
+        return None
+    return label, value
+
+
+def _normalize_extracted_value(key: str, value: str) -> str:
     if not value:
         value = "-"
     elif _looks_like_checkbox_value(value):
         value = _parse_checkbox_field(value)
     elif _is_template_value(value):
         value = "-"
-
-    return _normalize_field_key(key), value
+    return value
 
 
 def _coerce_table_field_value(key: str, values: list[str]) -> str | None:
@@ -526,7 +606,19 @@ def _looks_like_field_label(value: str) -> bool:
     normalized = re.sub(r"\s+", " ", value or "").strip()
     if not normalized or len(normalized) > 40:
         return False
-    if normalized in {"住所（住址）", "邮 编", "邮编", "份额"}:
+    if normalized in {
+        "住所（住址）",
+        "邮 编",
+        "邮编",
+        "份额",
+        "年退水量",
+        "退水方式和排放去向",
+        "受纳水体名称",
+        "受纳水体功能目标",
+        "退水地点",
+        "具体说明",
+        "期限",
+    }:
         return True
     label = re.sub(r"[（(].*?[）)]", "", normalized).strip()
     if re.fullmatch(r"(水源\d+|水源n|共同申请人\d+|共同申请人n)", normalized):
@@ -579,20 +671,16 @@ def _extract_key_value_fields(rows: list[list[str]], material_type: str) -> list
     fields: list[ExtractedField] = []
 
     for row in rows:
-        field = _extract_key_value_from_row(row, material_type)
-        if field is None:
-            continue
-        key, value = field
-
-        fields.append(
-            ExtractedField(
-                field_key=key,
-                field_value=value,
-                confidence=1.0,
-                source_material=material_type,
-                evidence="Extracted from document table",
+        for key, value in _extract_key_value_pairs_from_row(row, material_type):
+            fields.append(
+                ExtractedField(
+                    field_key=key,
+                    field_value=value,
+                    confidence=1.0,
+                    source_material=material_type,
+                    evidence="Extracted from document table",
+                )
             )
-        )
 
     return fields
 

@@ -98,7 +98,12 @@ def _docx_bytes() -> bytes:
     return buffer.getvalue()
 
 
-def _application_form_template_docx_bytes(*, filled_project_name: str = "") -> bytes:
+def _application_form_template_docx_bytes(
+    *,
+    filled_project_name: str = "",
+    filled_credit_code: str = "",
+    filled_legal_representative: str = "",
+) -> bytes:
     doc = Document()
     table = doc.add_table(rows=4, cols=11)
     rows = [
@@ -106,14 +111,14 @@ def _application_form_template_docx_bytes(*, filled_project_name: str = "") -> b
             "申请人基本情况",
             "统一社会信用代码（身份证号码）",
             "统一社会信用代码（身份证号码）",
-            "",
-            "",
+            filled_credit_code,
+            filled_credit_code,
             "法定代表人",
             "法定代表人",
             "法定代表人",
-            "",
-            "",
-            "",
+            filled_legal_representative,
+            filled_legal_representative,
+            filled_legal_representative,
         ],
         [
             "申请人基本情况",
@@ -321,13 +326,17 @@ class DocumentOcrPipelineContractTests(unittest.TestCase):
         self.assertNotIn("统一社会信用代码（身份证号码） | 统一社会信用代码（身份证号码）", joined)
         self.assertNotIn("□新建 □改建、扩建 □其他 | □新建 □改建、扩建 □其他", joined)
 
-    def test_docx_application_form_filled_rows_become_content_blocks(self) -> None:
+    def test_docx_application_form_filled_rows_become_structured_fields_not_content_blocks(self) -> None:
         ocr_adapter = _StubOcrAdapter([])
         result = _parse_material(
             self._pipeline(ocr_adapter),
             material_type="APPLICATION_FORM",
             source_file_name="application-form.docx",
-            file_bytes=_application_form_template_docx_bytes(filled_project_name="东江取水工程"),
+            file_bytes=_application_form_template_docx_bytes(
+                filled_project_name="东江取水工程",
+                filled_credit_code="91441303MA531L6K37",
+                filled_legal_representative="姜丹丹",
+            ),
         )
 
         data = _contract_dict(result)
@@ -342,7 +351,9 @@ class DocumentOcrPipelineContractTests(unittest.TestCase):
         }
 
         self.assertEqual([], data["errors"])
-        self.assertEqual(["项目名称 | 东江取水工程"], table_texts)
+        self.assertEqual([], table_texts)
+        self.assertEqual("91441303MA531L6K37", field_values.get("统一社会信用代码_身份证号码"))
+        self.assertEqual("姜丹丹", field_values.get("法定代表人"))
         self.assertEqual("东江取水工程", field_values.get("项目名称"))
         self.assertEqual("-", field_values.get("项目性质"))
 
