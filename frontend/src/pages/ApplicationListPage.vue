@@ -46,6 +46,50 @@
       </div>
     </PageCard>
 
+    <PageCard v-if="canShowApplicantReviewReminders" compact class="mb-[14px]">
+      <div class="flex items-start justify-between gap-4 max-md:block">
+        <div>
+          <h2 class="text-[17px] font-black text-[#152238]">办理提醒</h2>
+          <p class="mt-1.5 leading-[1.7] text-sw-muted">
+            审批人员处理后的申请会在这里提示，退回补正的任务可直接进入详情补传材料。
+          </p>
+        </div>
+        <div class="flex flex-wrap gap-2 max-md:mt-3">
+          <span v-if="correctionReminderCount" class="rounded-full border border-[#f2c46d] bg-[#fffaf0] px-2.5 py-1 text-xs font-black text-[#9a6700]">
+            需补正 {{ correctionReminderCount }}
+          </span>
+          <span v-if="manualReviewReminderCount" class="rounded-full border border-[#bfdbfe] bg-[#f3f8ff] px-2.5 py-1 text-xs font-black text-[#1d4ed8]">
+            复核中 {{ manualReviewReminderCount }}
+          </span>
+          <span v-if="passedReminderCount" class="rounded-full border border-[#b7e4c7] bg-[#f4fbf7] px-2.5 py-1 text-xs font-black text-[#167044]">
+            已通过 {{ passedReminderCount }}
+          </span>
+        </div>
+      </div>
+
+      <div class="mt-4 grid gap-3">
+        <ApplicantReviewNotice
+          v-for="item in applicantReviewReminderItems"
+          :key="`notice-${item.taskId}`"
+          compact
+          :handling-status="item.handlingStatus"
+          :handling-status-label="item.handlingStatusLabel"
+          :reviewer-remark="item.reviewerRemark"
+          :reviewer-action-at="item.reviewerActionAt ? formatDateTime(item.reviewerActionAt) : null"
+        >
+          <template #actions>
+            <div class="flex flex-wrap items-center gap-3 text-xs text-sw-muted">
+              <code class="rounded bg-white px-2 py-1 font-bold text-[#20304a]">{{ item.taskId }}</code>
+              <span>更新：{{ formatDateTime(item.updatedAt) }}</span>
+              <router-link class="font-extrabold text-sw-primary no-underline hover:text-sw-primary-strong" :to="`/review?taskId=${item.taskId}`">
+                查看详情
+              </router-link>
+            </div>
+          </template>
+        </ApplicantReviewNotice>
+      </div>
+    </PageCard>
+
     <PageCard compact class="overflow-hidden">
       <div v-if="errorMessage" class="sw-alert sw-alert-danger mb-[14px]">
         {{ errorMessage }}
@@ -96,7 +140,12 @@
                 <td class="px-[14px] py-[15px]">{{ formatDateTime(item.updatedAt) }}</td>
                 <td class="px-[14px] py-[15px]">
                   <div class="grid gap-1">
-                    <strong class="text-[#2b4362]">{{ item.handlingStatusLabel || '未处理' }}</strong>
+                    <strong
+                      class="w-fit rounded-full border px-2.5 py-1 text-xs font-black"
+                      :class="handlingStatusPillClass(item.handlingStatus)"
+                    >
+                      {{ item.handlingStatusLabel || '未处理' }}
+                    </strong>
                     <small v-if="item.reviewerRemark" class="line-clamp-2 text-sw-muted">{{ item.reviewerRemark }}</small>
                   </div>
                 </td>
@@ -173,6 +222,7 @@ import PageCard from '@/components/common/PageCard.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import StatusTag from '@/components/common/StatusTag.vue'
 import TaskMaterialSummary from '@/components/business/TaskMaterialSummary.vue'
+import ApplicantReviewNotice from '@/components/business/ApplicantReviewNotice.vue'
 
 const STATUS_OPTIONS: ProcessingStatus[] = ['SUBMITTED', 'QUEUED', 'PROCESSING', 'PARTIAL_SUCCESS', 'COMPLETED', 'FAILED']
 
@@ -185,7 +235,9 @@ const filterEndDate = ref('')
 const filterStatus = ref<ProcessingStatus | ''>('')
 const currentPage = ref(1)
 const pageSize = ref(10)
-const canCreateApplication = computed(() => getCurrentRole() !== 'REVIEWER')
+const currentRole = computed(() => getCurrentRole())
+const canCreateApplication = computed(() => currentRole.value !== 'REVIEWER')
+const isApplicantRole = computed(() => currentRole.value === 'APPLICANT')
 
 const filteredItems = computed(() => {
   let result = items.value
@@ -237,6 +289,36 @@ const visiblePages = computed(() => {
   return pages
 })
 
+const applicantReviewReminderItems = computed(() => {
+  if (!isApplicantRole.value) return []
+
+  return items.value
+    .filter((item) => Boolean(item.handlingStatus))
+    .slice()
+    .sort((a, b) => {
+      const priorityDiff = handlingStatusPriority(a.handlingStatus) - handlingStatusPriority(b.handlingStatus)
+      if (priorityDiff !== 0) return priorityDiff
+      return toTime(b.reviewerActionAt || b.updatedAt) - toTime(a.reviewerActionAt || a.updatedAt)
+    })
+    .slice(0, 4)
+})
+
+const correctionReminderCount = computed(() => (
+  items.value.filter((item) => item.handlingStatus === 'CORRECTION_REQUIRED').length
+))
+
+const manualReviewReminderCount = computed(() => (
+  items.value.filter((item) => item.handlingStatus === 'MANUAL_REVIEW_REQUIRED').length
+))
+
+const passedReminderCount = computed(() => (
+  items.value.filter((item) => item.handlingStatus === 'INITIAL_REVIEW_PASSED').length
+))
+
+const canShowApplicantReviewReminders = computed(() => (
+  isApplicantRole.value && applicantReviewReminderItems.value.length > 0
+))
+
 watch([pageSize, filterKeyword, filterStatus, filterStartDate, filterEndDate], () => {
   currentPage.value = 1
 })
@@ -260,6 +342,32 @@ function handleReset() {
   filterEndDate.value = ''
   filterStatus.value = ''
   currentPage.value = 1
+}
+
+function handlingStatusPriority(status: TaskListItem['handlingStatus']): number {
+  if (status === 'CORRECTION_REQUIRED') return 0
+  if (status === 'MANUAL_REVIEW_REQUIRED') return 1
+  if (status === 'INITIAL_REVIEW_PASSED') return 2
+  return 3
+}
+
+function handlingStatusPillClass(status: TaskListItem['handlingStatus']): string {
+  if (status === 'CORRECTION_REQUIRED') {
+    return 'border-[#f2c46d] bg-[#fffaf0] text-[#9a6700]'
+  }
+  if (status === 'MANUAL_REVIEW_REQUIRED') {
+    return 'border-[#bfdbfe] bg-[#f3f8ff] text-[#1d4ed8]'
+  }
+  if (status === 'INITIAL_REVIEW_PASSED') {
+    return 'border-[#b7e4c7] bg-[#f4fbf7] text-[#167044]'
+  }
+  return 'border-sw-line bg-[#f6f9fd] text-[#2b4362]'
+}
+
+function toTime(value: string | null | undefined): number {
+  if (!value) return 0
+  const timestamp = new Date(value).getTime()
+  return Number.isNaN(timestamp) ? 0 : timestamp
 }
 
 async function fetchList() {

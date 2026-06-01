@@ -23,6 +23,19 @@
       <span>正在读取任务状态和 AI 初审结果</span>
     </div>
 
+    <ApplicantReviewNotice
+      v-if="task && isApplicantView && task.handlingStatus"
+      class="mb-4"
+      :handling-status="task.handlingStatus"
+      :handling-status-label="task.handlingStatusLabel"
+      :reviewer-remark="task.reviewerRemark"
+      :reviewer-action-at="task.reviewerActionAt ? formatDateTime(task.reviewerActionAt) : null"
+    >
+      <template v-if="canShowCorrectionUploadPanel" #actions>
+        <a href="#correction-materials" class="sw-btn sw-btn-primary">补传材料</a>
+      </template>
+    </ApplicantReviewNotice>
+
     <div v-if="task" class="grid items-start gap-6 [grid-template-columns:minmax(420px,1.25fr)_minmax(430px,0.95fr)] max-[1180px]:grid-cols-1">
       <section class="grid gap-4">
         <PageCard compact class="overflow-hidden !p-0">
@@ -121,7 +134,7 @@
           </dl>
         </PageCard>
 
-        <PageCard v-if="canShowCorrectionUploadPanel" title="补正材料补传" compact>
+        <PageCard v-if="canShowCorrectionUploadPanel" id="correction-materials" title="补正材料补传" compact>
           <div class="mb-4 mt-[-4px] flex flex-wrap gap-3 text-[13px] text-sw-muted">
             <span class="rounded-full bg-[#f3f8ff] px-2.5 py-1.5">支持格式：jpg / jpeg / png / pdf / docx</span>
             <span class="rounded-full bg-[#f3f8ff] px-2.5 py-1.5">每类材料最多上传 1 个文件</span>
@@ -380,6 +393,7 @@ import StatusBanner from '@/components/business/StatusBanner.vue'
 import FailureInfo from '@/components/business/FailureInfo.vue'
 import TaskMaterialSummary from '@/components/business/TaskMaterialSummary.vue'
 import FileUploadSlot from '@/components/business/FileUploadSlot.vue'
+import ApplicantReviewNotice from '@/components/business/ApplicantReviewNotice.vue'
 
 interface CorrectionSlotState {
   type: MaterialType
