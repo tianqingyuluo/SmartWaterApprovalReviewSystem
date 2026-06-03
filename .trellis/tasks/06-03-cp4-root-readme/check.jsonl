@@ -1,0 +1,4 @@
+{"file":"README.md","reason":"检查根 README 是否覆盖项目入口、链接有效且无敏感信息。"}
+{"file":"docs/readable/README.md","reason":"检查文档入口关系是否同步。"}
+{"file":"docs/readable/dev-log/2026-06.md","reason":"检查开发日志格式是否符合项目文档规则。"}
+{"file":".trellis/tasks/06-03-cp4-root-readme/prd.md","reason":"对照任务验收标准确认范围没有扩散。"}

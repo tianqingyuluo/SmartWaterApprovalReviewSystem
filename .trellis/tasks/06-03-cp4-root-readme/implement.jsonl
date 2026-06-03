@@ -1,0 +1,6 @@
+{"file":"README.md","reason":"目标新增的仓库根目录总 README。"}
+{"file":"docs/readable/README.md","reason":"需要补充根 README 与可读文档树的入口关系。"}
+{"file":"docs/readable/dev-log/2026-06.md","reason":"每个达到可交付状态的任务都需要记录月度开发日志。"}
+{"file":"deploy/README.md","reason":"根 README 的部署入口和命令摘要需要与部署 README 保持一致。"}
+{"file":"docs/readable/operations/deployment.md","reason":"根 README 的部署说明应指向已有运维文档而不重复所有细节。"}
+{"file":".trellis/spec/project-documentation.md","reason":"文档更新规则、语言要求和开发日志格式。"}
