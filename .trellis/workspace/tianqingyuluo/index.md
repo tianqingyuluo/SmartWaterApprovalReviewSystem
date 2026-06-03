@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 12
+- **Total Sessions**: 13
 - **Last Active**: 2026-06-03
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~436 | Active |
+| `journal-1.md` | ~469 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 13 | 2026-06-03 | CP4 root README | `7f2c315` | `v1` |
 | 12 | 2026-06-03 | CP4 Docker Compose deployment | `9c05b97` | `v1` |
 | 11 | 2026-05-31 | Correction material resubmission loop | `dde4c3f` | `v1` |
 | 10 | 2026-05-27 | CP3.5 真实链路收口 | `c580a3d`, `792ea88` | `v1` |

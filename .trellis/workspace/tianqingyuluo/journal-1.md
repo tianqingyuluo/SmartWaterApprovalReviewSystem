@@ -434,3 +434,41 @@ Implemented applicant correction material resubmission across Java, Python, and 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 13: CP4 root README
+
+**Date**: 2026-06-03
+**Task**: CP4 root README
+**Branch**: `v1`
+
+### Summary
+
+补齐根目录总 README，汇总项目定位、模块结构、启动部署入口、演示账号、文档索引和 CP1-CP4 映射；同步可读文档入口与 2026-06 开发日志。
+
+### Main Changes
+
+- Added root `README.md` as the project-level entry point for CP4 review and handoff.
+- Linked the root README from `docs/readable/README.md`.
+- Added a 2026-06 readable development-log entry for the root README task.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `7f2c315` | (see git log) |
+
+### Testing
+
+- [OK] `git diff --check`
+- [OK] README relative-link existence check
+- [OK] secret-pattern scan on changed docs/task files
+- [OK] `task.py validate .trellis/tasks/06-03-cp4-root-readme`
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
