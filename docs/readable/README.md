@@ -18,6 +18,7 @@
 - [Worker 与 Java 回写接口](./modules/worker/api.md)：记录 Worker 领取任务、结果回写、字段快照和幂等约定。
 - [Worker 模块文档](./modules/worker/failure-handling.md)：记录 Python Worker 与 Java 后端的失败处理和接口契约。
 - [前端页面与角色可见性](./modules/frontend/state-and-visibility.md)：记录登录态、角色入口和申请人/审核员结果投影。
+- [Docker Compose 部署说明](./operations/deployment.md)：记录 CP4 部署配置入口、服务拓扑、部署变量和健康检查。
 
 其他边界：
 

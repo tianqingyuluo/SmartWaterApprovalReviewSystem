@@ -1,0 +1,31 @@
+# Local secrets and environment files
+.env
+**/.env
+**/application-secrets.yaml
+
+# Git and AI/Trellis local state
+.git
+.codex
+.claude
+.opencode
+.trellis/tasks
+.trellis/workspace
+.trellis/.current-task
+.trellis/.developer
+
+# Build and dependency output
+**/node_modules
+**/dist
+**/target
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+
+# Editor and OS noise
+.DS_Store
+Thumbs.db
+.idea
+**/.idea
+*.iml

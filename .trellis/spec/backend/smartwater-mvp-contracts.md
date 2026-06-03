@@ -1289,6 +1289,118 @@ class CreateReviewTaskRequest(BaseModel):
 
 so the wire contract remains camelCase.
 
+## Scenario: CP4 Docker Compose Deployment
+
+### 1. Scope / Trigger
+
+- Trigger: deployment topology, Dockerfiles, deployment env keys, object storage,
+  ChromaDB persistence, frontend reverse proxy, or operational README changes.
+- Goal: provide a reproducible V1 deployment surface without reusing developer
+  `.env` or `application-secrets.yaml` files.
+
+### 2. Signatures
+
+Deployment entry:
+
+```bash
+cd deploy
+cp .env.example .env
+docker compose --env-file .env up -d --build
+docker compose --env-file .env config --quiet
+```
+
+Required services:
+
+```text
+mysql
+redis
+rustfs
+java-backend
+python-ai
+frontend
+```
+
+Frontend proxy:
+
+```nginx
+location /api/ {
+    proxy_pass http://java-backend:8080/api/;
+}
+```
+
+### 3. Contracts
+
+| Item | Contract |
+|---|---|
+| Config directory | Deployment files live under `deploy/`; do not put deployment-only files in Java/Python/frontend dev config directories. |
+| Env template | `deploy/.env.example` contains placeholders only. Real `deploy/.env` is local-only and must not be committed. |
+| Java database password | Use `SPRING_DATASOURCE_PASSWORD` in Compose; do not depend on `application-secrets.yaml` inside the image. |
+| Object storage | Runtime target is `rustfs` with S3-compatible API at `http://rustfs:9000`; Java receives `STORAGE_S3_ACCESS_KEY` / `STORAGE_S3_SECRET_KEY`. |
+| Python service | FastAPI starts with `uvicorn src.api.app:app --host 0.0.0.0 --port 8000`. |
+| Worker/internal token | `WORKER_TOKEN` is shared by Java Worker APIs and Python writeback; `INTERNAL_API_TOKEN` is shared by Java-to-FastAPI calls and FastAPI `X-Internal-Token`. |
+| ChromaDB | ChromaDB remains a Python local persistent directory such as `/app/data/chroma`; do not add a Chroma Server service for V1. |
+| Knowledge source | Source documents mount or copy into Python container path such as `/app/knowledge_source`, then ingest runs inside `python-ai`. |
+| `.doc` parsing | Python deployment image must include LibreOffice headless and Chinese fonts; `SOFFICE_PATH` points to `/usr/bin/soffice`. |
+| Redis | Redis is part of CP4 topology but remains reserved until Java session/cache wiring is explicitly implemented. |
+
+### 4. Validation & Error Matrix
+
+| Condition | Expected behavior |
+|---|---|
+| Missing required env value | `docker compose config` or service startup fails before silently using blank secrets. |
+| Java cannot reach Python | `/api/ai/health` reports `reachable=false`; task dispatch failures follow CP3.5 failure semantics. |
+| RustFS credentials mismatch | Java storage initialization or upload fails explicitly; do not fall back to local files. |
+| Knowledge source missing | Python ingest returns an error or zero vectors; evidence must not claim knowledge-base success. |
+| Python health is degraded | README troubleshooting points to knowledge pack and container logs. |
+
+### 5. Good/Base/Bad Cases
+
+- Good: Compose parses with `deploy/.env.example`, but real startup instructions
+  require replacing placeholders before deployment.
+- Good: frontend serves static assets and sends `/api/**` through Nginx to
+  Java `/api/**`.
+- Base: Redis starts and persists data as a reserved service even when current
+  Java code does not consume it.
+- Bad: commit `deploy/.env`, model API keys, RustFS credentials, or
+  `application-secrets.yaml`.
+- Bad: describe the required object-storage middleware as MinIO when the V1
+  deployment target is RustFS.
+- Bad: add `chromadb` as a separate Compose service for V1.
+
+### 6. Tests Required
+
+- `docker compose --env-file deploy/.env.example -f deploy/docker-compose.yml config --quiet`.
+- `cd frontend && npm run build`.
+- `cd java-services/water-approval && ./mvnw -DskipTests package` or the same
+  command with an explicit writable `-Dmaven.repo.local`.
+- `cd python-services/smart-water-approval-review-system-py && uv run python -m compileall src main.py`.
+- Manual deployment evidence, when a host is available: `docker compose up -d --build`,
+  Python ingest, Java `/api/ai/health`, sample material submit, and result query.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```yaml
+java-backend:
+  volumes:
+    - ../java-services/water-approval/src/main/resources/application-secrets.yaml:/app/application-secrets.yaml
+```
+
+This couples deployment to a developer-only secret file.
+
+#### Correct
+
+```yaml
+java-backend:
+  environment:
+    SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}
+    STORAGE_S3_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:?RUSTFS_ACCESS_KEY is required}
+    STORAGE_S3_SECRET_KEY: ${RUSTFS_SECRET_KEY:?RUSTFS_SECRET_KEY is required}
+```
+
+so Compose injects deployment secrets through `deploy/.env`.
+
 ## Scenario: CP4 Correction Material Resubmission
 
 ### 1. Scope / Trigger

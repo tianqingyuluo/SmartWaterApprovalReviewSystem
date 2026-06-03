@@ -1,0 +1,7 @@
+{"file": ".trellis/tasks/06-03-cp4-deploy-compose-readme/prd.md", "reason": "部署任务 PRD 和验收标准"}
+{"file": ".trellis/tasks/06-03-cp4-deploy-compose-readme/research/deployment-context.md", "reason": "部署入口、配置边界、Compose 服务和关键约束调研"}
+{"file": ".trellis/spec/backend/smartwater-mvp-contracts.md", "reason": "RustFS/S3、Worker、AI 服务和跨服务部署契约"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "后端部署变更质量门禁和禁止提交 secrets 规则"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Java/Python 健康检查、内部 token 和失败语义边界"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "前端构建门禁和 /api 代理边界"}
+{"file": ".trellis/spec/project-documentation.md", "reason": "部署任务必须更新中文可读文档和开发日志"}
