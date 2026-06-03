@@ -401,3 +401,36 @@ Implemented applicant correction material resubmission across Java, Python, and 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 12: CP4 Docker Compose deployment
+
+**Date**: 2026-06-03
+**Task**: CP4 Docker Compose deployment
+**Branch**: `v1`
+
+### Summary
+
+新增 CP4 Docker Compose 部署目录、环境模板、Java/Python/前端镜像构建、Nginx 反代、中文部署文档、可读日志和部署 spec contract。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `9c05b97` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

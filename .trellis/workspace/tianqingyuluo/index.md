@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 11
-- **Last Active**: 2026-05-31
+- **Total Sessions**: 12
+- **Last Active**: 2026-06-03
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~403 | Active |
+| `journal-1.md` | ~436 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 12 | 2026-06-03 | CP4 Docker Compose deployment | `9c05b97` | `v1` |
 | 11 | 2026-05-31 | Correction material resubmission loop | `dde4c3f` | `v1` |
 | 10 | 2026-05-27 | CP3.5 真实链路收口 | `c580a3d`, `792ea88` | `v1` |
 | 9 | 2026-05-14 | CP2-C MCP Server 工具实现 | `016382a` | `v1` |
